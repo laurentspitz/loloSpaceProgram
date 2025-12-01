@@ -33,6 +33,33 @@ export class RocketRenderer {
 
         const group = new THREE.Group();
 
+        // If rocket has a part stack (from Hangar), render it
+        if (rocket.partStack && rocket.partStack.length > 0) {
+            // Find min/max Y to center the rocket
+            const positions = rocket.partStack.map(p => p.position.y);
+            const minY = Math.min(...positions.map((y, i) => y - rocket.partStack![i].definition.height / 2));
+            const maxY = Math.max(...positions.map((y, i) => y + rocket.partStack![i].definition.height / 2));
+            const centerOffset = (maxY + minY) / 2;
+
+            // Render each part
+            rocket.partStack.forEach(part => {
+                const def = part.definition;
+                const texture = this.textureLoader.load(def.texture);
+                const geometry = new THREE.PlaneGeometry(def.width, def.height);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.y = part.position.y - centerOffset;
+                group.add(mesh);
+            });
+
+            return group;
+        }
+
+        // Otherwise, use default design
         const width = rocket.width;
         const capsuleH = rocket.capsuleHeight;
         const tankH = rocket.tankHeight;

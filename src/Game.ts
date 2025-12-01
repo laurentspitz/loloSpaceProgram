@@ -26,10 +26,29 @@ export class Game {
     // Max physics step size for stability (e.g. 1000 seconds)
     // If we warp time, we take multiple steps of this size or smaller
     readonly MAX_PHYSICS_STEP = 100;
+    private sceneSetup: typeof SceneSetup;
 
-    constructor() {
-        const canvasId = 'gameCanvas';
-        const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+    constructor(assembly?: any) {
+        this.sceneSetup = SceneSetup;
+
+        // Initialize canvas
+        let canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+        if (!canvas) {
+            // Create canvas if it doesn't exist
+            canvas = document.createElement('canvas');
+            canvas.id = 'gameCanvas';
+            canvas.style.position = 'absolute';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            document.body.appendChild(canvas);
+        }
+
+        // Resize canvas to fill window
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
         this.renderer = new ThreeRenderer(canvas);
         this.ui = new UI(this.renderer);
 
@@ -46,9 +65,12 @@ export class Game {
             this.handleCollision(bodyA, bodyB);
         };
 
-        // Initialize bodies and rocket using SceneSetup
-        this.bodies = SceneSetup.initBodies(this.collisionManager);
-        this.rocket = SceneSetup.createRocket(this.bodies, this.collisionManager);
+        // Initialize scene
+        this.bodies = this.sceneSetup.initBodies(this.collisionManager);
+
+        // Create rocket (with assembly if provided)
+        const rocketConfig = assembly?.getRocketConfig?.();
+        this.rocket = this.sceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig);
 
         this.renderer.currentRocket = this.rocket;
         this.ui.init(this.bodies);

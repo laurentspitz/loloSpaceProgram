@@ -40,8 +40,8 @@ export class PartRegistry {
             ]
         });
 
-        // 2. Fuel Tank X200-32 (90px × 116px)
-        const tankHeight = 116 * SCALE;
+        // 2. Fuel Tank X200-32 (90px × 80px)
+        const tankHeight = 80 * SCALE;
         this.register({
             id: 'fuel_tank_x200_32',
             name: 'Fuel Tank X200-32',
@@ -51,7 +51,7 @@ export class PartRegistry {
             width: 2.5,
             height: tankHeight,
             stats: {
-                mass: 500, // Dry mass
+                mass: 500, // Dry mass (500kg)
                 cost: 3000,
                 fuel: 32000 // Fuel mass
             },
@@ -74,11 +74,31 @@ export class PartRegistry {
             stats: {
                 mass: 1250,
                 cost: 1100,
-                thrust: 215000, // 215 kN
+                thrust: 600000, // 600 kN (increased for better TWR)
                 isp: 300
             },
             nodes: [
                 { id: 'top', position: new Vector2(0, engineHeight / 2), direction: new Vector2(0, 1), type: 'top' }
+            ]
+        });
+
+        // 4. Decoupler (90px × 9px)
+        const decouplerHeight = 9 * SCALE;
+        this.register({
+            id: 'decoupler',
+            name: 'Decoupler',
+            type: 'decoupler',
+            description: 'A stage separation device.',
+            texture: '/textures/decoupleur.png',
+            width: 2.5,
+            height: decouplerHeight,
+            stats: {
+                mass: 50,
+                cost: 400
+            },
+            nodes: [
+                { id: 'top', position: new Vector2(0, decouplerHeight / 2), direction: new Vector2(0, 1), type: 'top' },
+                { id: 'bottom', position: new Vector2(0, -decouplerHeight / 2), direction: new Vector2(0, -1), type: 'bottom' }
             ]
         });
     }

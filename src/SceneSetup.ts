@@ -19,38 +19,32 @@ export class SceneSetup {
         return bodies;
     }
 
-    static createRocket(bodies: Body[], collisionManager: CollisionManager): Rocket {
-        // Create rocket in low Earth orbit
+    static createRocket(bodies: Body[], collisionManager: CollisionManager, assemblyConfig?: any): Rocket {
+        // Create rocket on Earth's surface
         const earth = bodies.find(b => b.name === 'Earth')!;
 
         // IMPORTANT: Planets are rendered with visualScale = 3.0
-        // So visual radius = earth.radius * 3.0
-        // We need to orbit outside the VISUAL radius, not just the physical radius
-        const visualRadius = earth.radius * 3.0; // Account for visual scaling
-        const orbitAltitude = earth.radius * 0.5; // 50% of Earth radius above surface (~3000km)
-        const orbitRadius = visualRadius + orbitAltitude;
+        const visualRadius = earth.radius * 3.0;
 
-        // Position: start above Earth (angle PI/2) to be visible
-        const angle = Math.PI / 2; // Top of Earth
+        // Position: On surface, slightly above to avoid initial collision
+        const launchAngle = Math.PI / 2; // Top of Earth (90 degrees)
+        const surfaceOffset = 10; // 10 meters above surface
         const rocketPos = earth.position.add(new Vector2(
-            Math.cos(angle) * orbitRadius,
-            Math.sin(angle) * orbitRadius
+            Math.cos(launchAngle) * (visualRadius + surfaceOffset),
+            Math.sin(launchAngle) * (visualRadius + surfaceOffset)
         ));
 
-        // Calculate orbital velocity for circular orbit: v = sqrt(GM/r)
-        // Earth's mass is already scaled by 9x for visual physics
-        const orbitalSpeed = Math.sqrt((6.674e-11 * earth.mass) / orbitRadius);
-
-        // Velocity perpendicular to radius for circular orbit
-        // angle = PI/2 (top of Earth), so perpendicular is to the left (-x direction)
+        // Velocity: Earth's rotation at equator (~460 m/s eastward)
+        // At launchAngle = PI/2 (top), eastward is to the left (-x direction)
+        const rotationalSpeed = 460; // m/s
         const rocketVel = earth.velocity.add(new Vector2(
-            -Math.sin(angle) * orbitalSpeed,  // Perpendicular to radius
-            Math.cos(angle) * orbitalSpeed
+            -rotationalSpeed, // Eastward at top of Earth
+            0
         ));
 
-        const rocket = new Rocket(rocketPos, rocketVel);
+        const rocket = new Rocket(rocketPos, rocketVel, assemblyConfig);
 
-        // CRITICAL: Add rocket body to physics simulation!
+        // Add rocket body to physics simulation
         bodies.push(rocket.body);
 
         // Create Matter.js body for rocket

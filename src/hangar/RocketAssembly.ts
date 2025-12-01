@@ -92,4 +92,41 @@ export class RocketAssembly {
 
         return stats.isp! * g0 * Math.log(m0 / mf);
     }
+
+    /**
+     * Get rocket configuration for game
+     */
+    getRocketConfig() {
+        const stats = this.getStats();
+        const dryMass = stats.mass - (stats.fuel || 0);
+
+        return {
+            dryMass,
+            fuelMass: stats.fuel || 0,
+            totalMass: stats.mass,
+            thrust: stats.thrust || 0,
+            isp: stats.isp || 300,
+            parts: this.getPartStack()
+        };
+    }
+
+    /**
+     * Get ordered part stack from bottom to top for rendering
+     */
+    getPartStack() {
+        if (this.parts.length === 0) return [];
+
+        // Sort parts by Y position (bottom to top)
+        const sorted = [...this.parts].sort((a, b) => a.position.y - b.position.y);
+
+        return sorted.map(p => {
+            const def = PartRegistry.get(p.partId);
+            return {
+                partId: p.partId,
+                definition: def!,
+                position: p.position
+            };
+        });
+    }
 }
+

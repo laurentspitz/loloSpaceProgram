@@ -23,11 +23,19 @@ export class Rocket {
     readonly capsuleHeight: number = 1.5;  // Smaller pod (Mk1 is 1.25m vs 2.5m tank)
     readonly engineHeight: number = 1.8;   // Smaller engine
 
-    constructor(position: Vector2, velocity: Vector2) {
-        // Rocket specifications (Heavy lifter)
-        const fuelMass = 500000; // kg of fuel (Increased 100x from original)
-        this.dryMass = 5000;    // kg dry mass (structure + engine + capsule)
+    // Part stack from assembly (if built in Hangar)
+    partStack?: Array<{ partId: string; definition: any; position: any }>;
+
+    constructor(position: Vector2, velocity: Vector2, assemblyConfig?: any) {
+        // Use assembly config if provided, otherwise use defaults
+        const fuelMass = assemblyConfig?.fuelMass || 500000;
+        this.dryMass = assemblyConfig?.dryMass || 5000;
         const totalMass = this.dryMass + fuelMass;
+        const thrust = assemblyConfig?.thrust || 5000000;
+        const isp = assemblyConfig?.isp || 350;
+
+        // Store part stack for rendering
+        this.partStack = assemblyConfig?.parts;
 
         // Create physics body
         // Radius is approximate for collision detection
@@ -41,8 +49,8 @@ export class Rocket {
             velocity
         );
 
-        // Create engine (5MN thrust, 500t fuel, 350s ISP - similar to Falcon 9 / Heavy)
-        this.engine = new RocketEngine(5000000, fuelMass, 350);
+        // Create engine
+        this.engine = new RocketEngine(thrust, fuelMass, isp);
 
         // Create controls
         this.controls = new RocketControls();

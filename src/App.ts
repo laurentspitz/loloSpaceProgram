@@ -14,12 +14,11 @@ type AppState = typeof AppState[keyof typeof AppState];
  * App - Main entry point and state manager
  */
 export class App {
-    state: AppState = AppState.MENU;
-
-    // Components
-    mainMenu: MainMenu | null = null;
-    game: Game | null = null;
-    hangar: Hangar | null = null;
+    private currentState: AppState = AppState.MENU;
+    private menu: MainMenu | null = null;
+    private game: Game | null = null;
+    private hangar: Hangar | null = null;
+    private assembly: any = null; // Store assembly from Hangar
 
     constructor() {
         this.showMenu();
@@ -31,54 +30,57 @@ export class App {
 
         window.addEventListener('launch-game', (e: any) => {
             console.log('Launching with assembly:', e.detail.assembly);
+            this.assembly = e.detail.assembly; // Store assembly
             this.startGame();
         });
     }
 
     showMenu() {
-        this.cleanup();
-        this.state = AppState.MENU;
-        this.mainMenu = new MainMenu(
-            () => this.startGame(),
-            () => this.openHangar()
-        );
-    }
-
-    startGame() {
-        this.cleanup();
-        this.state = AppState.GAME;
-        this.game = new Game();
-    }
-
-    openHangar() {
-        this.cleanup();
-        this.state = AppState.HANGAR;
-        this.hangar = new Hangar();
-    }
-
-    cleanup() {
-        if (this.mainMenu) {
-            this.mainMenu.dispose();
-            this.mainMenu = null;
-        }
+        // Clean up current state
         if (this.game) {
-            // Game doesn't have a dispose method yet, but we can at least stop the loop if we add one
-            // For now, we just let it be garbage collected if possible, 
-            // but ideally Game should have a cleanup method.
-            // Since Game attaches to canvas, we might need to clear canvas or reset it.
-            // But Game constructor creates a new ThreeRenderer which creates a new WebGLRenderer.
-            // We should probably reuse the canvas or clear it.
-
-            // For this iteration, we'll just hide the UI elements if any
-            if (this.game.ui) {
-                // UI elements are appended to body/container, need cleanup
-                // TODO: Add dispose to Game and UI
-            }
+            this.game.dispose();
             this.game = null;
         }
         if (this.hangar) {
             this.hangar.dispose();
             this.hangar = null;
         }
+
+        this.currentState = AppState.MENU;
+        this.menu = new MainMenu(
+            () => this.startGame(),
+            () => this.startHangar()
+        );
+    }
+
+    startGame() {
+        // Clean up current state
+        if (this.menu) {
+            this.menu.dispose();
+            this.menu = null;
+        }
+        if (this.hangar) {
+            this.hangar.dispose();
+            this.hangar = null;
+        }
+
+        this.currentState = AppState.GAME;
+        this.game = new Game(this.assembly);
+        this.assembly = null; // Clear after use
+    }
+
+    startHangar() {
+        // Clean up current state
+        if (this.menu) {
+            this.menu.dispose();
+            this.menu = null;
+        }
+        if (this.game) {
+            // Game cleanup if needed
+            this.game = null;
+        }
+
+        this.currentState = AppState.HANGAR;
+        this.hangar = new Hangar();
     }
 }
