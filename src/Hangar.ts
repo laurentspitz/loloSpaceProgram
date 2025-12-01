@@ -1,8 +1,17 @@
+import { HangarScene } from './hangar/HangarScene';
+import { HangarUI } from './hangar/HangarUI';
+import { RocketAssembly } from './hangar/RocketAssembly';
+import { DragDropManager } from './hangar/DragDropManager';
+
 /**
- * Hangar - Placeholder for the rocket building scene
+ * Hangar - Main class for the rocket building scene
  */
 export class Hangar {
     container: HTMLDivElement;
+    scene: HangarScene;
+    ui: HangarUI;
+    assembly: RocketAssembly;
+    dragDropManager: DragDropManager;
 
     constructor() {
         this.container = document.createElement('div');
@@ -12,39 +21,53 @@ export class Hangar {
         this.container.style.left = '0';
         this.container.style.width = '100%';
         this.container.style.height = '100%';
-        this.container.style.backgroundColor = '#1a1a1a';
-        this.container.style.color = 'white';
-        this.container.style.display = 'flex';
-        this.container.style.flexDirection = 'column';
-        this.container.style.justifyContent = 'center';
-        this.container.style.alignItems = 'center';
-        this.container.style.fontFamily = 'Arial, sans-serif';
-        this.container.style.zIndex = '1000';
+        document.body.appendChild(this.container);
 
-        const title = document.createElement('h1');
-        title.textContent = 'Rocket Hangar';
-        this.container.appendChild(title);
+        // Initialize Assembly
+        this.assembly = new RocketAssembly();
 
-        const message = document.createElement('p');
-        message.textContent = 'Under Construction - Coming Soon!';
-        this.container.appendChild(message);
+        // Initialize Scene
+        this.scene = new HangarScene(this.container, this.assembly);
 
+        // Initialize Interaction
+        this.dragDropManager = new DragDropManager(
+            this.scene,
+            this.assembly,
+            () => this.ui.updateStats(), // Callback when part placed
+            (x, y) => this.ui.isOverPalette(x, y) // Callback to check trash
+        );
+
+        // Initialize UI
+        this.ui = new HangarUI(
+            this.assembly,
+            (partId) => this.dragDropManager.startDraggingNewPart(partId),
+            () => {
+                // Dispatch launch event with assembly data
+                const event = new CustomEvent('launch-game', {
+                    detail: { assembly: this.assembly }
+                });
+                window.dispatchEvent(event);
+            }
+        );
+
+        // Back Button (Temporary, should be in UI)
         const backButton = document.createElement('button');
         backButton.textContent = 'Back to Menu';
+        backButton.style.position = 'absolute';
+        backButton.style.top = '20px';
+        backButton.style.right = '20px';
         backButton.style.padding = '10px 20px';
-        backButton.style.marginTop = '20px';
-        backButton.style.fontSize = '18px';
-        backButton.style.cursor = 'pointer';
+        backButton.style.zIndex = '1000';
         backButton.onclick = () => {
-            // Dispatch event to go back to menu
             window.dispatchEvent(new CustomEvent('navigate-menu'));
         };
         this.container.appendChild(backButton);
-
-        document.body.appendChild(this.container);
     }
 
     dispose() {
+        this.scene.dispose();
+        this.ui.dispose();
+        this.dragDropManager.dispose();
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

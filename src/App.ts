@@ -28,6 +28,11 @@ export class App {
         window.addEventListener('navigate-menu', () => {
             this.showMenu();
         });
+
+        window.addEventListener('launch-game', (e: any) => {
+            console.log('Launching with assembly:', e.detail.assembly);
+            this.startGame();
+        });
     }
 
     showMenu() {
