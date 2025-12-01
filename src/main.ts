@@ -1,5 +1,5 @@
 import './style.css'
-import { Game } from './Game';
+import { App } from './App'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
@@ -7,4 +7,4 @@ app.innerHTML = `
   <canvas id="gameCanvas"></canvas>
 `
 
-new Game();
+new App();
