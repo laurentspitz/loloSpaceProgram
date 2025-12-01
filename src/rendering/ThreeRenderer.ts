@@ -1,0 +1,567 @@
+import * as THREE from 'three';
+import { Body } from '../core/Body';
+import { Vector2 } from '../core/Vector2';
+import { TextureGenerator } from './TextureGenerator';
+import { OrbitRenderer } from './OrbitRenderer';
+import { Rocket } from '../entities/Rocket';
+import { RocketRenderer } from './RocketRenderer';
+
+/**
+ * ThreeRenderer - Main rendering engine using Three.js
+ * Simplified after extracting texture generation and orbit rendering
+ */
+export class ThreeRenderer {
+    scene: THREE.Scene;
+    camera: THREE.OrthographicCamera;
+    renderer: THREE.WebGLRenderer;
+
+    // Properties for compatibility with UI
+    canvas: HTMLCanvasElement;
+    width: number = 0;
+    height: number = 0;
+
+    // Camera control
+    scale: number = 1e-9; // Meters to pixels
+    offset: Vector2 = new Vector2(0, 0);
+    followedBody: Body | null = null;
+
+    // Visual scale multiplier for planet sizes (makes them more visible)
+    visualScale: number = 3.0;
+    // Specific scale for moons to ensure they are not inside the planet visually
+    moonScale: number = 10.0;
+
+    // Display options
+    showOrbits: boolean = true;
+
+    // Store bodies for selection
+    currentBodies: Body[] = [];
+
+    // Body meshes map
+    bodyMeshes: Map<Body, THREE.Mesh> = new Map();
+    ringMeshes: Map<Body, THREE.Mesh> = new Map();
+    cloudMeshes: Map<Body, THREE.Mesh> = new Map();
+
+    // Rocket mesh
+    rocketMesh: THREE.Group | null = null;
+    rocketFlameMesh: THREE.Mesh | null = null;
+    velocityIndicator: THREE.Group | null = null;
+    currentRocket: Rocket | null = null;
+
+    // Trajectory line
+    trajectoryLine: THREE.Line | null = null;
+    showTrajectory: boolean = false;
+
+    // Background
+    stars: THREE.Points | null = null;
+
+    // Orbit renderer (extracted)
+    private orbitRenderer: OrbitRenderer;
+
+    constructor(canvas: HTMLCanvasElement) {
+        this.canvas = canvas;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+
+        // Scene setup
+        this.scene = new THREE.Scene();
+
+        // Renderer setup
+        this.renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: false
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Camera setup (orthographic for 2D view)
+        const aspect = window.innerWidth / window.innerHeight;
+        const frustumSize = 1000;
+        this.camera = new THREE.OrthographicCamera(
+            frustumSize * aspect / -2,
+            frustumSize * aspect / 2,
+            frustumSize / 2,
+            frustumSize / -2,
+            0.1,
+            10000
+        );
+        this.camera.position.z = 1000;
+
+        // Initialize orbit renderer
+        this.orbitRenderer = new OrbitRenderer(this.scene, this.scale, this.moonScale);
+
+        // Create background
+        this.createBackground();
+
+        // Input handlers
+        this.setupInputHandlers(canvas);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            this.resize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    createBackground() {
+        // Create starfield
+        const starsGeometry = new THREE.BufferGeometry();
+        const starCount = 2000;
+        const positions = new Float32Array(starCount * 3);
+        const colors = new Float32Array(starCount * 3);
+        const sizes = new Float32Array(starCount);
+
+        for (let i = 0; i < starCount; i++) {
+            // Spread stars across a large area
+            positions[i * 3] = (Math.random() - 0.5) * 4000;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 4000;
+            positions[i * 3 + 2] = -500; // Behind everything
+
+            // Varied star sizes (0.5 to 3.0 pixels)
+            sizes[i] = 0.5 + Math.random() * 2.5;
+
+            // Slight color variation (white to blue-white) with varied brightness
+            const brightness = 0.6 + Math.random() * 0.4;
+            const blueShift = Math.random() * 0.2; // Some stars more blue
+            colors[i * 3] = brightness - blueShift * 0.1;
+            colors[i * 3 + 1] = brightness - blueShift * 0.05;
+            colors[i * 3 + 2] = Math.min(1.0, brightness + blueShift);
+        }
+
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        starsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        starsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        const starsMaterial = new THREE.PointsMaterial({
+            size: 2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            sizeAttenuation: false // Stars don't get smaller with distance/zoom
+        });
+
+        this.stars = new THREE.Points(starsGeometry, starsMaterial);
+        this.scene.add(this.stars);
+
+        // Background color (deep space)
+        this.scene.background = new THREE.Color(0x000814);
+    }
+
+    setupInputHandlers(canvas: HTMLCanvasElement) {
+        // Zoom with mouse wheel
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.1;
+            if (e.deltaY < 0) {
+                this.scale *= (1 + zoomSpeed);
+            } else {
+                this.scale /= (1 + zoomSpeed);
+            }
+        });
+
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            // Check for click on body
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const clickedBody = this.selectBodyAt(new Vector2(x, y), this.currentBodies);
+            if (clickedBody) {
+                this.followedBody = clickedBody;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+
+                if (this.followedBody) {
+                    this.followedBody = null; // Stop following if panning
+                }
+                this.offset = this.offset.sub(new Vector2(dx / this.scale, dy / this.scale));
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+    }
+
+    resize(width: number, height: number) {
+        this.width = width;
+        this.height = height;
+        this.renderer.setSize(width, height);
+
+        const aspect = width / height;
+        const frustumSize = 1000;
+        this.camera.left = frustumSize * aspect / -2;
+        this.camera.right = frustumSize * aspect / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = frustumSize / -2;
+        this.camera.updateProjectionMatrix();
+    }
+
+    getCenter(): Vector2 {
+        if (this.followedBody) {
+            return this.getVisualPosition(this.followedBody);
+        }
+        return this.offset;
+    }
+
+    worldToScreen(pos: Vector2): Vector2 {
+        const center = this.getCenter();
+        const width = this.renderer.domElement.width;
+        const height = this.renderer.domElement.height;
+        return new Vector2(
+            (pos.x - center.x) * this.scale + width / 2,
+            (pos.y - center.y) * this.scale + height / 2
+        );
+    }
+
+    getVisualPosition(body: Body): Vector2 {
+        // For moons, we apply moonScale to their position relative to parent
+        if (body.type === 'moon' && body.parent) {
+            const relX = body.position.x - body.parent.position.x;
+            const relY = body.position.y - body.parent.position.y;
+            return new Vector2(
+                body.parent.position.x + relX * this.moonScale,
+                body.parent.position.y + relY * this.moonScale
+            );
+        }
+        return body.position;
+    }
+
+    screenToWorld(pos: Vector2): Vector2 {
+        const center = this.getCenter();
+        const width = this.renderer.domElement.width;
+        const height = this.renderer.domElement.height;
+        return new Vector2(
+            (pos.x - width / 2) / this.scale + center.x,
+            (pos.y - height / 2) / this.scale + center.y
+        );
+    }
+
+    render(bodies: Body[], _time: number = 0) {
+        this.currentBodies = bodies;
+
+        // Update camera position
+        if (this.followedBody) {
+            this.offset = this.getVisualPosition(this.followedBody);
+        }
+
+        const center = this.getCenter();
+        // Use floating origin: camera is always at (0,0) relative to the scene content
+        // This avoids floating point precision issues when zooming in on far-away objects
+        this.camera.position.x = 0;
+        this.camera.position.y = 0;
+
+        // Update camera zoom
+        const frustumSize = 1000 / this.scale * 1e-9;
+        const aspect = window.innerWidth / window.innerHeight;
+        this.camera.left = frustumSize * aspect / -2;
+        this.camera.right = frustumSize * aspect / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = frustumSize / -2;
+        this.camera.updateProjectionMatrix();
+
+        // Update orbit renderer scale
+        this.orbitRenderer.updateScale(this.scale, this.moonScale);
+
+        // Render orbits using OrbitRenderer
+        this.orbitRenderer.renderOrbits(bodies, center, this.showOrbits);
+
+        // Render bodies
+        bodies.forEach(body => {
+            let mesh = this.bodyMeshes.get(body);
+
+            if (!mesh) {
+                // Create new mesh for this body
+                const radius = body.radius * this.scale * this.visualScale;
+                const geometry = new THREE.CircleGeometry(radius, 8192);
+
+                // Create texture using TextureGenerator
+                const texture = TextureGenerator.createPlanetTexture(body);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true
+                });
+
+                mesh = new THREE.Mesh(geometry, material);
+
+                // Add glow effect for sun and planets with atmospheres
+                if (body.name === 'Sun' || body.atmosphereColor) {
+                    const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 4096);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: body.name === 'Sun' ? 0xffaa00 : TextureGenerator.parseColor(body.atmosphereColor || body.color),
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                    glowMesh.position.z = -1; // Behind the planet
+                    mesh.add(glowMesh);
+                }
+
+                this.scene.add(mesh);
+                this.bodyMeshes.set(body, mesh);
+
+                // Add rings for Saturn and Uranus
+                if (body.ringColor && body.ringInnerRadius && body.ringOuterRadius) {
+                    const ringGeometry = new THREE.RingGeometry(
+                        body.ringInnerRadius * this.scale * this.visualScale,
+                        body.ringOuterRadius * this.scale * this.visualScale,
+                        512
+                    );
+
+                    const ringTexture = TextureGenerator.createRingTexture(body);
+                    const ringMaterial = new THREE.MeshBasicMaterial({
+                        map: ringTexture,
+                        transparent: true,
+                        opacity: 0.8,
+                        side: THREE.DoubleSide
+                    });
+
+                    const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+
+                    // Tilt the rings using scaling to simulate perspective in 2D
+                    if (body.name === 'Saturn') {
+                        ringMesh.scale.y = 0.4; // Tilt effect
+                        ringMesh.rotation.z = 0.1; // Slight angle
+                    } else if (body.name === 'Uranus') {
+                        ringMesh.scale.y = 0.8; // Less tilt
+                        ringMesh.rotation.z = 1.5; // Vertical rings
+                    }
+
+                    ringMesh.position.z = -0.5; // Slightly behind planet
+                    mesh.add(ringMesh);
+                    this.ringMeshes.set(body, ringMesh);
+                }
+
+                // Add clouds for Earth and Venus
+                if (body.name === 'Earth' || body.name === 'Venus') {
+                    const cloudGeometry = new THREE.CircleGeometry(radius * 1.15, 6144); // Match atmosphere size
+                    const cloudTexture = TextureGenerator.createCloudTexture(body);
+                    const cloudMaterial = new THREE.MeshBasicMaterial({
+                        map: cloudTexture,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                    cloudMesh.position.z = 0.1; // Slightly in front
+                    mesh.add(cloudMesh);
+                    this.cloudMeshes.set(body, cloudMesh);
+                }
+            }
+
+            // Update mesh position and scale
+            // Apply visual scale to moon positions relative to parent
+            let worldX, worldY;
+            if (body.type === 'moon' && body.parent) {
+                const relX = body.position.x - body.parent.position.x;
+                const relY = body.position.y - body.parent.position.y;
+                // Apply floating origin offset
+                worldX = (body.parent.position.x + relX * this.moonScale - center.x) * this.scale;
+                worldY = (body.parent.position.y + relY * this.moonScale - center.y) * this.scale;
+            } else {
+                worldX = (body.position.x - center.x) * this.scale;
+                worldY = (body.position.y - center.y) * this.scale;
+            }
+
+            mesh.position.set(worldX, worldY, 0);
+
+            // Update size based on zoom
+            const radius = body.radius * this.scale * this.visualScale;
+            const baseRadius = (mesh.geometry as THREE.CircleGeometry).parameters.radius;
+            const scaleFactor = radius / baseRadius;
+            mesh.scale.set(scaleFactor, scaleFactor, 1);
+
+            // Update ring size if present
+            const ringMesh = this.ringMeshes.get(body);
+            if (ringMesh && body.ringInnerRadius && body.ringOuterRadius) {
+                const innerRadius = body.ringInnerRadius * this.scale * this.visualScale;
+                const baseInnerRadius = (ringMesh.geometry as THREE.RingGeometry).parameters.innerRadius;
+                const ringScaleFactor = innerRadius / baseInnerRadius;
+
+                // Maintain the tilt aspect ratio while scaling
+                ringMesh.scale.set(
+                    ringScaleFactor,
+                    ringScaleFactor * (body.name === 'Saturn' ? 0.4 : (body.name === 'Uranus' ? 0.8 : 1)),
+                    1
+                );
+            }
+
+            // Update cloud animation if present
+            const cloudMesh = this.cloudMeshes.get(body);
+            if (cloudMesh) {
+                // Cloud mesh is a child of the planet mesh, so it inherits scale automatically.
+                // We only need to handle animation.
+                const rotationSpeed = body.name === 'Venus' ? 0.00005 : 0.0001;
+                cloudMesh.rotation.z = _time * rotationSpeed;
+            }
+
+            // Update texture if zoom changed significantly
+            if (Math.abs(scaleFactor - 1) > 0.1) {
+                const texture = TextureGenerator.createPlanetTexture(body);
+                (mesh.material as THREE.MeshBasicMaterial).map = texture;
+                (mesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
+            }
+        });
+
+        // Render rocket if present
+        if (this.currentRocket) {
+            this.renderRocket(this.currentRocket, center);
+        }
+
+        // Render the scene
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    /**
+     * Render the rocket
+     */
+    renderRocket(rocket: Rocket, center: Vector2) {
+        // Create rocket mesh if not exists
+        if (!this.rocketMesh) {
+            this.rocketMesh = RocketRenderer.createRocketMesh(rocket);
+            this.scene.add(this.rocketMesh);
+        }
+
+        // Update rocket position
+        // NOTE: Rocket mesh is centered vertically, but physics uses center as reference
+        // We need to offset DOWN by half-height so the BASE is at the surface
+        const halfHeight = rocket.getTotalHeight() / 2;
+
+        // Calculate angle from planet center for proper vertical offset
+        let offsetX = 0;
+        let offsetY = -halfHeight; // Default offset (down)
+
+        // If rocket has a parent (resting on surface), calculate radial offset
+        if (rocket.body.parent) {
+            const direction = rocket.body.position.sub(rocket.body.parent.position).normalize();
+            // Direction points FROM planet TO rocket (outward)
+            // We want to offset TOWARD planet (inward), so NO negative sign
+            offsetX = direction.x * halfHeight;
+            offsetY = direction.y * halfHeight;
+        }
+
+        const worldX = (rocket.body.position.x - offsetX - center.x) * this.scale;
+        const worldY = (rocket.body.position.y - offsetY - center.y) * this.scale;
+        this.rocketMesh.position.set(worldX, worldY, 1); // z=1 to be in front of planets
+
+        // Update rocket rotation
+        // The rocket is drawn pointing UP (Y+) by default, but rotation=0 in physics means RIGHT (X+)
+        // So we need to subtract PI/2 to align visual with physics
+        this.rocketMesh.rotation.z = rocket.rotation - Math.PI / 2;
+
+        // Update rocket scale based on zoom
+        // Rocket is ~15m tall, scale it properly relative to world scale
+        const rocketScale = this.scale * this.visualScale;
+        this.rocketMesh.scale.set(rocketScale, rocketScale, 1);
+
+        // Update thrust flame
+        if (this.rocketFlameMesh) {
+            this.rocketMesh.remove(this.rocketFlameMesh);
+            this.rocketFlameMesh = null;
+        }
+
+        const throttle = rocket.controls.getThrottle();
+        if (throttle > 0 && rocket.engine.hasFuel()) {
+            this.rocketFlameMesh = RocketRenderer.createThrustFlame(rocket, throttle);
+            if (this.rocketFlameMesh) {
+                this.rocketMesh.add(this.rocketFlameMesh);
+            }
+        }
+
+        // Update velocity indicator
+        if (!this.velocityIndicator) {
+            this.velocityIndicator = RocketRenderer.createVelocityIndicator();
+            this.scene.add(this.velocityIndicator);
+        }
+
+        // Position at rocket center
+        this.velocityIndicator.position.copy(this.rocketMesh.position);
+        this.velocityIndicator.position.z = 2; // On top of rocket
+
+        // Rotate to match velocity
+        // Velocity is relative to parent for orbit, but for local direction we want absolute velocity?
+        // Or relative to nearest body?
+        // Usually prograde vector is relative to orbital velocity.
+        // Let's use velocity relative to parent if exists, else absolute.
+        let vel = rocket.body.velocity;
+        if (rocket.body.parent) {
+            vel = rocket.body.velocity.sub(rocket.body.parent.velocity);
+        }
+
+        if (vel.mag() > 1) { // Only show if moving
+            const angle = Math.atan2(vel.y, vel.x) - Math.PI / 2; // -PI/2 because arrow points up (Y+)
+            this.velocityIndicator.rotation.z = angle;
+            this.velocityIndicator.visible = true;
+
+            // Scale based on zoom so it stays visible
+            const scale = this.scale * this.visualScale;
+            this.velocityIndicator.scale.set(scale, scale, 1);
+        } else {
+            this.velocityIndicator.visible = false;
+        }
+    }
+
+    updateTrajectory(points: Vector2[], center: Vector2) {
+        if (!this.showTrajectory) {
+            if (this.trajectoryLine) {
+                this.scene.remove(this.trajectoryLine);
+                this.trajectoryLine = null;
+            }
+            return;
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(points.length * 3);
+
+        for (let i = 0; i < points.length; i++) {
+            const x = (points[i].x - center.x) * this.scale;
+            const y = (points[i].y - center.y) * this.scale;
+            positions[i * 3] = x;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = 0; // z=0 (behind rocket)
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        if (!this.trajectoryLine) {
+            const material = new THREE.LineBasicMaterial({ color: 0x00FF00, opacity: 0.5, transparent: true });
+            this.trajectoryLine = new THREE.Line(geometry, material);
+            this.scene.add(this.trajectoryLine);
+        } else {
+            this.trajectoryLine.geometry.dispose();
+            this.trajectoryLine.geometry = geometry;
+        }
+    }
+
+    selectBodyAt(screenPos: Vector2, bodies: Body[]): Body | null {
+        let closest: Body | null = null;
+        let minDist = Infinity;
+
+        bodies.forEach(body => {
+            // Use visual position (accounting for moonScale)
+            const visualPos = this.getVisualPosition(body);
+            const pos = this.worldToScreen(visualPos);
+            const dist = pos.distanceTo(screenPos);
+            const radius = Math.max(10, body.radius * this.scale * this.visualScale);
+
+            if (dist < radius && dist < minDist) {
+                minDist = dist;
+                closest = body;
+            }
+        });
+
+        return closest;
+    }
+}
