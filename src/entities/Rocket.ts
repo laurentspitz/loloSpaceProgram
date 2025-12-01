@@ -17,11 +17,11 @@ export class Rocket {
     dryMass: number; // Mass without fuel
     isActive: boolean = true;
 
-    // Visual properties
-    readonly capsuleHeight: number = 3;
-    readonly tankHeight: number = 8;
-    readonly engineHeight: number = 4;
-    readonly width: number = 2;
+    // Visual properties - adjusted for KSP X200-32 + Mk1 Pod + LV-T30
+    readonly width: number = 3.0;          // Base width (Tank diameter)
+    readonly tankHeight: number = 4.5;     // Ratio ~1.5 for X200-32
+    readonly capsuleHeight: number = 1.5;  // Smaller pod (Mk1 is 1.25m vs 2.5m tank)
+    readonly engineHeight: number = 1.8;   // Smaller engine
 
     constructor(position: Vector2, velocity: Vector2) {
         // Rocket specifications (Heavy lifter)

@@ -5,10 +5,12 @@ import { TextureGenerator } from './TextureGenerator';
 import { OrbitRenderer } from './OrbitRenderer';
 import { Rocket } from '../entities/Rocket';
 import { RocketRenderer } from './RocketRenderer';
+import { InputHandler } from './InputHandler';
+import { Background } from './Background';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
- * Simplified after extracting texture generation and orbit rendering
+ * Simplified after extracting texture generation, orbit rendering, input handling, and background
  */
 export class ThreeRenderer {
     scene: THREE.Scene;
@@ -54,8 +56,9 @@ export class ThreeRenderer {
     // Background
     stars: THREE.Points | null = null;
 
-    // Orbit renderer (extracted)
+    // Helpers
     private orbitRenderer: OrbitRenderer;
+    private inputHandler: InputHandler;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -94,7 +97,7 @@ export class ThreeRenderer {
         this.createBackground();
 
         // Input handlers
-        this.setupInputHandlers(canvas);
+        this.inputHandler = new InputHandler(this, canvas);
 
         // Handle window resize
         window.addEventListener('resize', () => {
@@ -103,97 +106,9 @@ export class ThreeRenderer {
     }
 
     createBackground() {
-        // Create starfield
-        const starsGeometry = new THREE.BufferGeometry();
-        const starCount = 2000;
-        const positions = new Float32Array(starCount * 3);
-        const colors = new Float32Array(starCount * 3);
-        const sizes = new Float32Array(starCount);
-
-        for (let i = 0; i < starCount; i++) {
-            // Spread stars across a large area
-            positions[i * 3] = (Math.random() - 0.5) * 4000;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 4000;
-            positions[i * 3 + 2] = -500; // Behind everything
-
-            // Varied star sizes (0.5 to 3.0 pixels)
-            sizes[i] = 0.5 + Math.random() * 2.5;
-
-            // Slight color variation (white to blue-white) with varied brightness
-            const brightness = 0.6 + Math.random() * 0.4;
-            const blueShift = Math.random() * 0.2; // Some stars more blue
-            colors[i * 3] = brightness - blueShift * 0.1;
-            colors[i * 3 + 1] = brightness - blueShift * 0.05;
-            colors[i * 3 + 2] = Math.min(1.0, brightness + blueShift);
-        }
-
-        starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        starsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        starsGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-        const starsMaterial = new THREE.PointsMaterial({
-            size: 2,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8,
-            sizeAttenuation: false // Stars don't get smaller with distance/zoom
-        });
-
-        this.stars = new THREE.Points(starsGeometry, starsMaterial);
+        this.stars = Background.createStarfield();
         this.scene.add(this.stars);
-
-        // Background color (deep space)
         this.scene.background = new THREE.Color(0x000814);
-    }
-
-    setupInputHandlers(canvas: HTMLCanvasElement) {
-        // Zoom with mouse wheel
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const zoomSpeed = 0.1;
-            if (e.deltaY < 0) {
-                this.scale *= (1 + zoomSpeed);
-            } else {
-                this.scale /= (1 + zoomSpeed);
-            }
-        });
-
-        let isDragging = false;
-        let lastX = 0;
-        let lastY = 0;
-
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-
-            // Check for click on body
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const clickedBody = this.selectBodyAt(new Vector2(x, y), this.currentBodies);
-            if (clickedBody) {
-                this.followedBody = clickedBody;
-            }
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const dx = e.clientX - lastX;
-                const dy = e.clientY - lastY;
-                lastX = e.clientX;
-                lastY = e.clientY;
-
-                if (this.followedBody) {
-                    this.followedBody = null; // Stop following if panning
-                }
-                this.offset = this.offset.sub(new Vector2(dx / this.scale, dy / this.scale));
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
     }
 
     resize(width: number, height: number) {
@@ -480,35 +395,41 @@ export class ThreeRenderer {
             }
         }
 
-        // Update velocity indicator
+        // Update velocity indicator (only show if trajectory is enabled)
         if (!this.velocityIndicator) {
             this.velocityIndicator = RocketRenderer.createVelocityIndicator();
             this.scene.add(this.velocityIndicator);
         }
 
-        // Position at rocket center
-        this.velocityIndicator.position.copy(this.rocketMesh.position);
-        this.velocityIndicator.position.z = 2; // On top of rocket
+        // Only show velocity indicator when trajectory is enabled
+        if (this.showTrajectory) {
+            // Position at rocket center
+            this.velocityIndicator.position.copy(this.rocketMesh.position);
+            this.velocityIndicator.position.z = 2; // On top of rocket
 
-        // Rotate to match velocity
-        // Velocity is relative to parent for orbit, but for local direction we want absolute velocity?
-        // Or relative to nearest body?
-        // Usually prograde vector is relative to orbital velocity.
-        // Let's use velocity relative to parent if exists, else absolute.
-        let vel = rocket.body.velocity;
-        if (rocket.body.parent) {
-            vel = rocket.body.velocity.sub(rocket.body.parent.velocity);
-        }
+            // Rotate to match velocity
+            // Velocity is relative to parent for orbit, but for local direction we want absolute velocity?
+            // Or relative to nearest body?
+            // Usually prograde vector is relative to orbital velocity.
+            // Let's use velocity relative to parent if exists, else absolute.
+            let vel = rocket.body.velocity;
+            if (rocket.body.parent) {
+                vel = rocket.body.velocity.sub(rocket.body.parent.velocity);
+            }
 
-        if (vel.mag() > 1) { // Only show if moving
-            const angle = Math.atan2(vel.y, vel.x) - Math.PI / 2; // -PI/2 because arrow points up (Y+)
-            this.velocityIndicator.rotation.z = angle;
-            this.velocityIndicator.visible = true;
+            if (vel.mag() > 1) { // Only show if moving
+                const angle = Math.atan2(vel.y, vel.x) - Math.PI / 2; // -PI/2 because arrow points up (Y+)
+                this.velocityIndicator.rotation.z = angle;
+                this.velocityIndicator.visible = true;
 
-            // Scale based on zoom so it stays visible
-            const scale = this.scale * this.visualScale;
-            this.velocityIndicator.scale.set(scale, scale, 1);
+                // Scale based on zoom so it stays visible
+                const scale = this.scale * this.visualScale;
+                this.velocityIndicator.scale.set(scale, scale, 1);
+            } else {
+                this.velocityIndicator.visible = false;
+            }
         } else {
+            // Hide velocity indicator when trajectory is disabled
             this.velocityIndicator.visible = false;
         }
     }
@@ -545,11 +466,11 @@ export class ThreeRenderer {
         }
     }
 
-    selectBodyAt(screenPos: Vector2, bodies: Body[]): Body | null {
+    public selectBodyAt(screenPos: Vector2): Body | null {
         let closest: Body | null = null;
         let minDist = Infinity;
 
-        bodies.forEach(body => {
+        this.currentBodies.forEach(body => {
             // Use visual position (accounting for moonScale)
             const visualPos = this.getVisualPosition(body);
             const pos = this.worldToScreen(visualPos);

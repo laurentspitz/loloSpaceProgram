@@ -1,13 +1,12 @@
 import { Physics } from './physics/Physics';
 import { ThreeRenderer } from './rendering/ThreeRenderer';
-import { SolarSystem } from './systems/SolarSystem';
 import { Body } from './core/Body';
 import { UI } from './ui/UI';
 import { OrbitUtils } from './physics/OrbitUtils';
 import { Rocket } from './entities/Rocket';
-import { Vector2 } from './core/Vector2';
 import { CollisionManager } from './physics/CollisionManager';
 import { SphereOfInfluence } from './physics/SphereOfInfluence';
+import { SceneSetup } from './SceneSetup';
 
 
 export class Game {
@@ -39,9 +38,6 @@ export class Game {
             this.timeWarp = factor;
         };
 
-        this.bodies = SolarSystem.generate();
-        this.ui.init(this.bodies);
-
         // Initialize collision manager
         this.collisionManager = new CollisionManager();
 
@@ -50,50 +46,15 @@ export class Game {
             this.handleCollision(bodyA, bodyB);
         };
 
-        // Create Matter.js bodies for all celestial bodies
-        this.bodies.forEach(body => {
-            this.collisionManager.createCelestialBody(body, 3.0); // Visual scale = 3.0
-        });
+        // Initialize bodies and rocket using SceneSetup
+        this.bodies = SceneSetup.initBodies(this.collisionManager);
+        this.rocket = SceneSetup.createRocket(this.bodies, this.collisionManager);
 
-        // Create rocket in low Earth orbit
-        const earth = this.bodies.find(b => b.name === 'Earth')!;
-
-        // IMPORTANT: Planets are rendered with visualScale = 3.0
-        // So visual radius = earth.radius * 3.0
-        // We need to orbit outside the VISUAL radius, not just the physical radius
-        const visualRadius = earth.radius * 3.0; // Account for visual scaling
-        const orbitAltitude = earth.radius * 0.5; // 50% of Earth radius above surface (~3000km)
-        const orbitRadius = visualRadius + orbitAltitude;
-
-        // Position: start above Earth (angle PI/2) to be visible
-        const angle = Math.PI / 2; // Top of Earth
-        const rocketPos = earth.position.add(new Vector2(
-            Math.cos(angle) * orbitRadius,
-            Math.sin(angle) * orbitRadius
-        ));
-
-        // Calculate orbital velocity for circular orbit: v = sqrt(GM/r)
-        // Earth's mass is already scaled by 9x for visual physics
-        const orbitalSpeed = Math.sqrt((6.674e-11 * earth.mass) / orbitRadius);
-
-        // Velocity perpendicular to radius for circular orbit
-        // angle = PI/2 (top of Earth), so perpendicular is to the left (-x direction)
-        const rocketVel = earth.velocity.add(new Vector2(
-            -Math.sin(angle) * orbitalSpeed,  // Perpendicular to radius
-            Math.cos(angle) * orbitalSpeed
-        ));
-
-        this.rocket = new Rocket(rocketPos, rocketVel);
         this.renderer.currentRocket = this.rocket;
-
-        // CRITICAL: Add rocket body to physics simulation!
-        this.bodies.push(this.rocket.body);
-
-        // Create Matter.js body for rocket
-        this.collisionManager.createRocketBody(this.rocket);
+        this.ui.init(this.bodies);
 
         // Start with camera following rocket
-        this.renderer.followedBody = this.rocket.body;
+        this.renderer.followedBody = this.rocket!.body;
 
         // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
         this.renderer.scale = 1e-6; // Much closer zoom (was 1e-9)
@@ -109,9 +70,6 @@ export class Game {
         const dt = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
 
-        // Handle time warp
-        // const simulatedTime = dt * this.timeWarp;
-
         // Calculate total simulation time to pass this frame
         let totalDt = dt * this.timeScale * this.timeWarp;
 
@@ -119,15 +77,6 @@ export class Game {
         if (this.rocket) {
             // Pass real time (dt) for controls, and scaled physics time (totalDt) for thrust
             this.rocket.update(dt, totalDt);
-
-            // DEBUG: Log physics state every ~1 second (60 frames)
-            if (Math.floor(time / 1000) > Math.floor((time - dt * 1000) / 1000)) {
-                const earth = this.bodies.find(b => b.name === 'Earth')!;
-                const dist = this.rocket.body.position.distanceTo(earth.position);
-                const vel = this.rocket.body.velocity.sub(earth.velocity).mag();
-                const r = dist;
-                const g = (6.674e-11 * earth.mass) / (r * r);
-            }
         }
 
         // Sub-stepping for stability
@@ -145,12 +94,14 @@ export class Game {
 
         // Apply normal contact force if rocket is resting on surface
         if (this.rocket && this.isRocketResting && this.restingOn) {
-            this.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
+            this.collisionManager.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
         }
 
         // CRITICAL: Prevent rocket from penetrating planets (before Matter.js sync)
         if (this.rocket) {
-            this.preventPenetration(this.rocket);
+            const result = this.collisionManager.preventPenetration(this.rocket, this.bodies);
+            this.isRocketResting = result.isResting;
+            this.restingOn = result.restingOn;
         }
 
         // Sync positions to Matter.js and check for collisions
@@ -238,118 +189,5 @@ export class Game {
             rocket.body.velocity = planet.velocity.clone();
             // TODO: Implement game over or damage system
         }
-    }
-
-    /**
-     * Prevent rocket from penetrating any planet surface
-     * Called every frame to enforce surface boundary
-     */
-    preventPenetration(rocket: Rocket): void {
-        const VISUAL_SCALE = 3.0;
-
-        // Reset resting state
-        let wasResting = this.isRocketResting;
-        this.isRocketResting = false;
-        this.restingOn = null;
-
-        // Check all bodies for potential penetration
-        this.bodies.forEach(body => {
-            if (body === rocket.body) return; // Skip rocket itself
-
-            const visualRadius = body.radius * VISUAL_SCALE;
-            const rocketHalfHeight = rocket.getTotalHeight() / 2;
-            const contactDist = visualRadius + rocketHalfHeight;
-
-            const dist = rocket.body.position.distanceTo(body.position);
-
-            if (dist < contactDist + 1.0) { // +1m threshold to detect near-surface
-                // Rocket is near or penetrating surface
-                const direction = rocket.body.position.sub(body.position).normalize();
-
-                // Push rocket to exact surface position
-                rocket.body.position = body.position.add(direction.scale(contactDist));
-
-                // Calculate velocity relative to planet
-                const relVel = rocket.body.velocity.sub(body.velocity);
-                const normalVel = relVel.x * direction.x + relVel.y * direction.y; // dot product
-
-                if (normalVel < 0) {
-                    // Rocket is moving towards planet
-                    const restitution = 0.3; // Bounciness (30% energy conserved)
-                    const friction = 0.8; // Surface friction coefficient
-                    const restThreshold = 5.0; // Below 5 m/s, stop bouncing (m/s)
-
-                    // 1. Calculate normal component (perpendicular to surface)
-                    const normalComponent = direction.scale(normalVel);
-                    const normalSpeed = Math.abs(normalVel);
-
-                    // 2. Calculate tangential component (parallel to surface)
-                    const tangentialVel = relVel.sub(normalComponent);
-                    const tangentialSpeed = tangentialVel.mag();
-
-                    // 3. Apply friction to tangential velocity
-                    let frictionForce = new Vector2(0, 0);
-                    if (tangentialSpeed > 0.1) { // Only apply if sliding
-                        const frictionMagnitude = Math.min(tangentialSpeed * friction, tangentialSpeed);
-                        const tangentialDirection = tangentialVel.scale(1 / tangentialSpeed);
-                        frictionForce = tangentialDirection.scale(-frictionMagnitude);
-                    }
-
-                    // 4. Determine if rocket should rest or bounce
-                    if (normalSpeed < restThreshold && tangentialSpeed < restThreshold) {
-                        // Velocity too low - rocket rests on surface
-                        rocket.body.velocity = body.velocity.clone();
-                        this.isRocketResting = true;
-                        this.restingOn = body;
-                        if (!wasResting) {
-                            console.log(`🛑 Rocket resting on ${body.name} surface`);
-                            console.log(`   📏 Distance from center: ${dist.toFixed(1)}m`);
-                            console.log(`   🌍 Planet visual radius: ${visualRadius.toFixed(1)}m`);
-                            console.log(`   🚀 Rocket half-height: ${rocketHalfHeight.toFixed(1)}m`);
-                            console.log(`   📐 Expected contact dist: ${contactDist.toFixed(1)}m`);
-                            console.log(`   ❌ Gap from surface: ${(dist - contactDist).toFixed(1)}m`);
-                        }
-                    } else if (normalSpeed < restThreshold) {
-                        // Normal speed low but still sliding - no bounce, just friction
-                        const bounceVelocity = body.velocity
-                            .add(tangentialVel)
-                            .add(frictionForce);
-                        rocket.body.velocity = bounceVelocity;
-                        console.log(`🛡️ Sliding on ${body.name}, friction: ${(tangentialSpeed * friction).toFixed(1)} m/s`);
-                    } else {
-                        // Normal bounce with friction
-                        const bounceVelocity = body.velocity
-                            .add(tangentialVel)
-                            .add(frictionForce)
-                            .sub(normalComponent.scale(restitution));
-                        rocket.body.velocity = bounceVelocity;
-                        console.log(`🛡️ Bounce on ${body.name}, speed: ${normalSpeed.toFixed(1)} m/s, friction: ${(tangentialSpeed * friction).toFixed(1)} m/s`);
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * Apply normal contact force to cancel gravity when resting on surface
-     */
-    applyContactForce(rocket: Rocket, planet: Body, deltaTime: number): void {
-        // Calculate gravitational acceleration towards planet
-        const r = rocket.body.position.distanceTo(planet.position);
-        const g = (6.674e-11 * planet.mass) / (r * r);
-
-        // Direction from planet to rocket
-        const direction = rocket.body.position.sub(planet.position).normalize();
-
-        // Apply normal force (opposite to gravity) to cancel it
-        const normalForce = direction.scale(g * deltaTime);
-        rocket.body.velocity = rocket.body.velocity.add(normalForce);
-
-        // Also maintain exact surface position
-        const VISUAL_SCALE = 3.0;
-        const visualRadius = planet.radius * VISUAL_SCALE;
-        const rocketHalfHeight = rocket.getTotalHeight() / 2;
-        const contactDist = visualRadius + rocketHalfHeight;
-        rocket.body.position = planet.position.add(direction.scale(contactDist));
     }
 }

@@ -3,13 +3,34 @@ import { Rocket } from '../entities/Rocket';
 
 /**
  * RocketRenderer - Handles visual representation of the rocket
- * Draws a 3-part rocket: triangle capsule + rectangle tank + trapezoid engine
+ * Draws a 3-part rocket with textures: capsule + tank + engine
  */
 export class RocketRenderer {
+    private static textureLoader = new THREE.TextureLoader();
+    private static textures: {
+        capsule?: THREE.Texture;
+        tank?: THREE.Texture;
+        engine?: THREE.Texture;
+    } = {};
+
     /**
-     * Create rocket geometry and material
+     * Preload textures
+     */
+    static loadTextures() {
+        this.textures.capsule = this.textureLoader.load('/textures/Command_Pod_Mk1.png');
+        this.textures.tank = this.textureLoader.load('/textures/X200-32_White.png');
+        this.textures.engine = this.textureLoader.load('/textures/LV-T30_Liquid_Fuel_Engine_recent.png');
+    }
+
+    /**
+     * Create rocket geometry with textures
      */
     static createRocketMesh(rocket: Rocket): THREE.Group {
+        // Ensure textures are loaded
+        if (!this.textures.capsule) {
+            this.loadTextures();
+        }
+
         const group = new THREE.Group();
 
         const width = rocket.width;
@@ -17,86 +38,49 @@ export class RocketRenderer {
         const tankH = rocket.tankHeight;
         const engineH = rocket.engineHeight;
 
-        // Colors
-        const capsuleColor = 0xE74C3C;  // Red capsule
-        const tankColor = 0xECF0F1;     // Light gray tank
-        const engineColor = 0x34495E;   // Dark gray engine
-
         // Calculate positions to center the rocket vertically
-        // Total height = engineH + tankH + capsuleH
-        // We want the center of mass (roughly middle of tank) to be at y=0
         const totalHeight = engineH + tankH + capsuleH;
         const centerOffset = totalHeight / 2;
 
-        const engineY = -centerOffset;
-        const tankY = engineY + engineH;
-        const capsuleY = tankY + tankH;
+        // Position components flush against each other
+        const engineY = -centerOffset + engineH / 2;
+        const tankY = -centerOffset + engineH + tankH / 2;
+        const capsuleY = -centerOffset + engineH + tankH + capsuleH / 2;
 
-        // 1. Engine (Bell Nozzle shape)
-        const engineShape = new THREE.Shape();
-        const ew = width;
-        const eh = rocket.engineHeight;
+        // Component Widths (Mk1 and LV-T30 are narrower than X200-32)
+        const tankWidth = width;
+        const capsuleWidth = width * 0.5; // 1.25m vs 2.5m
+        const engineWidth = width * 0.5;  // 1.25m vs 2.5m
 
-        // Bell shape points
-        engineShape.moveTo(-ew * 0.4, 0);           // Top left (narrower than tank)
-        engineShape.lineTo(ew * 0.4, 0);            // Top right
-
-        // Curve down to bottom
-        engineShape.bezierCurveTo(
-            ew * 0.6, -eh * 0.5,   // Control point 1
-            ew * 0.8, -eh,         // Control point 2
-            ew * 0.7, -eh          // Bottom right
-        );
-
-        engineShape.lineTo(-ew * 0.7, -eh);         // Bottom left
-
-        // Curve back up
-        engineShape.bezierCurveTo(
-            -ew * 0.8, -eh,        // Control point 1
-            -ew * 0.6, -eh * 0.5,  // Control point 2
-            -ew * 0.4, 0           // Back to top left
-        );
-
-        const engineGeometry = new THREE.ShapeGeometry(engineShape);
-        const engineMaterial = new THREE.MeshBasicMaterial({ color: engineColor });
+        // 1. Engine (with texture)
+        const engineGeometry = new THREE.PlaneGeometry(engineWidth, engineH);
+        const engineMaterial = new THREE.MeshBasicMaterial({
+            map: this.textures.engine,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
         const engine = new THREE.Mesh(engineGeometry, engineMaterial);
         engine.position.y = engineY;
         group.add(engine);
 
-        // Engine outline
-        const engineOutlineGeometry = new THREE.EdgesGeometry(engineGeometry);
-        const engineOutline = new THREE.LineSegments(
-            engineOutlineGeometry,
-            new THREE.LineBasicMaterial({ color: 0x1A252F })
-        );
-        engineOutline.position.copy(engine.position);
-        group.add(engineOutline);
-
-        // 2. Fuel Tank (rectangle in middle)
-        const tankGeometry = new THREE.PlaneGeometry(width, tankH);
-        const tankMaterial = new THREE.MeshBasicMaterial({ color: tankColor });
+        // 2. Fuel Tank (with texture)
+        const tankGeometry = new THREE.PlaneGeometry(tankWidth, tankH);
+        const tankMaterial = new THREE.MeshBasicMaterial({
+            map: this.textures.tank,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
         const tank = new THREE.Mesh(tankGeometry, tankMaterial);
-        tank.position.y = tankY + tankH / 2;
+        tank.position.y = tankY;
         group.add(tank);
 
-        // Tank outline
-        const tankOutlineGeometry = new THREE.EdgesGeometry(tankGeometry);
-        const tankOutline = new THREE.LineSegments(
-            tankOutlineGeometry,
-            new THREE.LineBasicMaterial({ color: 0x2C3E50 })
-        );
-        tankOutline.position.copy(tank.position);
-        group.add(tankOutline);
-
-        // 3. Capsule (triangle at top)
-        const capsuleShape = new THREE.Shape();
-        capsuleShape.moveTo(-width / 2, 0);           // Bottom left
-        capsuleShape.lineTo(width / 2, 0);            // Bottom right
-        capsuleShape.lineTo(0, capsuleH);             // Top point
-        capsuleShape.closePath();
-
-        const capsuleGeometry = new THREE.ShapeGeometry(capsuleShape);
-        const capsuleMaterial = new THREE.MeshBasicMaterial({ color: capsuleColor });
+        // 3. Capsule (with texture)
+        const capsuleGeometry = new THREE.PlaneGeometry(capsuleWidth, capsuleH);
+        const capsuleMaterial = new THREE.MeshBasicMaterial({
+            map: this.textures.capsule,
+            transparent: true,
+            side: THREE.DoubleSide
+        });
         const capsule = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
         capsule.position.y = capsuleY;
         group.add(capsule);
