@@ -5,12 +5,14 @@
 export interface RocketInput {
     throttle: number;   // 0 to 1
     rotation: number;   // -1 (left) to 1 (right)
+    stage: boolean;     // True if spacebar is pressed
 }
 
 export class RocketControls {
     private keys: Set<string> = new Set();
     private throttle: number = 0;
     private rotationSpeed: number = 1.5; // radians per second
+    private stagePressed: boolean = false; // Track previous state to trigger once per press
 
     constructor() {
         this.setupEventListeners();
@@ -19,10 +21,17 @@ export class RocketControls {
     private setupEventListeners() {
         window.addEventListener('keydown', (e) => {
             this.keys.add(e.key.toLowerCase());
+            if (e.code === 'Space') {
+                this.keys.add('space');
+            }
         });
 
         window.addEventListener('keyup', (e) => {
             this.keys.delete(e.key.toLowerCase());
+            if (e.code === 'Space') {
+                this.keys.delete('space');
+                this.stagePressed = false; // Reset latch
+            }
         });
     }
 
@@ -51,9 +60,20 @@ export class RocketControls {
             this.throttle = Math.max(0, this.throttle - 0.02);
         }
 
+        // Staging control (Spacebar)
+        // Only return true on the rising edge (first frame pressed)
+        let stage = false;
+        if (this.keys.has('space') || this.keys.has(' ')) {
+            if (!this.stagePressed) {
+                stage = true;
+                this.stagePressed = true;
+            }
+        }
+
         return {
             throttle: this.throttle,
-            rotation: rotation * this.rotationSpeed
+            rotation: rotation * this.rotationSpeed,
+            stage: stage
         };
     }
 

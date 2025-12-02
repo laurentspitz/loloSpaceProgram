@@ -21,6 +21,8 @@ export class UI {
     velocityDisplay: HTMLElement | null = null;
     altitudeDisplay: HTMLElement | null = null;
     gravityDisplay: HTMLElement | null = null;
+    deltaVDisplay: HTMLElement | null = null;
+    massDisplay: HTMLElement | null = null;
     currentRocket: any = null; // Reference to rocket for throttle control
 
     constructor(renderer: Renderer | ThreeRenderer) {
@@ -440,6 +442,22 @@ export class UI {
         panel.appendChild(fuelRow);
         this.fuelDisplay = fuelRow.querySelector('#rocket-fuel');
 
+        // Delta V
+        const dvRow = document.createElement('div');
+        dvRow.style.display = 'flex';
+        dvRow.style.justifyContent = 'space-between';
+        dvRow.innerHTML = '<span>Delta V:</span> <span id="rocket-dv">0 m/s</span>';
+        panel.appendChild(dvRow);
+        this.deltaVDisplay = dvRow.querySelector('#rocket-dv');
+
+        // Mass
+        const massRow = document.createElement('div');
+        massRow.style.display = 'flex';
+        massRow.style.justifyContent = 'space-between';
+        massRow.innerHTML = '<span>Mass:</span> <span id="rocket-mass">0 kg</span>';
+        panel.appendChild(massRow);
+        this.massDisplay = massRow.querySelector('#rocket-mass');
+
         // Throttle (text display)
         const throttleRow = document.createElement('div');
         throttleRow.style.display = 'flex';
@@ -540,6 +558,20 @@ export class UI {
             const fuel = info.fuel.toFixed(1);
             this.fuelDisplay.innerText = `${fuel}%`;
             this.fuelDisplay.style.color = info.fuel < 10 ? '#ff4444' : (info.fuel < 30 ? '#ffbb33' : '#00C851');
+        }
+
+        if (this.deltaVDisplay) {
+            this.deltaVDisplay.innerText = `${info.deltaV.toFixed(0)} m/s`;
+        }
+
+        if (this.massDisplay) {
+            // Display in tons if > 1000kg
+            const mass = info.mass;
+            if (mass >= 1000) {
+                this.massDisplay.innerText = `${(mass / 1000).toFixed(2)} t`;
+            } else {
+                this.massDisplay.innerText = `${mass.toFixed(0)} kg`;
+            }
         }
 
         if (this.throttleDisplay) {
@@ -667,5 +699,40 @@ export class UI {
         panel.appendChild(trajContainer);
 
         document.body.appendChild(panel);
+    }
+
+    /**
+     * Clean up UI elements
+     */
+    dispose() {
+        // Remove all UI elements from DOM
+        // We need to track elements created so we can remove them
+        // For now, remove by querying for common elements
+
+        // Remove minimap
+        if (this.minimapCanvas && this.minimapCanvas.parentNode) {
+            this.minimapCanvas.parentNode.removeChild(this.minimapCanvas);
+        }
+
+        // Remove rocket info panel
+        if (this.rocketInfoPanel && this.rocketInfoPanel.parentNode) {
+            this.rocketInfoPanel.parentNode.removeChild(this.rocketInfoPanel);
+        }
+
+        // Remove other UI elements by finding them in DOM
+        // This is a bit hacky, but works for now
+        // A better approach would be to track all created elements
+        const elementsToRemove = [
+            ...Array.from(document.querySelectorAll('div[style*="position: absolute"]')),
+            ...Array.from(document.querySelectorAll('select#planet-select'))
+        ];
+
+        elementsToRemove.forEach(el => {
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        });
+
+        console.log('UI disposed');
     }
 }

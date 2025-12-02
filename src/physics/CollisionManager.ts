@@ -1,6 +1,7 @@
 import Matter from 'matter-js';
 import { Body } from '../core/Body';
 import { Rocket } from '../entities/Rocket';
+import { Debris } from '../entities/Debris';
 import { Vector2 } from '../core/Vector2';
 
 /**
@@ -274,6 +275,80 @@ export class CollisionManager {
         });
 
         return { isResting, restingOn };
+    }
+
+    /**
+     * Prevent debris from penetrating planet surface
+     * Returns true if debris crashed (high speed impact)
+     */
+    preventDebrisPenetration(debris: Debris, bodies: Body[]): boolean {
+        const VISUAL_SCALE = 3.0;
+        let crashed = false;
+
+        bodies.forEach(body => {
+            if (body === debris) return;
+            if (body instanceof Rocket) return; // Ignore rocket collision
+
+            const visualRadius = body.radius * VISUAL_SCALE;
+            // Debris size is small, treat as point or small circle
+            const debrisRadius = 2.0;
+            const contactDist = visualRadius + debrisRadius;
+
+            const dist = debris.position.distanceTo(body.position);
+
+            // Safety check for NaN or zero distance
+            if (isNaN(dist) || dist < 0.1) return;
+
+            if (dist < contactDist) {
+                // Collision!
+                const direction = debris.position.sub(body.position).normalize();
+
+                // Push out
+                debris.position = body.position.add(direction.scale(contactDist));
+
+                // Calculate impact velocity
+                const relVel = debris.velocity.sub(body.velocity);
+                const normalVel = relVel.x * direction.x + relVel.y * direction.y;
+
+                if (normalVel < 0) {
+                    // Moving towards planet
+                    const impactSpeed = Math.abs(normalVel);
+                    const CRASH_THRESHOLD = 50; // m/s
+
+                    if (impactSpeed > CRASH_THRESHOLD) {
+                        crashed = true;
+                    } else {
+                        // Bounce
+                        const restitution = 0.5;
+                        const friction = 0.8;
+
+                        const normalComponent = direction.scale(normalVel);
+                        const tangentialVel = relVel.sub(normalComponent);
+
+                        // Apply friction
+                        const tangentialSpeed = tangentialVel.mag();
+                        let frictionForce = new Vector2(0, 0);
+                        if (tangentialSpeed > 0.1) {
+                            const frictionMagnitude = Math.min(tangentialSpeed * friction, tangentialSpeed);
+                            const tangentialDirection = tangentialVel.scale(1 / tangentialSpeed);
+                            frictionForce = tangentialDirection.scale(-frictionMagnitude);
+                        }
+
+                        const bounceVelocity = body.velocity
+                            .add(tangentialVel)
+                            .add(frictionForce)
+                            .sub(normalComponent.scale(restitution));
+
+                        debris.velocity = bounceVelocity;
+
+                        // Add some random rotation on bounce
+                        debris.angularVelocity += (Math.random() - 0.5) * 5;
+                    }
+                }
+            }
+        });
+
+        return crashed;
     }
 
     /**

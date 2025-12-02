@@ -4,13 +4,18 @@ import { Body } from './core/Body';
 import { UI } from './ui/UI';
 import { OrbitUtils } from './physics/OrbitUtils';
 import { Rocket } from './entities/Rocket';
+import { Debris } from './entities/Debris';
+import { Particle } from './entities/Particle';
 import { CollisionManager } from './physics/CollisionManager';
 import { SphereOfInfluence } from './physics/SphereOfInfluence';
+import { Vector2 } from './core/Vector2';
 import { SceneSetup } from './SceneSetup';
 
 
 export class Game {
     bodies: Body[];
+    debris: Debris[] = []; // Track debris separately
+    particles: Particle[] = []; // Track particles
     renderer: ThreeRenderer;
     ui: UI;
     rocket: Rocket | null = null;
@@ -18,7 +23,7 @@ export class Game {
     isRocketResting: boolean = false; // Track if rocket is resting on surface
     restingOn: Body | null = null; // Which body is rocket resting on
     lastTime: number = 0;
-    timeScale: number = 60; // 1 second = 1 minute (was 3600 = 1 hour, too fast)
+    timeScale: number = 1; // 1x = Real time
     timeWarp: number = 1;
     frameCount: number = 0;
     orbitRecalcInterval: number = 1; // Recalculate orbits every frame for smooth visualization
@@ -27,6 +32,8 @@ export class Game {
     // If we warp time, we take multiple steps of this size or smaller
     readonly MAX_PHYSICS_STEP = 100;
     private sceneSetup: typeof SceneSetup;
+    private animationFrameId: number | null = null;
+    private isDisposed: boolean = false;
 
     constructor(assembly?: any) {
         this.sceneSetup = SceneSetup;
@@ -72,6 +79,13 @@ export class Game {
         const rocketConfig = assembly?.getRocketConfig?.();
         this.rocket = this.sceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig);
 
+        // Handle stage separation
+        this.rocket.onStageSeparation = (debris: Debris) => {
+            this.bodies.push(debris);
+            this.debris.push(debris); // Add to debris list
+            console.log('Debris added to simulation');
+        };
+
         this.renderer.currentRocket = this.rocket;
         this.ui.init(this.bodies);
 
@@ -81,13 +95,18 @@ export class Game {
         // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
         this.renderer.scale = 1e-6; // Much closer zoom (was 1e-9)
 
-        requestAnimationFrame((time) => {
+        this.animationFrameId = requestAnimationFrame((time) => {
             this.lastTime = time;
             this.loop(time);
         });
     }
 
     loop(time: number) {
+        // Stop loop if disposed
+        if (this.isDisposed) {
+            return;
+        }
+
         const currentTime = time;
         const dt = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
@@ -130,6 +149,56 @@ export class Game {
         this.collisionManager.syncPositions(this.bodies, this.rocket);
         this.collisionManager.step(dt); // Use real dt, not scaled
 
+        // Handle debris collisions and explosions
+        for (let i = this.debris.length - 1; i >= 0; i--) {
+            const d = this.debris[i];
+            const crashed = this.collisionManager.preventDebrisPenetration(d, this.bodies);
+
+            if (crashed) {
+                console.log('💥 Debris exploded on impact!');
+
+                // Spawn explosion particles
+                const particleCount = 20;
+                for (let j = 0; j < particleCount; j++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 50 + 20; // Fast explosion
+                    const velocity = new Vector2(
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    ).add(d.velocity.scale(0.5)); // Inherit some velocity
+
+                    const color = Math.random() > 0.5 ? '#FF4500' : '#FFA500'; // Orange/Red
+                    const size = Math.random() * 2 + 1;
+                    const lifetime = Math.random() * 1.0 + 0.5; // 0.5-1.5s
+
+                    this.particles.push(new Particle(
+                        d.position.clone(),
+                        velocity,
+                        color,
+                        size,
+                        lifetime
+                    ));
+                }
+
+                // Remove from physics bodies
+                const bodyIndex = this.bodies.indexOf(d);
+                if (bodyIndex > -1) {
+                    this.bodies.splice(bodyIndex, 1);
+                }
+
+                // Remove from debris list
+                this.debris.splice(i, 1);
+            }
+        }
+
+        // Update particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            this.particles[i].update(dt);
+            if (this.particles[i].isDead()) {
+                this.particles.splice(i, 1);
+            }
+        }
+
         // Periodically recalculate orbits to handle gravitational perturbations
         this.frameCount++;
         if (this.frameCount >= this.orbitRecalcInterval) {
@@ -142,7 +211,7 @@ export class Game {
         }
 
         // Render
-        this.renderer.render(this.bodies, this.lastTime);
+        this.renderer.render(this.bodies, this.particles, this.lastTime);
         this.ui.renderMinimap(this.bodies);
 
         if (this.rocket) {
@@ -162,7 +231,38 @@ export class Game {
             }
         }
 
-        requestAnimationFrame((t) => this.loop(t));
+        this.animationFrameId = requestAnimationFrame((t) => this.loop(t));
+    }
+
+    /**
+     * Clean up resources when game is stopped
+     */
+    dispose() {
+        this.isDisposed = true;
+
+        // Cancel animation loop
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
+        // Clean up renderer (Three.js resources, event listeners, etc.)
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+
+        // Clean up UI
+        if (this.ui) {
+            this.ui.dispose();
+        }
+
+        // Remove canvas if it was created by this instance
+        const canvas = document.getElementById('gameCanvas');
+        if (canvas) {
+            canvas.remove();
+        }
+
+        console.log('Game disposed');
     }
 
     /**

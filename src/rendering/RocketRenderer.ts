@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Rocket } from '../entities/Rocket';
+import { Debris } from '../entities/Debris';
 
 /**
  * RocketRenderer - Handles visual representation of the rocket
@@ -174,6 +175,42 @@ export class RocketRenderer {
         const headMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00, side: THREE.DoubleSide });
         const head = new THREE.Mesh(headGeometry, headMaterial);
         group.add(head);
+
+        return group;
+    }
+    /**
+     * Create debris mesh from parts
+     */
+    static createDebrisMesh(debris: Debris): THREE.Group {
+        const group = new THREE.Group();
+
+        // Ensure textures are loaded
+        if (!this.textures.capsule) {
+            this.loadTextures();
+        }
+
+        if (debris.parts && debris.parts.length > 0) {
+            // Find min/max Y to center the debris
+            const positions = debris.parts.map((p: any) => p.position.y);
+            const minY = Math.min(...positions.map((y: number, i: number) => y - debris.parts[i].definition.height / 2));
+            const maxY = Math.max(...positions.map((y: number, i: number) => y + debris.parts[i].definition.height / 2));
+            const centerOffset = (maxY + minY) / 2;
+
+            debris.parts.forEach((part: any) => {
+                const def = part.definition;
+                const texture = this.textureLoader.load(def.texture);
+                const geometry = new THREE.PlaneGeometry(def.width, def.height);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                // Position relative to center of debris
+                mesh.position.y = part.position.y - centerOffset;
+                group.add(mesh);
+            });
+        }
 
         return group;
     }

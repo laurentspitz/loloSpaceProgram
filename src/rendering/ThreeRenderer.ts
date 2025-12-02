@@ -7,6 +7,8 @@ import { Rocket } from '../entities/Rocket';
 import { RocketRenderer } from './RocketRenderer';
 import { InputHandler } from './InputHandler';
 import { Background } from './Background';
+import { Debris } from '../entities/Debris';
+import { Particle } from '../entities/Particle';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -42,9 +44,16 @@ export class ThreeRenderer {
     bodyMeshes: Map<Body, THREE.Mesh> = new Map();
     ringMeshes: Map<Body, THREE.Mesh> = new Map();
     cloudMeshes: Map<Body, THREE.Mesh> = new Map();
+    debrisMeshes: Map<Body, THREE.Group> = new Map();
+    particleMeshes: Map<Particle, THREE.Mesh> = new Map();
+
+    // Rocket mesh
+
+    // Rocket mesh
 
     // Rocket mesh
     rocketMesh: THREE.Group | null = null;
+    lastRocketMeshVersion: number = -1;
     rocketFlameMesh: THREE.Mesh | null = null;
     velocityIndicator: THREE.Group | null = null;
     currentRocket: Rocket | null = null;
@@ -165,7 +174,7 @@ export class ThreeRenderer {
         );
     }
 
-    render(bodies: Body[], _time: number = 0) {
+    render(bodies: Body[], particles: Particle[] = [], _time: number = 0) {
         this.currentBodies = bodies;
 
         // Update camera position
@@ -196,6 +205,34 @@ export class ThreeRenderer {
 
         // Render bodies
         bodies.forEach(body => {
+            // Handle Debris
+            if (body instanceof Debris) {
+                let mesh = this.debrisMeshes.get(body);
+                if (!mesh) {
+                    mesh = RocketRenderer.createDebrisMesh(body);
+                    this.scene.add(mesh);
+                    this.debrisMeshes.set(body, mesh);
+                }
+
+                // Update position and rotation
+                // const visualPos = this.getVisualPosition(body); // Unused
+                // const screenPos = this.worldToScreen(visualPos); // Unused
+
+                // We need to use the same coordinate system as planets
+                // worldX = (body.position.x - center.x) * this.scale
+                const worldX = (body.position.x - center.x) * this.scale;
+                const worldY = (body.position.y - center.y) * this.scale;
+
+                mesh.position.set(worldX, worldY, 1); // z=1 same as rocket
+                mesh.rotation.z = body.rotation - Math.PI / 2; // Match rocket rotation convention
+
+                // Scale
+                const debrisScale = this.scale * this.visualScale;
+                mesh.scale.set(debrisScale, debrisScale, 1);
+
+                return;
+            }
+
             let mesh = this.bodyMeshes.get(body);
 
             if (!mesh) {
@@ -330,6 +367,45 @@ export class ThreeRenderer {
             }
         });
 
+        // Render particles
+        // First, remove meshes for dead particles
+        this.particleMeshes.forEach((mesh, particle) => {
+            if (!particles.includes(particle)) {
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) (mesh.material as THREE.Material).dispose();
+                this.scene.remove(mesh);
+                this.particleMeshes.delete(particle);
+            }
+        });
+
+        // Create/Update meshes for active particles
+        particles.forEach(p => {
+            let mesh = this.particleMeshes.get(p);
+            if (!mesh) {
+                const geometry = new THREE.CircleGeometry(0.5, 8);
+                const material = new THREE.MeshBasicMaterial({
+                    color: p.color,
+                    transparent: true,
+                    opacity: 1
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                this.scene.add(mesh);
+                this.particleMeshes.set(p, mesh);
+            }
+
+            // Update position
+            const worldX = (p.position.x - center.x) * this.scale;
+            const worldY = (p.position.y - center.y) * this.scale;
+            mesh.position.set(worldX, worldY, 2); // z=2 (on top of everything)
+
+            // Update scale
+            const scale = p.size * this.scale * this.visualScale;
+            mesh.scale.set(scale, scale, 1);
+
+            // Update opacity
+            (mesh.material as THREE.MeshBasicMaterial).opacity = p.getOpacity();
+        });
+
         // Render rocket if present
         if (this.currentRocket) {
             this.renderRocket(this.currentRocket, center);
@@ -343,10 +419,29 @@ export class ThreeRenderer {
      * Render the rocket
      */
     renderRocket(rocket: Rocket, center: Vector2) {
-        // Create rocket mesh if not exists
-        if (!this.rocketMesh) {
+        // Create or update rocket mesh
+        if (!this.rocketMesh || rocket.meshVersion !== this.lastRocketMeshVersion) {
+            if (this.rocketMesh) {
+                // Dispose old mesh
+                this.rocketMesh.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => m.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+                this.scene.remove(this.rocketMesh);
+                this.rocketFlameMesh = null; // Flame is child of rocket mesh
+            }
+
             this.rocketMesh = RocketRenderer.createRocketMesh(rocket);
             this.scene.add(this.rocketMesh);
+            this.lastRocketMeshVersion = rocket.meshVersion;
         }
 
         // Update rocket position
@@ -484,5 +579,171 @@ export class ThreeRenderer {
         });
 
         return closest;
+    }
+
+    /**
+     * Clean up Three.js resources
+     */
+    dispose() {
+        // Dispose all body meshes and their children
+        this.bodyMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else {
+                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
+                    mesh.material.dispose();
+                }
+            }
+            // Dispose children (glow effects)
+            mesh.children.forEach(child => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+            this.scene.remove(mesh);
+        });
+        this.bodyMeshes.clear();
+
+        // Dispose ring meshes
+        this.ringMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else {
+                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
+                    mesh.material.dispose();
+                }
+            }
+        });
+        this.ringMeshes.clear();
+
+        // Dispose cloud meshes
+        this.cloudMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else {
+                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
+                    mesh.material.dispose();
+                }
+            }
+        });
+        this.cloudMeshes.clear();
+
+        // Dispose debris meshes
+        this.debrisMeshes.forEach(mesh => {
+            mesh.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+            this.scene.remove(mesh);
+        });
+        this.debrisMeshes.clear();
+
+        // Dispose particle meshes
+        this.particleMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) (mesh.material as THREE.Material).dispose();
+            this.scene.remove(mesh);
+        });
+        this.particleMeshes.clear();
+
+        // Dispose rocket mesh and its children
+        if (this.rocketMesh) {
+            this.rocketMesh.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+            this.scene.remove(this.rocketMesh);
+            this.rocketMesh = null;
+        }
+
+        // Dispose velocity indicator
+        if (this.velocityIndicator) {
+            this.velocityIndicator.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+            this.scene.remove(this.velocityIndicator);
+            this.velocityIndicator = null;
+        }
+
+        // Dispose trajectory line
+        if (this.trajectoryLine) {
+            if (this.trajectoryLine.geometry) this.trajectoryLine.geometry.dispose();
+            if (this.trajectoryLine.material) {
+                if (Array.isArray(this.trajectoryLine.material)) {
+                    this.trajectoryLine.material.forEach(m => m.dispose());
+                } else {
+                    this.trajectoryLine.material.dispose();
+                }
+            }
+            this.scene.remove(this.trajectoryLine);
+            this.trajectoryLine = null;
+        }
+
+        // Dispose background stars
+        if (this.stars) {
+            if (this.stars.geometry) this.stars.geometry.dispose();
+            if (this.stars.material) {
+                if (Array.isArray(this.stars.material)) {
+                    this.stars.material.forEach(m => m.dispose());
+                } else {
+                    this.stars.material.dispose();
+                }
+            }
+            this.scene.remove(this.stars);
+            this.stars = null;
+        }
+
+        // Dispose orbit renderer
+        if (this.orbitRenderer && typeof (this.orbitRenderer as any).dispose === 'function') {
+            (this.orbitRenderer as any).dispose();
+        }
+
+        // Dispose input handler (removes event listeners)
+        if (this.inputHandler && typeof (this.inputHandler as any).dispose === 'function') {
+            (this.inputHandler as any).dispose();
+        }
+
+        // Dispose WebGL renderer
+        this.renderer.dispose();
+
+        console.log('ThreeRenderer disposed');
     }
 }
