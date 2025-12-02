@@ -145,7 +145,22 @@ export class RocketRenderer {
         });
 
         const flame = new THREE.Mesh(flameGeometry, flameMaterial);
-        flame.position.y = -rocket.engineHeight * 0.5;
+
+        // Calculate flame position
+        let flameY = -rocket.engineHeight * 0.5; // Default for simple rocket
+
+        if (rocket.partStack && rocket.partStack.length > 0) {
+            // Find bottom of the rocket
+            const positions = rocket.partStack.map(p => p.position.y);
+            const minY = Math.min(...positions.map((y, i) => y - rocket.partStack![i].definition.height / 2));
+            const maxY = Math.max(...positions.map((y, i) => y + rocket.partStack![i].definition.height / 2));
+            const centerOffset = (maxY + minY) / 2;
+
+            // Flame starts at the bottom
+            flameY = minY - centerOffset;
+        }
+
+        flame.position.y = flameY;
 
         return flame;
     }

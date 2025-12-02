@@ -55,7 +55,9 @@ export class Rocket {
 
         // Create physics body
         // Radius is approximate for collision detection
-        const radius = 2; // meters
+        // Use half of total height as radius to cover the full length
+        const initialHeight = this.getTotalHeight();
+        const radius = initialHeight / 2;
         this.body = new Body(
             "Rocket",
             totalMass,
@@ -331,6 +333,10 @@ export class Rocket {
         this.dryMass = newDryMass;
         this.body.mass = newDryMass + newFuelMass;
 
+        // Update physics body radius based on new height
+        const newHeight = this.getTotalHeight();
+        this.body.radius = newHeight / 2;
+
         // Update engine
         this.engine = new RocketEngine(newThrust, newFuelMass, newAvgIsp || 300);
 
@@ -352,6 +358,12 @@ export class Rocket {
      * Get total height of rocket for rendering
      */
     getTotalHeight(): number {
+        if (this.partStack && this.partStack.length > 0) {
+            const positions = this.partStack.map(p => p.position.y);
+            const minY = Math.min(...positions.map((y, i) => y - this.partStack![i].definition.height / 2));
+            const maxY = Math.max(...positions.map((y, i) => y + this.partStack![i].definition.height / 2));
+            return maxY - minY;
+        }
         return this.capsuleHeight + this.tankHeight + this.engineHeight;
     }
 

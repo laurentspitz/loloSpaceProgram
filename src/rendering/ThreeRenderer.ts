@@ -36,6 +36,7 @@ export class ThreeRenderer {
 
     // Display options
     showOrbits: boolean = true;
+    showColliders: boolean = false;
 
     // Store bodies for selection
     currentBodies: Body[] = [];
@@ -47,6 +48,11 @@ export class ThreeRenderer {
     debrisMeshes: Map<Body, THREE.Group> = new Map();
     particleMeshes: Map<Particle, THREE.Mesh> = new Map();
 
+    // Debug collision box
+    debugCollisionBox: THREE.Line | null = null;
+    debugCollisionCircle: THREE.Line | null = null;
+    debugPlanetColliders: Map<Body, THREE.Line> = new Map();
+
     // Rocket mesh
 
     // Rocket mesh
@@ -57,6 +63,7 @@ export class ThreeRenderer {
     rocketFlameMesh: THREE.Mesh | null = null;
     velocityIndicator: THREE.Group | null = null;
     currentRocket: Rocket | null = null;
+    isRocketResting: boolean = false; // Track if rocket is resting on surface
 
     // Trajectory line
     trajectoryLine: THREE.Line | null = null;
@@ -205,6 +212,11 @@ export class ThreeRenderer {
 
         // Render bodies
         bodies.forEach(body => {
+            // Skip rocket's physics body (we render it separately)
+            if (this.currentRocket && body === this.currentRocket.body) {
+                return;
+            }
+
             // Handle Debris
             if (body instanceof Debris) {
                 let mesh = this.debrisMeshes.get(body);
@@ -365,6 +377,48 @@ export class ThreeRenderer {
                 (mesh.material as THREE.MeshBasicMaterial).map = texture;
                 (mesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
             }
+
+            // Render debug collision zone if enabled
+            if (this.showColliders) {
+                let colliderMesh = this.debugPlanetColliders.get(body);
+                if (!colliderMesh) {
+                    // Create collision circle at unit size (will be scaled)
+                    const segments = 2048; // Increased from 128 to match planet precision (8192)
+                    const geometry = new THREE.BufferGeometry();
+                    const vertices = [];
+
+                    for (let i = 0; i <= segments; i++) {
+                        const angle = (i / segments) * Math.PI * 2;
+                        vertices.push(
+                            Math.cos(angle),
+                            Math.sin(angle),
+                            0
+                        );
+                    }
+
+                    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                    const material = new THREE.LineBasicMaterial({ color: 0x00FF00, linewidth: 2 });
+                    colliderMesh = new THREE.Line(geometry, material);
+                    this.scene.add(colliderMesh);
+                    this.debugPlanetColliders.set(body, colliderMesh);
+                }
+
+                // Update position
+                colliderMesh.position.set(worldX, worldY, 0.5); // z=0.5 slightly in front
+
+                // Scale to match collision radius
+                // Collision detection uses: body.radius * VISUAL_SCALE (3.0) in world space
+                // We need to convert to screen space: * this.scale
+                const collisionRadiusWorld = body.radius * 3.0; // VISUAL_SCALE from CollisionManager
+                const collisionRadiusScreen = collisionRadiusWorld * this.scale;
+                colliderMesh.scale.set(collisionRadiusScreen, collisionRadiusScreen, 1);
+                colliderMesh.visible = true;
+            } else {
+                const colliderMesh = this.debugPlanetColliders.get(body);
+                if (colliderMesh) {
+                    colliderMesh.visible = false;
+                }
+            }
         });
 
         // Render particles
@@ -444,26 +498,9 @@ export class ThreeRenderer {
             this.lastRocketMeshVersion = rocket.meshVersion;
         }
 
-        // Update rocket position
-        // NOTE: Rocket mesh is centered vertically, but physics uses center as reference
-        // We need to offset DOWN by half-height so the BASE is at the surface
-        const halfHeight = rocket.getTotalHeight() / 2;
-
-        // Calculate angle from planet center for proper vertical offset
-        let offsetX = 0;
-        let offsetY = -halfHeight; // Default offset (down)
-
-        // If rocket has a parent (resting on surface), calculate radial offset
-        if (rocket.body.parent) {
-            const direction = rocket.body.position.sub(rocket.body.parent.position).normalize();
-            // Direction points FROM planet TO rocket (outward)
-            // We want to offset TOWARD planet (inward), so NO negative sign
-            offsetX = direction.x * halfHeight;
-            offsetY = direction.y * halfHeight;
-        }
-
-        const worldX = (rocket.body.position.x - offsetX - center.x) * this.scale;
-        const worldY = (rocket.body.position.y - offsetY - center.y) * this.scale;
+        // Update rocket position - use EXACT physics position, no offset
+        const worldX = (rocket.body.position.x - center.x) * this.scale;
+        const worldY = (rocket.body.position.y - center.y) * this.scale;
         this.rocketMesh.position.set(worldX, worldY, 1); // z=1 to be in front of planets
 
         // Update rocket rotation
@@ -526,6 +563,77 @@ export class ThreeRenderer {
         } else {
             // Hide velocity indicator when trajectory is disabled
             this.velocityIndicator.visible = false;
+        }
+
+        // Render debug collision box if enabled
+        if (this.showColliders) {
+            if (!this.debugCollisionBox) {
+                // Create debug collision box
+                const width = rocket.width;
+                const height = rocket.getTotalHeight();
+
+                const geometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array([
+                    -width / 2, -height / 2, 0,
+                    width / 2, -height / 2, 0,
+                    width / 2, height / 2, 0,
+                    -width / 2, height / 2, 0,
+                    -width / 2, -height / 2, 0
+                ]);
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                const material = new THREE.LineBasicMaterial({ color: 0x00FF00 });
+                this.debugCollisionBox = new THREE.Line(geometry, material);
+                this.scene.add(this.debugCollisionBox);
+            }
+
+            // Update debug box position and rotation to match rocket visual position
+            this.debugCollisionBox.position.copy(this.rocketMesh.position);
+            this.debugCollisionBox.rotation.z = rocket.rotation - Math.PI / 2;
+            this.debugCollisionBox.scale.set(rocketScale, rocketScale, 1);
+            this.debugCollisionBox.visible = true;
+        } else if (this.debugCollisionBox) {
+            this.debugCollisionBox.visible = false;
+        }
+
+        // Render debug collision circle if enabled
+        if (this.showColliders) {
+            if (!this.debugCollisionCircle) {
+                // Create debug collision circle
+                const radius = rocket.body.radius; // Physics radius
+                const segments = 64;
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    vertices.push(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius,
+                        0
+                    );
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                const material = new THREE.LineBasicMaterial({ color: 0xFFFF00, linewidth: 2 }); // Yellow
+                this.debugCollisionCircle = new THREE.Line(geometry, material);
+                this.scene.add(this.debugCollisionCircle);
+            }
+
+            // Update debug circle position
+            this.debugCollisionCircle.position.copy(this.rocketMesh.position);
+            // Circle is rotation invariant, but let's rotate it with rocket just in case we add features
+            this.debugCollisionCircle.rotation.z = rocket.rotation - Math.PI / 2;
+
+            // Scale
+            this.debugCollisionCircle.scale.set(rocketScale, rocketScale, 1);
+
+            // Ensure it's on top
+            this.debugCollisionCircle.position.z = 3;
+
+            this.debugCollisionCircle.visible = true;
+        } else if (this.debugCollisionCircle) {
+            this.debugCollisionCircle.visible = false;
         }
     }
 
@@ -701,6 +809,34 @@ export class ThreeRenderer {
             });
             this.scene.remove(this.velocityIndicator);
             this.velocityIndicator = null;
+        }
+
+        // Dispose debug collision box
+        if (this.debugCollisionBox) {
+            if (this.debugCollisionBox.geometry) this.debugCollisionBox.geometry.dispose();
+            if (this.debugCollisionBox.material) {
+                if (Array.isArray(this.debugCollisionBox.material)) {
+                    this.debugCollisionBox.material.forEach(m => m.dispose());
+                } else {
+                    this.debugCollisionBox.material.dispose();
+                }
+            }
+            this.scene.remove(this.debugCollisionBox);
+            this.debugCollisionBox = null;
+        }
+
+        // Dispose debug collision circle
+        if (this.debugCollisionCircle) {
+            if (this.debugCollisionCircle.geometry) this.debugCollisionCircle.geometry.dispose();
+            if (this.debugCollisionCircle.material) {
+                if (Array.isArray(this.debugCollisionCircle.material)) {
+                    this.debugCollisionCircle.material.forEach(m => m.dispose());
+                } else {
+                    this.debugCollisionCircle.material.dispose();
+                }
+            }
+            this.scene.remove(this.debugCollisionCircle);
+            this.debugCollisionCircle = null;
         }
 
         // Dispose trajectory line

@@ -211,6 +211,7 @@ export class Game {
         }
 
         // Render
+        this.renderer.isRocketResting = this.isRocketResting; // Pass resting state for visual offset
         this.renderer.render(this.bodies, this.particles, this.lastTime);
         this.ui.renderMinimap(this.bodies);
 

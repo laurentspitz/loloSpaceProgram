@@ -19,6 +19,9 @@ export class CollisionManager {
     // Map our bodies to Matter bodies
     private bodyMap: Map<Body | Rocket, Matter.Body> = new Map();
 
+    // Visual scale for collision consistency
+    private readonly VISUAL_SCALE = 3.0;
+
     // Collision event handlers
     public onCollision?: (bodyA: Body | Rocket, bodyB: Body | Rocket) => void;
 
@@ -203,7 +206,6 @@ export class CollisionManager {
      * Called every frame to enforce surface boundary
      */
     preventPenetration(rocket: Rocket, bodies: Body[]): { isResting: boolean, restingOn: Body | null } {
-        const VISUAL_SCALE = 3.0;
         let isResting = false;
         let restingOn: Body | null = null;
 
@@ -211,8 +213,8 @@ export class CollisionManager {
         bodies.forEach(body => {
             if (body === rocket.body) return; // Skip rocket itself
 
-            const visualRadius = body.radius * VISUAL_SCALE;
-            const rocketHalfHeight = rocket.getTotalHeight() / 2;
+            const visualRadius = body.radius * this.VISUAL_SCALE;
+            const rocketHalfHeight = rocket.body.radius * this.VISUAL_SCALE;
             const contactDist = visualRadius + rocketHalfHeight;
 
             const dist = rocket.body.position.distanceTo(body.position);
@@ -282,16 +284,15 @@ export class CollisionManager {
      * Returns true if debris crashed (high speed impact)
      */
     preventDebrisPenetration(debris: Debris, bodies: Body[]): boolean {
-        const VISUAL_SCALE = 3.0;
         let crashed = false;
 
         bodies.forEach(body => {
             if (body === debris) return;
             if (body instanceof Rocket) return; // Ignore rocket collision
 
-            const visualRadius = body.radius * VISUAL_SCALE;
+            const visualRadius = body.radius * this.VISUAL_SCALE;
             // Debris size is small, treat as point or small circle
-            const debrisRadius = 2.0;
+            const debrisRadius = 2.0 * this.VISUAL_SCALE;
             const contactDist = visualRadius + debrisRadius;
 
             const dist = debris.position.distanceTo(body.position);
@@ -367,9 +368,8 @@ export class CollisionManager {
         rocket.body.velocity = rocket.body.velocity.add(normalForce);
 
         // Also maintain exact surface position
-        const VISUAL_SCALE = 3.0;
-        const visualRadius = planet.radius * VISUAL_SCALE;
-        const rocketHalfHeight = rocket.getTotalHeight() / 2;
+        const visualRadius = planet.radius * this.VISUAL_SCALE;
+        const rocketHalfHeight = rocket.body.radius * this.VISUAL_SCALE;
         const contactDist = visualRadius + rocketHalfHeight;
         rocket.body.position = planet.position.add(direction.scale(contactDist));
     }

@@ -698,6 +698,31 @@ export class UI {
         trajContainer.appendChild(trajLabel);
         panel.appendChild(trajContainer);
 
+        // Show Colliders Toggle
+        const colliderContainer = document.createElement('div');
+        colliderContainer.style.display = 'flex';
+        colliderContainer.style.alignItems = 'center';
+        colliderContainer.style.gap = '5px';
+
+        const colliderCheck = document.createElement('input');
+        colliderCheck.type = 'checkbox';
+        colliderCheck.id = 'debug-colliders';
+        colliderCheck.checked = false;
+        colliderCheck.onchange = (e) => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.showColliders = (e.target as HTMLInputElement).checked;
+            }
+        };
+
+        const colliderLabel = document.createElement('label');
+        colliderLabel.htmlFor = 'debug-colliders';
+        colliderLabel.innerText = 'Show Colliders';
+        colliderLabel.style.cursor = 'pointer';
+
+        colliderContainer.appendChild(colliderCheck);
+        colliderContainer.appendChild(colliderLabel);
+        panel.appendChild(colliderContainer);
+
         document.body.appendChild(panel);
     }
 
