@@ -29,6 +29,9 @@ export class UI {
     currentRocket: any = null; // Reference to rocket for throttle control
     fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
 
+    // Autopilot state
+    autopilotMode: 'off' | 'prograde' | 'retrograde' = 'off';
+
     // Navball
     navballRenderer: NavballRenderer | null = null;
 
@@ -757,11 +760,11 @@ export class UI {
         panel.style.textAlign = 'right';
 
         panel.innerHTML = `
-            < div > <strong>CONTROLS < /strong></div >
-            <div>Thrust: Z / S </div>
-                < div > Rotate: Q / D </div>
-                    < div > Fine Ctrl: Shift / Ctrl </div>
-                        `;
+            <div><strong>CONTROLS</strong></div>
+            <div>Thrust: Z / S</div>
+            <div>Rotate: Q / D</div>
+            <div>Fine Ctrl: Shift / Ctrl</div>
+        `;
 
         document.body.appendChild(panel);
     }
@@ -862,6 +865,42 @@ export class UI {
             if (this.gravityDisplay) this.gravityDisplay.innerText = '0 m/s²';
         }
 
+        // Autopilot: Auto-orient to prograde or retrograde
+        if (this.autopilotMode !== 'off' && nearestBody) {
+            const velocityVector = rocket.body.velocity.sub(nearestBody.velocity);
+            const speed = velocityVector.mag();
+
+            if (speed > 1) { // Only autopilot if moving
+                // Calculate target angle
+                let targetAngle = Math.atan2(velocityVector.y, velocityVector.x);
+
+                // For retrograde, add 180 degrees
+                if (this.autopilotMode === 'retrograde') {
+                    targetAngle += Math.PI;
+                }
+
+                // Normalize angles to -PI to PI
+                targetAngle = ((targetAngle + Math.PI) % (2 * Math.PI)) - Math.PI;
+                let currentAngle = ((rocket.rotation + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+                // Calculate angle difference
+                let angleDiff = targetAngle - currentAngle;
+
+                // Normalize to -PI to PI
+                if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                // Apply rotation to minimize angle difference
+                const rotationSpeed = 0.05; // Adjust for smoothness
+                const maxRotation = 0.1; // Max rotation per frame
+
+                if (Math.abs(angleDiff) > 0.01) { // Dead zone
+                    const rotation = Math.sign(angleDiff) * Math.min(Math.abs(angleDiff) * rotationSpeed, maxRotation);
+                    rocket.rotation += rotation;
+                }
+            }
+        }
+
         // Update navball
         if (this.navballRenderer && nearestBody) {
             this.navballRenderer.setRocket(rocket);
@@ -874,9 +913,128 @@ export class UI {
         const canvas = document.getElementById('navball') as HTMLCanvasElement;
         if (canvas) {
             this.navballRenderer = new NavballRenderer(canvas);
+            this.createAutopilotButtons(canvas);
         } else {
             console.warn('Navball canvas not found');
         }
+    }
+
+    createAutopilotButtons(navballCanvas: HTMLCanvasElement) {
+        // Get navball position
+        const navballRect = navballCanvas.getBoundingClientRect();
+        const navballSize = 200; // From NavballRenderer
+        const navballCenterY = navballRect.top + navballSize / 2;
+
+        // Create container for autopilot buttons
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = `${navballRect.left - 60}px`; // 60px to the left of navball
+        container.style.top = `${navballCenterY - 50}px`; // Center vertically (-50 = half of total height)
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '10px';
+
+        // Helper function to create icon canvas
+        const createIconCanvas = (type: 'prograde' | 'retrograde'): HTMLCanvasElement => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 40;
+            canvas.height = 40;
+            const ctx = canvas.getContext('2d')!;
+
+            // Draw circle
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(20, 20, 12, 0, Math.PI * 2);
+            ctx.stroke();
+
+            if (type === 'prograde') {
+                // Draw center dot
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(20, 20, 4, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Draw X
+                ctx.beginPath();
+                ctx.moveTo(13, 13);
+                ctx.lineTo(27, 27);
+                ctx.moveTo(27, 13);
+                ctx.lineTo(13, 27);
+                ctx.stroke();
+            }
+
+            return canvas;
+        };
+
+        // Prograde button
+        const progradeBtn = document.createElement('button');
+        progradeBtn.style.width = '40px';
+        progradeBtn.style.height = '40px';
+        progradeBtn.style.padding = '0';
+        progradeBtn.style.cursor = 'pointer';
+        progradeBtn.style.backgroundColor = 'transparent';
+        progradeBtn.style.border = 'none';
+        progradeBtn.style.borderRadius = '4px';
+        progradeBtn.title = 'Prograde: Auto-align with velocity';
+
+        const progradeCanvas = createIconCanvas('prograde');
+        progradeBtn.appendChild(progradeCanvas);
+
+        progradeBtn.onclick = () => {
+            if (this.autopilotMode === 'prograde') {
+                this.autopilotMode = 'off';
+                progradeBtn.style.boxShadow = 'none';
+            } else {
+                this.autopilotMode = 'prograde';
+                progradeBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                retroBtn.style.boxShadow = 'none';
+            }
+        };
+
+        // Retrograde button
+        const retroBtn = document.createElement('button');
+        retroBtn.style.width = '40px';
+        retroBtn.style.height = '40px';
+        retroBtn.style.padding = '0';
+        retroBtn.style.cursor = 'pointer';
+        retroBtn.style.backgroundColor = 'transparent';
+        retroBtn.style.border = 'none';
+        retroBtn.style.borderRadius = '4px';
+        retroBtn.title = 'Retrograde: Auto-align opposite to velocity';
+
+        const retroCanvas = createIconCanvas('retrograde');
+        retroBtn.appendChild(retroCanvas);
+
+        retroBtn.onclick = () => {
+            if (this.autopilotMode === 'retrograde') {
+                this.autopilotMode = 'off';
+                retroBtn.style.boxShadow = 'none';
+            } else {
+                this.autopilotMode = 'retrograde';
+                retroBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                progradeBtn.style.boxShadow = 'none';
+            }
+        };
+
+        // Store button references for updating state
+        (this as any).progradeBtn = progradeBtn;
+        (this as any).retroBtn = retroBtn;
+
+        container.appendChild(progradeBtn);
+        container.appendChild(retroBtn);
+        document.body.appendChild(container);
+
+        // Add keyboard listener to disable autopilot on manual rotation
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'q' || e.key === 'Q' || e.key === 'd' || e.key === 'D') {
+                if (this.autopilotMode !== 'off') {
+                    this.autopilotMode = 'off';
+                    progradeBtn.style.boxShadow = 'none';
+                    retroBtn.style.boxShadow = 'none';
+                }
+            }
+        });
     }
 
     createDebugMenu() {
