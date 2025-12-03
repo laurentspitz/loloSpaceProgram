@@ -65,7 +65,12 @@ export class App {
         }
 
         this.currentState = AppState.GAME;
+        console.log('Starting game...');
         this.game = new Game(this.assembly);
+
+        // Expose game to window for debugging and orbit teleport feature
+        (window as any).game = this.game;
+
         this.assembly = null; // Clear after use
     }
 

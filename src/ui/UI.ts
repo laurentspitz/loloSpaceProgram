@@ -2,6 +2,8 @@ import { Renderer } from '../Renderer';
 import { ThreeRenderer } from '../rendering/ThreeRenderer';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
+import { NavballRenderer } from './NavballRenderer';
+import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 
 export class UI {
     renderer: Renderer | ThreeRenderer;
@@ -21,20 +23,24 @@ export class UI {
     velocityDisplay: HTMLElement | null = null;
     altitudeDisplay: HTMLElement | null = null;
     gravityDisplay: HTMLElement | null = null;
+    soiDisplay: HTMLElement | null = null;
     deltaVDisplay: HTMLElement | null = null;
     massDisplay: HTMLElement | null = null;
     currentRocket: any = null; // Reference to rocket for throttle control
+    fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
+
+    // Navball
+    navballRenderer: NavballRenderer | null = null;
 
     constructor(renderer: Renderer | ThreeRenderer) {
         this.renderer = renderer;
         this.createControls();
         this.createMinimap();
         this.createRocketInfoPanel();
-        this.createMinimap();
-        this.createRocketInfoPanel();
         this.createControlsHelp();
         this.createDebugMenu();
         this.setupInput();
+        this.initializeNavball();
     }
 
     init(bodies: Body[]) {
@@ -73,6 +79,7 @@ export class UI {
             // Check if renderer is ThreeRenderer (has currentRocket property)
             if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
                 this.renderer.followedBody = this.renderer.currentRocket.body;
+                this.renderer.autoZoomToBody(this.renderer.currentRocket.body);
                 const select = document.getElementById('planet-select') as HTMLSelectElement;
                 if (select) select.value = "";
             }
@@ -164,71 +171,280 @@ export class UI {
         container.style.position = 'absolute';
         container.style.top = '50px';
         container.style.left = '10px';
+        container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        container.style.padding = '10px';
+        container.style.borderRadius = '5px';
+        container.style.maxHeight = '400px';
+        container.style.overflowY = 'auto';
+        container.style.minWidth = '250px';
 
-        const select = document.createElement('select');
-        select.id = 'planet-select';
+        // Title bar with collapse button
+        const titleBar = document.createElement('div');
+        titleBar.style.display = 'flex';
+        titleBar.style.justifyContent = 'space-between';
+        titleBar.style.alignItems = 'center';
+        titleBar.style.marginBottom = '10px';
+        titleBar.style.borderBottom = '1px solid rgba(255,255,255,0.3)';
+        titleBar.style.paddingBottom = '5px';
 
-        const defaultOption = document.createElement('option');
-        defaultOption.value = "";
-        defaultOption.text = "Select Body (Free Cam)";
-        select.appendChild(defaultOption);
+        const title = document.createElement('div');
+        title.innerText = 'CELESTIAL BODIES';
+        title.style.color = 'white';
+        title.style.fontFamily = 'monospace';
+        title.style.fontWeight = 'bold';
 
-        // Group bodies by system (Parent)
-        // 1. Find root bodies (Sun)
+        const toggleBtn = document.createElement('button');
+        toggleBtn.innerText = '−';
+        toggleBtn.style.padding = '0 8px';
+        toggleBtn.style.fontSize = '16px';
+        toggleBtn.style.cursor = 'pointer';
+
+        const contentDiv = document.createElement('div');
+
+        toggleBtn.onclick = () => {
+            if (contentDiv.style.display === 'none') {
+                contentDiv.style.display = 'block';
+                toggleBtn.innerText = '−';
+            } else {
+                contentDiv.style.display = 'none';
+                toggleBtn.innerText = '+';
+            }
+        };
+
+        titleBar.appendChild(title);
+        titleBar.appendChild(toggleBtn);
+        container.appendChild(titleBar);
+
+        // Free cam button
+        const freeCamBtn = document.createElement('button');
+        freeCamBtn.innerText = 'Free Cam';
+        freeCamBtn.style.width = '100%';
+        freeCamBtn.style.marginBottom = '10px';
+        freeCamBtn.style.padding = '5px';
+        freeCamBtn.onclick = () => {
+            this.renderer.followedBody = null;
+            // Highlight active button
+            document.querySelectorAll('#body-list button').forEach(btn => {
+                (btn as HTMLButtonElement).style.backgroundColor = '';
+            });
+            freeCamBtn.style.backgroundColor = '#4CAF50';
+        };
+        contentDiv.appendChild(freeCamBtn);
+
+        // Body list
+        const bodyList = document.createElement('div');
+        bodyList.id = 'body-list';
+
+        // Group bodies by system
         const roots = this.bodies.filter(b => !b.parent);
 
-        // Helper to add options recursively? Or just 1 level deep for now (Planet -> Moons)
-        // Solar System structure is Sun -> Planets -> Moons
-
-        // Add Sun
         roots.forEach(root => {
-            const option = document.createElement('option');
-            option.value = root.name;
-            option.text = root.name;
-            select.appendChild(option);
+            this.addBodyRow(bodyList, root, 0);
 
             // Find children (Planets)
             const planets = this.bodies.filter(b => b.parent === root);
             planets.forEach(planet => {
-                // Create group for Planet
-                const group = document.createElement('optgroup');
-                group.label = planet.name + " System";
-
-                // Add Planet itself to the group (or before?)
-                // Usually optgroup contains children.
-                // Let's add the planet as the first option in its group
-                const planetOption = document.createElement('option');
-                planetOption.value = planet.name;
-                planetOption.text = planet.name;
-                group.appendChild(planetOption);
+                this.addBodyRow(bodyList, planet, 1);
 
                 // Find moons
                 const moons = this.bodies.filter(b => b.parent === planet);
                 moons.forEach(moon => {
-                    const moonOption = document.createElement('option');
-                    moonOption.value = moon.name;
-                    moonOption.text = "  " + moon.name; // Indent?
-                    group.appendChild(moonOption);
+                    this.addBodyRow(bodyList, moon, 2);
                 });
-
-                select.appendChild(group);
             });
         });
 
-        select.onchange = (e) => {
-            const name = (e.target as HTMLSelectElement).value;
-            if (name === "") {
-                this.renderer.followedBody = null;
-            } else {
-                const body = this.bodies.find(b => b.name === name);
-                if (body) {
-                    this.renderer.followedBody = body;
-                }
+        contentDiv.appendChild(bodyList);
+        container.appendChild(contentDiv);
+        document.body.appendChild(container);
+    }
+
+    /**
+     * Add a row for a celestial body with Focus and Orbit buttons
+     */
+    private addBodyRow(parent: HTMLElement, body: any, indentLevel: number) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '5px';
+        row.style.marginBottom = '5px';
+        row.style.marginLeft = `${indentLevel * 15}px`;
+
+        // Body name label
+        const label = document.createElement('span');
+        label.innerText = body.name;
+        label.style.color = 'white';
+        label.style.fontFamily = 'monospace';
+        label.style.fontSize = '12px';
+        label.style.flex = '1';
+        label.style.alignSelf = 'center';
+        row.appendChild(label);
+
+        // Focus button
+        const focusBtn = document.createElement('button');
+        focusBtn.innerText = '👁️';
+        focusBtn.title = `Focus on ${body.name}`;
+        focusBtn.style.padding = '2px 8px';
+        focusBtn.style.fontSize = '12px';
+        focusBtn.onclick = () => {
+            this.renderer.followedBody = body;
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.autoZoomToBody(body);
             }
         };
+        row.appendChild(focusBtn);
 
-        container.appendChild(select);
-        document.body.appendChild(container);
+        // Orbit button (only for non-Sun bodies)
+        if (body.name !== 'Sun') {
+            const orbitBtn = document.createElement('button');
+            orbitBtn.innerText = '🛸';
+            orbitBtn.title = `Orbit ${body.name}`;
+            orbitBtn.style.padding = '2px 8px';
+            orbitBtn.style.fontSize = '12px';
+            orbitBtn.onclick = () => {
+                this.placeRocketInOrbit(body);
+            };
+            row.appendChild(orbitBtn);
+        }
+
+        parent.appendChild(row);
+    }
+
+    /**
+     * Place rocket in a stable circular orbit around a body
+     */
+    private placeRocketInOrbit(body: any) {
+        // Try multiple sources for the rocket reference
+        const rendererRocket = (this.renderer as any).currentRocket;
+        const uiRocket = this.currentRocket;
+
+        console.log('=== ROCKET REFERENCE DEBUG ===');
+        console.log(`renderer.currentRocket exists: ${!!rendererRocket}`);
+        console.log(`this.currentRocket exists: ${!!uiRocket}`);
+
+        if (rendererRocket) {
+            console.log(`renderer.currentRocket position: (${rendererRocket.body.position.x.toFixed(0)}, ${rendererRocket.body.position.y.toFixed(0)})`);
+        }
+        if (uiRocket) {
+            console.log(`this.currentRocket position: (${uiRocket.body.position.x.toFixed(0)}, ${uiRocket.body.position.y.toFixed(0)})`);
+        }
+
+        // Use renderer rocket if available, otherwise UI rocket
+        const rocket = rendererRocket || uiRocket;
+
+        if (!rocket) {
+            console.warn('No rocket available from any source!');
+            return;
+        }
+
+        console.log(`Using rocket from: ${rendererRocket ? 'renderer' : 'UI'}`);
+        console.log('=== END DEBUG ===');
+        console.log(`=== Placing rocket in orbit around ${body.name} === `);
+        console.log(`Body name: ${body.name}`);
+        console.log(`Body mass: ${body.mass.toExponential(2)} kg`);
+        console.log(`Body position: (${body.position.x.toFixed(0)}, ${body.position.y.toFixed(0)})`);
+        console.log(`Body physical radius: ${(body.radius / 1000).toFixed(0)} km`);
+
+        // Check all bodies to see their positions
+        console.log('All bodies:');
+        this.bodies.forEach(b => {
+            if (b.name === 'Earth' || b.name === 'Moon') {
+                console.log(`  ${b.name}: pos=(${b.position.x.toFixed(0)}, ${b.position.y.toFixed(0)}), radius=${(b.radius / 1000).toFixed(0)}km`);
+            }
+        });
+
+        // Orbit calculation
+        const physicalRadius = body.radius;
+        const VISUAL_SCALE = 3.0; // Bodies are rendered 3x larger
+        const visualRadius = physicalRadius * VISUAL_SCALE;
+
+        // Orbit altitude above VISUAL surface (not physical)
+        // For moons: 50km, for planets: 200km
+        const orbitAltitude = body.radius < 2000000 ? 50000 : 200000; // 50km or 200km
+
+        // Orbit radius from center = visual radius + altitude above visual surface
+        const orbitRadius = visualRadius + orbitAltitude;
+
+        console.log(`Orbit altitude: ${(orbitAltitude / 1000).toFixed(0)} km`);
+        console.log(`Orbit radius from center: ${(orbitRadius / 1000).toFixed(0)} km`);
+        // Calculate orbital velocity for circular orbit: v = sqrt(GM/r)
+        const G = 6.674e-11;
+        const orbitalSpeed = Math.sqrt((G * body.mass) / orbitRadius);
+
+        console.log(`Required orbital speed: ${(orbitalSpeed / 1000).toFixed(2)} km/s`);
+
+        // Place rocket at body position + orbit radius (to the right)
+        const newPosX = body.position.x + orbitRadius;
+        const newPosY = body.position.y;
+        const newVelX = body.velocity.x;
+        const newVelY = body.velocity.y + orbitalSpeed;
+
+        console.log(`New rocket position: (${newPosX.toFixed(0)}, ${newPosY.toFixed(0)})`);
+        console.log(`Body velocity: (${body.velocity.x.toFixed(2)}, ${body.velocity.y.toFixed(2)})`);
+        console.log(`New rocket velocity: (${newVelX.toFixed(2)}, ${newVelY.toFixed(2)})`);
+
+        // Use setTimeout to ensure position is set AFTER current frame/update cycle
+        setTimeout(() => {
+            // CREATE NEW Vector2 objects instead of mutating
+            rocket.body.position = new Vector2(newPosX, newPosY);
+
+            // Set velocity perpendicular to radial direction (upward for circular orbit)
+            // Relative to body's velocity
+            // CREATE NEW Vector2 object
+            rocket.body.velocity = new Vector2(newVelX, newVelY);
+
+            // Point rocket in direction of movement (90 degrees)
+            rocket.rotation = Math.PI / 2;
+
+            // CRITICAL: Also update the Matter.js physics body to prevent collision system from resetting position
+            // Access the collision manager through the game/renderer
+            if ((window as any).game && (window as any).game.collisionManager) {
+                const game = (window as any).game;
+                const collisionManager = game.collisionManager;
+                collisionManager.syncPositions([game.bodies || []], rocket);
+
+                // CRITICAL: Reset resting state so rocket can move freely
+                game.isRocketResting = false;
+                game.restingOn = null;
+
+                console.log('✓ Updated Matter.js physics body');
+                console.log('✓ Reset resting state');
+            }
+
+            // Focus camera on rocket but zoom to show the planet for context
+            this.renderer.followedBody = rocket.body;
+            if (this.renderer instanceof ThreeRenderer) {
+                // Zoom to show the planet (body param from function) for orbital context
+                this.renderer.autoZoomToBody(body);
+            }
+
+            // Verify position was set
+            console.log('=== VERIFICATION (after setTimeout) ===');
+            console.log(`Rocket actual position: (${rocket.body.position.x.toFixed(0)}, ${rocket.body.position.y.toFixed(0)})`);
+            console.log(`Rocket actual velocity: (${rocket.body.velocity.x.toFixed(2)}, ${rocket.body.velocity.y.toFixed(2)})`);
+            console.log(`Distance to ${body.name}: ${Math.sqrt(
+                Math.pow(rocket.body.position.x - body.position.x, 2) +
+                Math.pow(rocket.body.position.y - body.position.y, 2)
+            ).toFixed(0)} m`);
+
+            console.log(`✓ Rocket placed in ${(orbitAltitude / 1000).toFixed(0)} km orbit around ${body.name}`);
+
+            // Monitor position for 2 seconds to see if it changes
+            let checkCount = 0;
+            const monitorInterval = setInterval(() => {
+                checkCount++;
+                const currentPos = rocket.body.position;
+                const distToMoon = Math.sqrt(
+                    Math.pow(currentPos.x - body.position.x, 2) +
+                    Math.pow(currentPos.y - body.position.y, 2)
+                );
+                console.log(`[Monitor ${checkCount}] Pos: (${currentPos.x.toFixed(0)}, ${currentPos.y.toFixed(0)}), Dist to ${body.name}: ${(distToMoon / 1000).toFixed(0)} km`);
+
+                if (checkCount >= 20) {
+                    clearInterval(monitorInterval);
+                    console.log('=== End orbit placement ===');
+                }
+            }, 100);
+        }, 100); // Wait 100ms to let all systems settle
     }
 
     createMinimap() {
@@ -442,6 +658,25 @@ export class UI {
         panel.appendChild(fuelRow);
         this.fuelDisplay = fuelRow.querySelector('#rocket-fuel');
 
+        // Fuel Gauge (Visual Bar)
+        const fuelGaugeContainer = document.createElement('div');
+        fuelGaugeContainer.style.marginBottom = '8px';
+        fuelGaugeContainer.style.height = '10px';
+        fuelGaugeContainer.style.backgroundColor = '#333';
+        fuelGaugeContainer.style.borderRadius = '5px';
+        fuelGaugeContainer.style.overflow = 'hidden';
+        fuelGaugeContainer.style.border = '1px solid #555';
+
+        const fuelBar = document.createElement('div');
+        fuelBar.style.width = '100%';
+        fuelBar.style.height = '100%';
+        fuelBar.style.backgroundColor = '#00C851';
+        fuelBar.style.transition = 'width 0.2s, background-color 0.2s';
+
+        fuelGaugeContainer.appendChild(fuelBar);
+        panel.appendChild(fuelGaugeContainer);
+        this.fuelGaugeBar = fuelBar;
+
         // Delta V
         const dvRow = document.createElement('div');
         dvRow.style.display = 'flex';
@@ -467,28 +702,10 @@ export class UI {
         panel.appendChild(throttleRow);
         this.throttleDisplay = throttleRow.querySelector('#rocket-throttle');
 
-        // Throttle slider
-        const throttleSliderContainer = document.createElement('div');
-        throttleSliderContainer.style.marginBottom = '8px';
 
-        const throttleSlider = document.createElement('input');
-        throttleSlider.type = 'range';
-        throttleSlider.min = '0';
-        throttleSlider.max = '100';
-        throttleSlider.value = '0';
-        throttleSlider.style.width = '100%';
-        throttleSlider.style.cursor = 'pointer';
 
-        throttleSlider.oninput = (e) => {
-            const value = parseInt((e.target as HTMLInputElement).value) / 100;
-            if (this.currentRocket?.controls) {
-                this.currentRocket.controls.setThrottle(value);
-            }
-        };
-
-        throttleSliderContainer.appendChild(throttleSlider);
-        panel.appendChild(throttleSliderContainer);
-        this.throttleSlider = throttleSlider;
+        // Remove old throttle slider reference
+        // this.throttleSlider = throttleSlider;
 
         // Velocity
         const velRow = document.createElement('div');
@@ -514,6 +731,14 @@ export class UI {
         panel.appendChild(gravRow);
         this.gravityDisplay = gravRow.querySelector('#rocket-grav');
 
+        // SOI (Sphere of Influence)
+        const soiRow = document.createElement('div');
+        soiRow.style.display = 'flex';
+        soiRow.style.justifyContent = 'space-between';
+        soiRow.innerHTML = '<span>SOI:</span> <span id="rocket-soi">-</span>';
+        panel.appendChild(soiRow);
+        this.soiDisplay = soiRow.querySelector('#rocket-soi');
+
         document.body.appendChild(panel);
         this.rocketInfoPanel = panel;
     }
@@ -532,11 +757,11 @@ export class UI {
         panel.style.textAlign = 'right';
 
         panel.innerHTML = `
-            <div><strong>CONTROLS</strong></div>
-            <div>Thrust: Z / S</div>
-            <div>Rotate: Q / D</div>
-            <div>Fine Ctrl: Shift / Ctrl</div>
-        `;
+            < div > <strong>CONTROLS < /strong></div >
+            <div>Thrust: Z / S </div>
+                < div > Rotate: Q / D </div>
+                    < div > Fine Ctrl: Shift / Ctrl </div>
+                        `;
 
         document.body.appendChild(panel);
     }
@@ -556,8 +781,15 @@ export class UI {
 
         if (this.fuelDisplay) {
             const fuel = info.fuel.toFixed(1);
-            this.fuelDisplay.innerText = `${fuel}%`;
+            this.fuelDisplay.innerText = `${fuel}% `;
             this.fuelDisplay.style.color = info.fuel < 10 ? '#ff4444' : (info.fuel < 30 ? '#ffbb33' : '#00C851');
+        }
+
+        // Update visual fuel gauge bar
+        if (this.fuelGaugeBar) {
+            this.fuelGaugeBar.style.width = `${info.fuel}%`;
+            // Color change based on level
+            this.fuelGaugeBar.style.backgroundColor = info.fuel < 20 ? '#ff4444' : (info.fuel < 50 ? '#ffbb33' : '#00C851');
         }
 
         if (this.deltaVDisplay) {
@@ -565,23 +797,13 @@ export class UI {
         }
 
         if (this.massDisplay) {
-            // Display in tons if > 1000kg
-            const mass = info.mass;
-            if (mass >= 1000) {
-                this.massDisplay.innerText = `${(mass / 1000).toFixed(2)} t`;
-            } else {
-                this.massDisplay.innerText = `${mass.toFixed(0)} kg`;
-            }
+            this.massDisplay.innerText = `${info.mass.toFixed(0)} kg`;
         }
 
         if (this.throttleDisplay) {
-            const throttle = (info.throttle * 100).toFixed(0);
+            // Show throttle percentage
+            const throttle = rocket.controls ? (rocket.controls.throttle * 100).toFixed(0) : '0';
             this.throttleDisplay.innerText = `${throttle}%`;
-        }
-
-        // Update slider to match current throttle (unless user is dragging it)
-        if (this.throttleSlider && !this.throttleSlider.matches(':active')) {
-            this.throttleSlider.value = (info.throttle * 100).toFixed(0);
         }
 
         // Find nearest body for relative calculations
@@ -606,7 +828,7 @@ export class UI {
                 const relVel = rocket.body.velocity.sub(nearestBody.velocity);
                 velocity = relVel.mag();
             }
-            this.velocityDisplay.innerText = `${velocity.toFixed(0)} m/s`;
+            this.velocityDisplay.innerText = `${velocity.toFixed(0)} m / s`;
         }
 
         if (this.altitudeDisplay) {
@@ -618,14 +840,45 @@ export class UI {
                 const r = rocket.body.position.distanceTo(nearestBody.position);
                 const g = (6.674e-11 * nearestBody.mass) / (r * r);
                 if (this.gravityDisplay) {
-                    this.gravityDisplay.innerText = `${g.toFixed(2)} m/s²`;
+                    this.gravityDisplay.innerText = `${g.toFixed(2)} m / s²`;
                 }
-            } else {
-                this.altitudeDisplay.innerText = 'N/A';
-                if (this.gravityDisplay) this.gravityDisplay.innerText = '0 m/s²';
+
+                // Display SOI (Sphere of Influence)
+                if (this.soiDisplay) {
+                    const dominantBody = SphereOfInfluence.findDominantBody(rocket, this.bodies);
+                    this.soiDisplay.innerText = dominantBody.name;
+                    // Color code: Sun=yellow, Planet=blue, Moon=gray
+                    if (dominantBody.type === 'star') {
+                        this.soiDisplay.style.color = '#FFD700';
+                    } else if (dominantBody.type === 'moon') {
+                        this.soiDisplay.style.color = '#CCCCCC';
+                    } else {
+                        this.soiDisplay.style.color = '#4CAF50';
+                    }
+                }
             }
+        } else {
+            this.altitudeDisplay.innerText = 'N/A';
+            if (this.gravityDisplay) this.gravityDisplay.innerText = '0 m/s²';
+        }
+
+        // Update navball
+        if (this.navballRenderer && nearestBody) {
+            this.navballRenderer.setRocket(rocket);
+            const velocityVector = rocket.body.velocity.sub(nearestBody.velocity);
+            this.navballRenderer.render(rocket, velocityVector, nearestBody);
         }
     }
+
+    initializeNavball() {
+        const canvas = document.getElementById('navball') as HTMLCanvasElement;
+        if (canvas) {
+            this.navballRenderer = new NavballRenderer(canvas);
+        } else {
+            console.warn('Navball canvas not found');
+        }
+    }
+
     createDebugMenu() {
         const panel = document.createElement('div');
         panel.style.position = 'absolute';

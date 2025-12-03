@@ -10,7 +10,7 @@ export interface RocketInput {
 
 export class RocketControls {
     private keys: Set<string> = new Set();
-    private throttle: number = 0;
+    public throttle: number = 0;
     private rotationSpeed: number = 1.5; // radians per second
     private stagePressed: boolean = false; // Track previous state to trigger once per press
 

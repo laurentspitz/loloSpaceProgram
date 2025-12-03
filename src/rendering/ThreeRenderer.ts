@@ -73,6 +73,10 @@ export class ThreeRenderer {
     // Background
     stars: THREE.Points | null = null;
 
+    // Zoom Icons
+    bodyIcons: Map<Body, THREE.Mesh> = new Map();
+    rocketIcon: THREE.Group | null = null;
+
     // Helpers
     private orbitRenderer: OrbitRenderer;
     private inputHandler: InputHandler;
@@ -509,8 +513,99 @@ export class ThreeRenderer {
             this.renderRocket(this.currentRocket, center);
         }
 
+        // Update Zoom Icons (Planets/Rocket)
+        this.updateZoomIcons(center);
+
         // Render the scene
         this.renderer.render(this.scene, this.camera);
+    }
+
+    /**
+     * Update icons for bodies and rocket when zoomed out
+     */
+    updateZoomIcons(center: Vector2) {
+        // Calculate pixels per world unit
+        const frustumSize = 1000 / this.scale * 1e-9;
+        const pixelsPerUnit = this.height / frustumSize;
+
+        // 1. Update Body Icons
+        this.currentBodies.forEach(body => {
+            let icon = this.bodyIcons.get(body);
+            if (!icon) {
+                // Create icon (Circle)
+                const geometry = new THREE.CircleGeometry(1, 32);
+                const material = new THREE.MeshBasicMaterial({ color: body.color });
+                icon = new THREE.Mesh(geometry, material);
+                this.scene.add(icon);
+                this.bodyIcons.set(body, icon);
+            }
+
+            // Calculate radius in World Units
+            const radiusWorldUnits = body.radius * this.scale * this.visualScale;
+
+            // Convert to Pixels
+            const radiusPixels = radiusWorldUnits * pixelsPerUnit;
+
+            // Threshold: if radius < 1 pixel, show icon
+            if (radiusPixels < 1) {
+                icon.visible = true;
+                const worldX = (body.position.x - center.x) * this.scale;
+                const worldY = (body.position.y - center.y) * this.scale;
+                icon.position.set(worldX, worldY, 5); // z=5 to be on top of planets
+
+                // Fixed size: 2 pixels radius (4px diameter)
+                const scale = 2 / pixelsPerUnit;
+                icon.scale.set(scale, scale, 1);
+            } else {
+                icon.visible = false;
+            }
+        });
+
+        // 2. Update Rocket Icon
+        if (this.currentRocket) {
+            if (!this.rocketIcon) {
+                // Create rocket emoji texture with higher resolution
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;  // Increased from 64
+                canvas.height = 128; // Increased from 64
+                const ctx = canvas.getContext('2d')!;
+
+                // Draw emoji larger
+                ctx.font = '96px Arial'; // Increased from 48px
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🚀', 64, 64); // Centered at 64,64 instead of 32,32
+
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(material);
+
+                this.rocketIcon = new THREE.Group();
+                this.rocketIcon.add(sprite);
+                this.scene.add(this.rocketIcon);
+            }
+
+            // Rocket height in World Units
+            const rocketHeight = 8; // approx meters
+            const heightWorldUnits = rocketHeight * this.scale * this.visualScale;
+
+            // Convert to Pixels
+            const heightPixels = heightWorldUnits * pixelsPerUnit;
+
+            // Threshold: if height < 2 pixels, show icon
+            if (heightPixels < 2) {
+                this.rocketIcon.visible = true;
+                const worldX = (this.currentRocket.body.position.x - center.x) * this.scale;
+                const worldY = (this.currentRocket.body.position.y - center.y) * this.scale;
+                this.rocketIcon.position.set(worldX, worldY, 6); // z=6 on top of body icons
+
+                // Fixed size: 8 pixels radius (increased from 3 for better visibility)
+                const scale = 8 / pixelsPerUnit;
+                this.rocketIcon.scale.set(scale, scale, 1);
+            } else {
+                this.rocketIcon.visible = false;
+            }
+        }
     }
 
     /**
@@ -928,5 +1023,37 @@ export class ThreeRenderer {
         this.renderer.dispose();
 
         console.log('ThreeRenderer disposed');
+    }
+
+    /**
+     * Auto-zoom to fit a body or the rocket on screen
+     * The object will take up about 80% of the screen height
+     */
+    autoZoomToBody(body: Body | null) {
+        if (!body) return;
+
+        // Determine the size of the object
+        let objectSize: number;
+
+        // Check if it's the rocket
+        if (this.currentRocket && body === this.currentRocket.body) {
+            // Rocket height is about 8 meters, but we want to show more context
+            // Use 10x the rocket size so it appears smaller with surrounding space
+            objectSize = 80;
+        } else {
+            // For celestial bodies, use visual radius * 2 (diameter) * visualScale
+            objectSize = body.radius * 2 * this.visualScale;
+        }
+
+        // We want the object to take up targetFraction of screen height
+        const targetFraction = 0.8; // 80% of screen
+
+        // Calculate required scale
+        const newScale = Math.sqrt(targetFraction * 1e-6 / objectSize);
+
+        // Apply new scale
+        this.scale = newScale;
+
+        console.log(`Auto-zoom: object size=${objectSize.toFixed(2)}m, new scale=${newScale.toExponential(2)}`);
     }
 }
