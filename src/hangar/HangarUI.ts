@@ -1,6 +1,7 @@
 import { PartRegistry } from './PartRegistry';
 import { RocketAssembly } from './RocketAssembly';
 import type { PartDefinition } from './PartDefinition';
+import { RocketSaveManager } from './RocketSaveManager';
 
 
 export class HangarUI {
@@ -10,6 +11,8 @@ export class HangarUI {
     assembly: RocketAssembly;
     onPartSelected: (partId: string) => void;
     onLaunch: () => void;
+    onSave: (name: string) => void;
+    onLoad: (assembly: RocketAssembly) => void;
 
     // Stat value elements
     massValue!: HTMLSpanElement;
@@ -17,10 +20,18 @@ export class HangarUI {
     deltaVValue!: HTMLSpanElement;
     twrValue!: HTMLSpanElement;
 
-    constructor(assembly: RocketAssembly, onPartSelected: (partId: string) => void, onLaunch: () => void) {
+    constructor(
+        assembly: RocketAssembly,
+        onPartSelected: (partId: string) => void,
+        onLaunch: () => void,
+        onSave: (name: string) => void,
+        onLoad: (assembly: RocketAssembly) => void
+    ) {
         this.assembly = assembly;
         this.onPartSelected = onPartSelected;
         this.onLaunch = onLaunch;
+        this.onSave = onSave;
+        this.onLoad = onLoad;
 
         this.container = document.createElement('div');
         this.container.id = 'hangar-ui';
@@ -225,9 +236,39 @@ export class HangarUI {
         this.twrValue = document.createElement('span');
         panel.appendChild(createStatRow('TWR (Earth):', this.twrValue));
 
+        // Load Button
+        const loadButton = document.createElement('button');
+        loadButton.style.marginTop = '15px';
+        loadButton.style.width = '100%';
+        loadButton.style.padding = '8px';
+        loadButton.style.backgroundColor = '#4a9eff';
+        loadButton.style.color = 'white';
+        loadButton.style.border = 'none';
+        loadButton.style.borderRadius = '4px';
+        loadButton.style.cursor = 'pointer';
+        loadButton.style.fontWeight = 'bold';
+        loadButton.textContent = '📂 LOAD';
+        loadButton.onclick = () => this.showLoadDialog();
+        panel.appendChild(loadButton);
+
+        // Save Button
+        const saveButton = document.createElement('button');
+        saveButton.style.marginTop = '8px';
+        saveButton.style.width = '100%';
+        saveButton.style.padding = '8px';
+        saveButton.style.backgroundColor = '#5a5a5a';
+        saveButton.style.color = 'white';
+        saveButton.style.border = 'none';
+        saveButton.style.borderRadius = '4px';
+        saveButton.style.cursor = 'pointer';
+        saveButton.style.fontWeight = 'bold';
+        saveButton.textContent = '💾 SAVE';
+        saveButton.onclick = () => this.showSaveDialog();
+        panel.appendChild(saveButton);
+
         const launchButton = document.createElement('button');
         launchButton.id = 'launch-btn';
-        launchButton.style.marginTop = '15px';
+        launchButton.style.marginTop = '8px';
         launchButton.style.width = '100%';
         launchButton.style.padding = '10px';
         launchButton.style.backgroundColor = '#00aaff';
@@ -257,6 +298,228 @@ export class HangarUI {
 
         // Update mass breakdown tooltip
         this.massValue.title = `Dry Mass: ${dryMass.toFixed(0)} kg\nFuel: ${(stats.fuel || 0).toFixed(0)} kg\nTotal: ${stats.mass.toFixed(0)} kg`;
+    }
+
+    showSaveDialog() {
+        const existingDialog = document.getElementById('save-dialog');
+        if (existingDialog) existingDialog.remove();
+
+        const overlay = this.createDialogOverlay();
+        const dialog = document.createElement('div');
+        dialog.id = 'save-dialog';
+        dialog.style.backgroundColor = '#2a2a2a';
+        dialog.style.border = '2px solid #444';
+        dialog.style.borderRadius = '8px';
+        dialog.style.padding = '20px';
+        dialog.style.minWidth = '300px';
+        dialog.style.maxWidth = '400px';
+
+        const title = document.createElement('h3');
+        title.textContent = 'Save Rocket';
+        title.style.color = '#fff';
+        title.style.margin = '0 0 15px 0';
+        dialog.appendChild(title);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Enter rocket name...';
+        input.style.width = '100%';
+        input.style.padding = '8px';
+        input.style.marginBottom = '15px';
+        input.style.backgroundColor = '#1a1a1a';
+        input.style.color = '#fff';
+        input.style.border = '1px solid #444';
+        input.style.borderRadius = '4px';
+        input.style.fontSize = '14px';
+        input.style.boxSizing = 'border-box';
+        dialog.appendChild(input);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '10px';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save';
+        saveBtn.style.flex = '1';
+        saveBtn.style.padding = '8px';
+        saveBtn.style.backgroundColor = '#00aaff';
+        saveBtn.style.color = 'white';
+        saveBtn.style.border = 'none';
+        saveBtn.style.borderRadius = '4px';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.style.fontWeight = 'bold';
+        saveBtn.onclick = () => {
+            const name = input.value.trim();
+            if (!name) {
+                alert('Please enter a name for your rocket');
+                return;
+            }
+
+            // Check if rocket already exists
+            if (RocketSaveManager.exists(name)) {
+                if (confirm(`A rocket named "${name}" already exists. Do you want to overwrite it?`)) {
+                    this.onSave(name);
+                    overlay.remove();
+                }
+            } else {
+                this.onSave(name);
+                overlay.remove();
+            }
+        };
+        buttonContainer.appendChild(saveBtn);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.flex = '1';
+        cancelBtn.style.padding = '8px';
+        cancelBtn.style.backgroundColor = '#5a5a5a';
+        cancelBtn.style.color = 'white';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.borderRadius = '4px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.onclick = () => overlay.remove();
+        buttonContainer.appendChild(cancelBtn);
+
+        dialog.appendChild(buttonContainer);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Focus input and select on enter
+        input.focus();
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveBtn.click();
+        });
+    }
+
+    showLoadDialog() {
+        const existingDialog = document.getElementById('load-dialog');
+        if (existingDialog) existingDialog.remove();
+
+        const savedRockets = RocketSaveManager.list();
+
+        const overlay = this.createDialogOverlay();
+        const dialog = document.createElement('div');
+        dialog.id = 'load-dialog';
+        dialog.style.backgroundColor = '#2a2a2a';
+        dialog.style.border = '2px solid #444';
+        dialog.style.borderRadius = '8px';
+        dialog.style.padding = '20px';
+        dialog.style.minWidth = '400px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.maxHeight = '70vh';
+        dialog.style.overflowY = 'auto';
+
+        const title = document.createElement('h3');
+        title.textContent = 'Load Rocket';
+        title.style.color = '#fff';
+        title.style.margin = '0 0 15px 0';
+        dialog.appendChild(title);
+
+        if (savedRockets.length === 0) {
+            const empty = document.createElement('p');
+            empty.textContent = 'No saved rockets found';
+            empty.style.color = '#999';
+            empty.style.textAlign = 'center';
+            empty.style.padding = '20px';
+            dialog.appendChild(empty);
+        } else {
+            savedRockets.forEach(rocket => {
+                const item = document.createElement('div');
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.style.padding = '10px';
+                item.style.marginBottom = '8px';
+                item.style.backgroundColor = '#1a1a1a';
+                item.style.borderRadius = '4px';
+                item.style.cursor = 'pointer';
+                item.style.transition = 'background 0.2s';
+
+                const info = document.createElement('div');
+                info.style.flex = '1';
+
+                const name = document.createElement('div');
+                name.textContent = rocket.name;
+                name.style.color = '#fff';
+                name.style.fontWeight = 'bold';
+                name.style.marginBottom = '4px';
+                info.appendChild(name);
+
+                const details = document.createElement('div');
+                details.style.color = '#999';
+                details.style.fontSize = '12px';
+                const date = new Date(rocket.savedAt).toLocaleString();
+                details.textContent = `${rocket.partCount} parts • ${date}`;
+                info.appendChild(details);
+
+                item.appendChild(info);
+
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.style.padding = '5px 10px';
+                deleteBtn.style.backgroundColor = '#ff4444';
+                deleteBtn.style.color = 'white';
+                deleteBtn.style.border = 'none';
+                deleteBtn.style.borderRadius = '4px';
+                deleteBtn.style.cursor = 'pointer';
+                deleteBtn.style.marginLeft = '10px';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete "${rocket.name}"?`)) {
+                        RocketSaveManager.delete(rocket.name);
+                        this.showLoadDialog(); // Refresh list
+                    }
+                };
+                item.appendChild(deleteBtn);
+
+                item.onmouseover = () => item.style.backgroundColor = '#3a3a3a';
+                item.onmouseout = () => item.style.backgroundColor = '#1a1a1a';
+                item.onclick = () => {
+                    const loaded = RocketSaveManager.load(rocket.name);
+                    if (loaded) {
+                        this.onLoad(loaded);
+                        overlay.remove();
+                    } else {
+                        alert(`Failed to load "${rocket.name}"`);
+                    }
+                };
+
+                dialog.appendChild(item);
+            });
+        }
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Close';
+        closeBtn.style.marginTop = '15px';
+        closeBtn.style.width = '100%';
+        closeBtn.style.padding = '8px';
+        closeBtn.style.backgroundColor = '#5a5a5a';
+        closeBtn.style.color = 'white';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '4px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = () => overlay.remove();
+        dialog.appendChild(closeBtn);
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+    }
+
+    private createDialogOverlay(): HTMLDivElement {
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '10000';
+        overlay.style.pointerEvents = 'auto';
+        return overlay;
     }
 
     dispose() {

@@ -2,6 +2,7 @@ import { HangarScene } from './hangar/HangarScene';
 import { HangarUI } from './hangar/HangarUI';
 import { RocketAssembly } from './hangar/RocketAssembly';
 import { DragDropManager } from './hangar/DragDropManager';
+import { RocketSaveManager } from './hangar/RocketSaveManager';
 
 /**
  * Hangar - Main class for the rocket building scene
@@ -47,8 +48,36 @@ export class Hangar {
                     detail: { assembly: this.assembly }
                 });
                 window.dispatchEvent(event);
+            },
+            (name) => {
+                // Save callback
+                try {
+                    RocketSaveManager.save(this.assembly, name);
+                    alert(`Rocket "${name}" saved successfully!`);
+                } catch (error) {
+                    if (error instanceof Error) {
+                        alert(`Failed to save rocket: ${error.message}`);
+                    }
+                }
+            },
+            (loadedAssembly) => {
+                // Load callback
+                this.assembly.parts = loadedAssembly.parts;
+                this.assembly.rootPartId = loadedAssembly.rootPartId;
+                this.scene.update();
+                this.ui.updateStats();
+                alert('Rocket loaded successfully!');
             }
         );
+
+        // Auto-load the most recent rocket if one exists
+        const latestRocket = RocketSaveManager.getLatest();
+        if (latestRocket) {
+            this.assembly.parts = latestRocket.parts;
+            this.assembly.rootPartId = latestRocket.rootPartId;
+            this.scene.update();
+            this.ui.updateStats();
+        }
 
         // Back Button (Temporary, should be in UI)
         const backButton = document.createElement('button');
