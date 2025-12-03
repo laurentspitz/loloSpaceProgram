@@ -8,6 +8,7 @@ import { Debris } from './entities/Debris';
 import { Particle } from './entities/Particle';
 import { CollisionManager } from './physics/CollisionManager';
 import { SphereOfInfluence } from './physics/SphereOfInfluence';
+import { TrajectoryPredictor } from './systems/TrajectoryPredictor';
 import { Vector2 } from './core/Vector2';
 import { SceneSetup } from './SceneSetup';
 
@@ -212,13 +213,13 @@ export class Game {
 
         // Render
         this.renderer.isRocketResting = this.isRocketResting; // Pass resting state for visual offset
-        this.renderer.render(this.bodies, this.particles, this.lastTime);
+        this.renderer.render(this.bodies, this.particles, this.lastTime, dt);
         this.ui.renderMinimap(this.bodies);
 
         if (this.rocket) {
             this.ui.updateRocketInfo(this.rocket);
 
-            // Update trajectory (Keplerian Orbit)
+            // Update trajectory (Keplerian Orbit or Numerical Prediction)
             if (this.renderer.showTrajectory) {
                 // Find body with dominant gravitational influence (Sphere of Influence)
                 const dominantBody = SphereOfInfluence.findDominantBody(this.rocket, this.bodies);
@@ -226,9 +227,29 @@ export class Game {
                 // Calculate orbit relative to dominant body
                 // This gives us the analytical ellipse which is perfect for stable orbits
                 this.rocket.body.parent = dominantBody;
-                this.rocket.body.orbit = OrbitUtils.calculateOrbit(this.rocket.body, dominantBody);
+                const orbit = OrbitUtils.calculateOrbit(this.rocket.body, dominantBody);
+
+                if (orbit) {
+                    // Valid elliptical orbit - use analytical solution
+                    this.rocket.body.orbit = orbit;
+                    // Clear numerical trajectory line
+                    this.renderer.updateTrajectory([], this.renderer.getCenter());
+                } else {
+                    // Escape trajectory or hyperbolic orbit - use numerical prediction
+                    this.rocket.body.orbit = null;
+                    // Use TrajectoryPredictor to generate points for visualization
+                    // IMPORTANT: Update every frame since body positions change
+                    const trajectoryPoints = TrajectoryPredictor.predict(
+                        this.rocket,
+                        this.bodies,
+                        120, // 2 minute steps (longer for Sun-scale distances)
+                        1000 // 1000 steps = ~33 hours of trajectory
+                    );
+                    this.renderer.updateTrajectory(trajectoryPoints, this.renderer.getCenter());
+                }
             } else {
                 this.rocket.body.orbit = null;
+                this.renderer.updateTrajectory([], this.renderer.getCenter());
             }
         }
 

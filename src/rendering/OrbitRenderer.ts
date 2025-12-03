@@ -50,8 +50,8 @@ export class OrbitRenderer {
             // Target segment length: ~1000 km (gives very low error)
             const circumference = 2 * Math.PI * body.orbit.a;
             const targetSegmentLength = 1000000; // 1,000 km (was 50,000 km)
-            // Clamp between 16k and 100k segments to ensure smooth updates
-            const segments = Math.min(100000, Math.max(16384, Math.ceil(circumference / targetSegmentLength)));
+            // Clamp between 16k and 200k segments to ensure smooth updates
+            const segments = Math.min(200000, Math.max(16384, Math.ceil(circumference / targetSegmentLength)));
 
             // 1. Pre-calculate orbit points in high precision (Float64)
             // Check if orbit has changed (recalculated by physics) or if not cached yet

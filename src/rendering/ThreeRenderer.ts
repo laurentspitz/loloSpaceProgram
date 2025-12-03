@@ -9,6 +9,7 @@ import { InputHandler } from './InputHandler';
 import { Background } from './Background';
 import { Debris } from '../entities/Debris';
 import { Particle } from '../entities/Particle';
+import { ThrustParticleSystem } from './ThrustParticleSystem';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -32,7 +33,7 @@ export class ThreeRenderer {
     // Visual scale multiplier for planet sizes (makes them more visible)
     visualScale: number = 3.0;
     // Specific scale for moons to ensure they are not inside the planet visually
-    moonScale: number = 10.0;
+    moonScale: number = 1.0; // No artificial scaling for moons
 
     // Display options
     showOrbits: boolean = true;
@@ -75,6 +76,7 @@ export class ThreeRenderer {
     // Helpers
     private orbitRenderer: OrbitRenderer;
     private inputHandler: InputHandler;
+    private thrustParticleSystem: ThrustParticleSystem;
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -108,6 +110,10 @@ export class ThreeRenderer {
 
         // Initialize orbit renderer
         this.orbitRenderer = new OrbitRenderer(this.scene, this.scale, this.moonScale);
+
+        // Initialize thrust particle system
+        this.thrustParticleSystem = new ThrustParticleSystem();
+        this.scene.add(this.thrustParticleSystem.getParticles());
 
         // Create background
         this.createBackground();
@@ -181,8 +187,43 @@ export class ThreeRenderer {
         );
     }
 
-    render(bodies: Body[], particles: Particle[] = [], _time: number = 0) {
+    render(bodies: Body[], particles: Particle[] = [], _time: number = 0, deltaTime: number = 0.016) {
         this.currentBodies = bodies;
+
+        // Update thrust particles
+        if (this.currentRocket) {
+            const throttle = this.currentRocket.controls.getThrottle();
+
+            // Calculate nozzle position in world space
+            const nozzleOffset = RocketRenderer.getNozzlePosition(this.currentRocket);
+
+            // The nozzle offset is along the rocket's longitudinal axis.
+            // If rocket is pointing at angle alpha, the nozzle is at position -height/2 along that angle.
+            // Physics rotation 'r' is direction of nose.
+            // Nozzle is opposite to nose.
+
+            const r = this.currentRocket.rotation;
+
+            // Rocket "Forward" is (cos(r), sin(r)).
+            // Nozzle is "Backward" * distance.
+            // Distance from center to nozzle is abs(nozzleOffset).
+            // So nozzlePos = center - Forward * distance.
+
+            // IMPORTANT: Apply visualScale because the rocket mesh is scaled visually!
+            const dist = Math.abs(nozzleOffset) * this.visualScale;
+            const nozzlePos = new THREE.Vector3(
+                this.currentRocket.body.position.x - Math.cos(r) * dist,
+                this.currentRocket.body.position.y - Math.sin(r) * dist,
+                0
+            );
+
+            // Emission direction is opposite to thrust (backward)
+            // Thrust is forward (cos(r), sin(r))
+            // So emission is (-cos(r), -sin(r))
+            const direction = new THREE.Vector3(-Math.cos(r), -Math.sin(r), 0);
+
+            this.thrustParticleSystem.update(deltaTime, throttle, nozzlePos, direction);
+        }
 
         // Update camera position
         if (this.followedBody) {
@@ -460,6 +501,9 @@ export class ThreeRenderer {
             (mesh.material as THREE.MeshBasicMaterial).opacity = p.getOpacity();
         });
 
+        // Update ThrustParticleSystem uniforms/transform
+        this.thrustParticleSystem.updateGeometry(center, this.scale);
+
         // Render rocket if present
         if (this.currentRocket) {
             this.renderRocket(this.currentRocket, center);
@@ -513,12 +557,14 @@ export class ThreeRenderer {
         const rocketScale = this.scale * this.visualScale;
         this.rocketMesh.scale.set(rocketScale, rocketScale, 1);
 
-        // Update thrust flame
+        // Update thrust flame - DEPRECATED (Replaced by particles)
         if (this.rocketFlameMesh) {
             this.rocketMesh.remove(this.rocketFlameMesh);
             this.rocketFlameMesh = null;
         }
 
+        // Old flame logic removed
+        /*
         const throttle = rocket.controls.getThrottle();
         if (throttle > 0 && rocket.engine.hasFuel()) {
             this.rocketFlameMesh = RocketRenderer.createThrustFlame(rocket, throttle);
@@ -526,6 +572,7 @@ export class ThreeRenderer {
                 this.rocketMesh.add(this.rocketFlameMesh);
             }
         }
+        */
 
         // Update velocity indicator (only show if trajectory is enabled)
         if (!this.velocityIndicator) {

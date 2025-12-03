@@ -33,7 +33,7 @@ export class PartRegistry {
             height: mk1Height,
             stats: {
                 mass: 800,
-                cost: 600
+                cost: 25000000
             },
             nodes: [
                 { id: 'bottom', position: new Vector2(0, -mk1Height / 2 + 9 * SCALE), direction: new Vector2(0, -1), type: 'bottom' }
@@ -52,7 +52,7 @@ export class PartRegistry {
             height: tankHeight,
             stats: {
                 mass: 500, // Dry mass (500kg)
-                cost: 3000,
+                cost: 300000,
                 fuel: 32000 // Fuel mass
             },
             nodes: [
@@ -73,7 +73,7 @@ export class PartRegistry {
             height: engineHeight,
             stats: {
                 mass: 1250,
-                cost: 1100,
+                cost: 2000000,
                 thrust: 600000, // 600 kN (increased for better TWR)
                 isp: 300
             },
@@ -94,7 +94,7 @@ export class PartRegistry {
             height: decouplerHeight,
             stats: {
                 mass: 50,
-                cost: 400
+                cost: 50000
             },
             nodes: [
                 { id: 'top', position: new Vector2(0, decouplerHeight / 2), direction: new Vector2(0, 1), type: 'top' },

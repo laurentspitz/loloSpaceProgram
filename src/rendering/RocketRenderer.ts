@@ -164,6 +164,37 @@ export class RocketRenderer {
 
         return flame;
     }
+
+    /**
+     * Get the position of the engine nozzle relative to the rocket center
+     * Returns Y offset (negative value)
+     */
+    static getNozzlePosition(rocket: Rocket): number {
+        let nozzleY = 0;
+
+        if (rocket.partStack && rocket.partStack.length > 0) {
+            // Find bottom of the rocket
+            const positions = rocket.partStack.map(p => p.position.y);
+            const minY = Math.min(...positions.map((y, i) => y - rocket.partStack![i].definition.height / 2));
+            const maxY = Math.max(...positions.map((y, i) => y + rocket.partStack![i].definition.height / 2));
+            const centerOffset = (maxY + minY) / 2;
+
+            // Nozzle is at the bottom
+            nozzleY = minY - centerOffset;
+        } else {
+            // Default rocket logic (must match createRocketMesh)
+            const totalHeight = rocket.engineHeight + rocket.tankHeight + rocket.capsuleHeight;
+            const centerOffset = totalHeight / 2;
+
+            // Engine is at the bottom. Bottom Y is -centerOffset.
+            // We want the nozzle to be slightly below the engine sprite or at its bottom edge.
+            nozzleY = -centerOffset;
+        }
+
+        return nozzleY;
+    }
+
+
     /**
      * Create velocity vector indicator
      */

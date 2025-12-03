@@ -429,4 +429,34 @@ export class TextureGenerator {
         // Default fallback
         return 0xffffff;
     }
+    /**
+     * Create a soft glow texture for particles
+     */
+    static createParticleTexture(): THREE.CanvasTexture {
+        const size = 128; // Larger texture for better quality
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        // Radial gradient for soft glow
+        const gradient = ctx.createRadialGradient(
+            size / 2, size / 2, 0,
+            size / 2, size / 2, size / 2
+        );
+
+        // Very soft core
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.9)');
+        gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.4)');
+        gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.1)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
 }
