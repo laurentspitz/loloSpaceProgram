@@ -12,6 +12,7 @@ export class Rocket {
     body: Body;
     engine: RocketEngine;
     controls: RocketControls;
+    targetBody: Body | null = null;
 
     // Rocket state
     rotation: number = Math.PI / 2; // Angle in radians (starts pointing up)

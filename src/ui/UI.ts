@@ -5,6 +5,8 @@ import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
 import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 
+import { Rocket } from '../entities/Rocket';
+
 export class UI {
     renderer: Renderer | ThreeRenderer;
     minimapCanvas!: HTMLCanvasElement;
@@ -26,11 +28,11 @@ export class UI {
     soiDisplay: HTMLElement | null = null;
     deltaVDisplay: HTMLElement | null = null;
     massDisplay: HTMLElement | null = null;
-    currentRocket: any = null; // Reference to rocket for throttle control
+    currentRocket: Rocket | null = null; // Reference to rocket for throttle control
     fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
 
     // Autopilot state
-    autopilotMode: 'off' | 'prograde' | 'retrograde' = 'off';
+    autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' = 'off';
 
     // Navball
     navballRenderer: NavballRenderer | null = null;
@@ -46,8 +48,11 @@ export class UI {
         this.initializeNavball();
     }
 
-    init(bodies: Body[]) {
+    init(bodies: Body[], rocket?: Rocket) {
         this.bodies = bodies;
+        if (rocket) {
+            this.currentRocket = rocket;
+        }
         this.createSelectionDropdown();
     }
 
@@ -307,6 +312,19 @@ export class UI {
                 this.placeRocketInOrbit(body);
             };
             row.appendChild(orbitBtn);
+        }
+
+        // Target button (for all bodies except Sun)
+        if (body.name !== 'Sun') {
+            const targetBtn = document.createElement('button');
+            targetBtn.innerText = '🎯';
+            targetBtn.title = `Set ${body.name} as Target`;
+            targetBtn.style.padding = '2px 8px';
+            targetBtn.style.fontSize = '12px';
+            targetBtn.onclick = () => {
+                this.setTarget(body);
+            };
+            row.appendChild(targetBtn);
         }
 
         parent.appendChild(row);
@@ -867,18 +885,33 @@ export class UI {
 
         // Autopilot: Auto-orient to prograde or retrograde
         if (this.autopilotMode !== 'off' && nearestBody) {
-            const velocityVector = rocket.body.velocity.sub(nearestBody.velocity);
+            // Use target body for velocity reference if set
+            const referenceBody = rocket.targetBody || nearestBody;
+            const velocityVector = rocket.body.velocity.sub(referenceBody.velocity);
             const speed = velocityVector.mag();
 
-            if (speed > 1) { // Only autopilot if moving
-                // Calculate target angle
-                let targetAngle = Math.atan2(velocityVector.y, velocityVector.x);
+            let targetAngle: number | null = null;
+
+            if ((this.autopilotMode === 'prograde' || this.autopilotMode === 'retrograde') && speed > 1) {
+                // Calculate target angle based on velocity
+                targetAngle = Math.atan2(velocityVector.y, velocityVector.x);
 
                 // For retrograde, add 180 degrees
                 if (this.autopilotMode === 'retrograde') {
                     targetAngle += Math.PI;
                 }
+            } else if ((this.autopilotMode === 'target' || this.autopilotMode === 'anti-target') && rocket.targetBody) {
+                // Calculate vector to target
+                const targetVector = rocket.targetBody.position.sub(rocket.body.position);
+                targetAngle = Math.atan2(targetVector.y, targetVector.x);
 
+                if (this.autopilotMode === 'anti-target') {
+                    targetAngle += Math.PI;
+                }
+            }
+
+            // Apply rotation if we have a target angle
+            if (targetAngle !== null) {
                 // Normalize angles to -PI to PI
                 targetAngle = ((targetAngle + Math.PI) % (2 * Math.PI)) - Math.PI;
                 let currentAngle = ((rocket.rotation + Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -904,8 +937,21 @@ export class UI {
         // Update navball
         if (this.navballRenderer && nearestBody) {
             this.navballRenderer.setRocket(rocket);
-            const velocityVector = rocket.body.velocity.sub(nearestBody.velocity);
+            // Use target body for velocity reference if set
+            const referenceBody = rocket.targetBody || nearestBody;
+            const velocityVector = rocket.body.velocity.sub(referenceBody.velocity);
             this.navballRenderer.render(rocket, velocityVector, nearestBody);
+        }
+    }
+
+    setTarget(body: any) {
+        // Find rocket
+        let rocket = (this.renderer as any).currentRocket || this.currentRocket;
+        if (rocket) {
+            rocket.targetBody = body;
+            console.log(`Target set to ${body.name}`, rocket);
+        } else {
+            console.error('setTarget: No rocket found!');
         }
     }
 
@@ -935,14 +981,20 @@ export class UI {
         container.style.gap = '10px';
 
         // Helper function to create icon canvas
-        const createIconCanvas = (type: 'prograde' | 'retrograde'): HTMLCanvasElement => {
+        const createIconCanvas = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target'): HTMLCanvasElement => {
             const canvas = document.createElement('canvas');
             canvas.width = 40;
             canvas.height = 40;
             const ctx = canvas.getContext('2d')!;
 
-            // Draw circle
-            ctx.strokeStyle = '#FFD700';
+            if (type === 'prograde' || type === 'retrograde') {
+                ctx.strokeStyle = '#FFD700'; // Yellow
+                ctx.fillStyle = '#FFD700';
+            } else {
+                ctx.strokeStyle = '#C71585'; // MediumVioletRed (Purple-ish)
+                ctx.fillStyle = '#C71585';
+            }
+
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(20, 20, 12, 0, Math.PI * 2);
@@ -950,12 +1002,24 @@ export class UI {
 
             if (type === 'prograde') {
                 // Draw center dot
-                ctx.fillStyle = '#FFD700';
                 ctx.beginPath();
                 ctx.arc(20, 20, 4, 0, Math.PI * 2);
                 ctx.fill();
-            } else {
+            } else if (type === 'retrograde') {
                 // Draw X
+                ctx.beginPath();
+                ctx.moveTo(13, 13);
+                ctx.lineTo(27, 27);
+                ctx.moveTo(27, 13);
+                ctx.lineTo(13, 27);
+                ctx.stroke();
+            } else if (type === 'target') {
+                // Draw center dot (Target)
+                ctx.beginPath();
+                ctx.arc(20, 20, 4, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type === 'anti-target') {
+                // Draw X (Anti-Target)
                 ctx.beginPath();
                 ctx.moveTo(13, 13);
                 ctx.lineTo(27, 27);
@@ -988,7 +1052,10 @@ export class UI {
             } else {
                 this.autopilotMode = 'prograde';
                 progradeBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                progradeBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
                 retroBtn.style.boxShadow = 'none';
+                targetBtn.style.boxShadow = 'none';
+                antiTargetBtn.style.boxShadow = 'none';
             }
         };
 
@@ -1013,16 +1080,77 @@ export class UI {
             } else {
                 this.autopilotMode = 'retrograde';
                 retroBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                retroBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
                 progradeBtn.style.boxShadow = 'none';
+                targetBtn.style.boxShadow = 'none';
+                antiTargetBtn.style.boxShadow = 'none';
+            }
+        };
+
+        // Target button
+        const targetBtn = document.createElement('button');
+        targetBtn.style.width = '40px';
+        targetBtn.style.height = '40px';
+        targetBtn.style.padding = '0';
+        targetBtn.style.cursor = 'pointer';
+        targetBtn.style.backgroundColor = 'transparent';
+        targetBtn.style.border = 'none';
+        targetBtn.style.borderRadius = '4px';
+        targetBtn.title = 'Target: Auto-align to target';
+
+        const targetCanvas = createIconCanvas('target');
+        targetBtn.appendChild(targetCanvas);
+
+        targetBtn.onclick = () => {
+            if (this.autopilotMode === 'target') {
+                this.autopilotMode = 'off';
+                targetBtn.style.boxShadow = 'none';
+            } else {
+                this.autopilotMode = 'target';
+                targetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.8)';
+                progradeBtn.style.boxShadow = 'none';
+                retroBtn.style.boxShadow = 'none';
+                antiTargetBtn.style.boxShadow = 'none';
+            }
+        };
+
+        // Anti-Target button
+        const antiTargetBtn = document.createElement('button');
+        antiTargetBtn.style.width = '40px';
+        antiTargetBtn.style.height = '40px';
+        antiTargetBtn.style.padding = '0';
+        antiTargetBtn.style.cursor = 'pointer';
+        antiTargetBtn.style.backgroundColor = 'transparent';
+        antiTargetBtn.style.border = 'none';
+        antiTargetBtn.style.borderRadius = '4px';
+        antiTargetBtn.title = 'Anti-Target: Auto-align away from target';
+
+        const antiTargetCanvas = createIconCanvas('anti-target');
+        antiTargetBtn.appendChild(antiTargetCanvas);
+
+        antiTargetBtn.onclick = () => {
+            if (this.autopilotMode === 'anti-target') {
+                this.autopilotMode = 'off';
+                antiTargetBtn.style.boxShadow = 'none';
+            } else {
+                this.autopilotMode = 'anti-target';
+                antiTargetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.8)';
+                progradeBtn.style.boxShadow = 'none';
+                retroBtn.style.boxShadow = 'none';
+                targetBtn.style.boxShadow = 'none';
             }
         };
 
         // Store button references for updating state
         (this as any).progradeBtn = progradeBtn;
         (this as any).retroBtn = retroBtn;
+        (this as any).targetBtn = targetBtn;
+        (this as any).antiTargetBtn = antiTargetBtn;
 
         container.appendChild(progradeBtn);
         container.appendChild(retroBtn);
+        container.appendChild(targetBtn);
+        container.appendChild(antiTargetBtn);
         document.body.appendChild(container);
 
         // Add keyboard listener to disable autopilot on manual rotation
@@ -1032,6 +1160,8 @@ export class UI {
                     this.autopilotMode = 'off';
                     progradeBtn.style.boxShadow = 'none';
                     retroBtn.style.boxShadow = 'none';
+                    targetBtn.style.boxShadow = 'none';
+                    antiTargetBtn.style.boxShadow = 'none';
                 }
             }
         });

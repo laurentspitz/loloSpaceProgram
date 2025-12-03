@@ -88,7 +88,7 @@ export class Game {
         };
 
         this.renderer.currentRocket = this.rocket;
-        this.ui.init(this.bodies);
+        this.ui.init(this.bodies, this.rocket || undefined);
 
         // Start with camera following rocket
         this.renderer.followedBody = this.rocket!.body;

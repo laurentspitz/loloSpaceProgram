@@ -131,6 +131,11 @@ export class NavballRenderer {
         // We keep the rotation so we draw in "Rocket Space" (Up = Forward)
         this.drawMarkers(rocket, velocityVector, nearestBody, navballRotation);
 
+        // Draw target markers if target is set
+        if (rocket.targetBody) {
+            this.drawTargetMarkers(rocket, navballRotation);
+        }
+
         // Draw central crosshair (not rotated - screen space)
         this.ctx.save();
         this.ctx.rotate(-navballRotation);
@@ -290,6 +295,93 @@ export class NavballRenderer {
                 this.ctx.fillText('RETRO', x, y + 20);
             }
         }
+    }
+
+
+    /**
+     * Draw target markers (Target and Anti-Target)
+     */
+    private drawTargetMarkers(rocket: Rocket, _navballRotation: number) {
+        if (!rocket.targetBody) return;
+
+        const targetVector = rocket.targetBody.position.sub(rocket.body.position);
+
+        // Calculate angle difference between target vector and rocket heading
+        const targetAngle = Math.atan2(targetVector.y, targetVector.x);
+        const rocketAngle = rocket.rotation;
+
+        // Relative angle in [-PI, PI]
+        let relativeAngle = targetAngle - rocketAngle;
+        while (relativeAngle > Math.PI) relativeAngle -= Math.PI * 2;
+        while (relativeAngle < -Math.PI) relativeAngle += Math.PI * 2;
+
+        // Target Marker (Purple Circle + Dot)
+        if (Math.abs(relativeAngle) < Math.PI / 2) {
+            // Front hemisphere
+            const x = Math.sin(relativeAngle) * this.radius;
+            const y = 0;
+
+            this.drawTargetMarker(x, y);
+
+            this.ctx.fillStyle = '#C71585';
+            this.ctx.font = 'bold 10px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('TGT', x, y + 20);
+        }
+
+        // Anti-Target Marker (Opposite)
+        let antiTargetAngle = relativeAngle + Math.PI;
+        while (antiTargetAngle > Math.PI) antiTargetAngle -= Math.PI * 2;
+        while (antiTargetAngle < -Math.PI) antiTargetAngle += Math.PI * 2;
+
+        if (Math.abs(antiTargetAngle) < Math.PI / 2) {
+            // Front hemisphere (Anti-Target is in front)
+            const x = Math.sin(antiTargetAngle) * this.radius;
+            const y = 0;
+
+            this.drawAntiTargetMarker(x, y);
+
+            this.ctx.fillStyle = '#C71585';
+            this.ctx.font = 'bold 10px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('ANTI-TGT', x, y + 20);
+        }
+    }
+
+    /**
+     * Draw target marker (purple circle with dot)
+     */
+    private drawTargetMarker(x: number, y: number) {
+        this.ctx.strokeStyle = '#C71585';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+        this.ctx.stroke();
+
+        // Inner dot
+        this.ctx.fillStyle = '#C71585';
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    /**
+     * Draw anti-target marker (purple circle with X)
+     */
+    private drawAntiTargetMarker(x: number, y: number) {
+        this.ctx.strokeStyle = '#C71585';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+        this.ctx.stroke();
+
+        // X through circle
+        this.ctx.beginPath();
+        this.ctx.moveTo(x - 7, y - 7);
+        this.ctx.lineTo(x + 7, y + 7);
+        this.ctx.moveTo(x + 7, y - 7);
+        this.ctx.lineTo(x - 7, y + 7);
+        this.ctx.stroke();
     }
 
 
