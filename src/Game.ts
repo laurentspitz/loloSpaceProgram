@@ -11,6 +11,7 @@ import { SphereOfInfluence } from './physics/SphereOfInfluence';
 import { TrajectoryPredictor } from './systems/TrajectoryPredictor';
 import { Vector2 } from './core/Vector2';
 import { SceneSetup } from './SceneSetup';
+import { ManeuverNodeManager } from './systems/ManeuverNodeManager';
 
 
 export class Game {
@@ -21,6 +22,7 @@ export class Game {
     ui: UI;
     rocket: Rocket | null = null;
     collisionManager: CollisionManager;
+    maneuverNodeManager: ManeuverNodeManager;
     isRocketResting: boolean = false; // Track if rocket is resting on surface
     restingOn: Body | null = null; // Which body is rocket resting on
     lastTime: number = 0;
@@ -59,6 +61,7 @@ export class Game {
 
         this.renderer = new ThreeRenderer(canvas);
         this.ui = new UI(this.renderer);
+        this.maneuverNodeManager = new ManeuverNodeManager();
 
         // Connect UI time warp controls
         this.ui.onTimeWarpChange = (factor: number) => {
@@ -88,7 +91,7 @@ export class Game {
         };
 
         this.renderer.currentRocket = this.rocket;
-        this.ui.init(this.bodies, this.rocket || undefined);
+        this.ui.init(this.bodies, this.rocket || undefined, this.maneuverNodeManager);
 
         // Start with camera following rocket
         this.renderer.followedBody = this.rocket!.body;
@@ -232,8 +235,34 @@ export class Game {
                 if (orbit) {
                     // Valid elliptical orbit - use analytical solution
                     this.rocket.body.orbit = orbit;
-                    // Clear numerical trajectory line
-                    this.renderer.updateTrajectory([], this.renderer.getCenter());
+
+                    // Check if we have maneuver nodes
+                    if (this.maneuverNodeManager.nodes.length > 0) {
+                        // Predict trajectory with maneuvers
+                        const prediction = this.maneuverNodeManager.predictTrajectoryWithManeuvers(
+                            this.rocket,
+                            this.bodies,
+                            100, // Time step (100s for long range)
+                            20000 // Number of steps (2,000,000s = ~23 days)
+                        );
+                        this.renderer.updateManeuverTrajectory(prediction.segments, prediction.colors);
+                    } else {
+                        // Clear maneuver trajectory (keep current orbit visible)
+                        this.renderer.updateManeuverTrajectory([], []);
+                    }
+
+                    // Update maneuver node visuals
+                    if (this.renderer instanceof ThreeRenderer && this.ui.maneuverNodeUI) {
+                        // Update hover state each frame to keep ghost node under mouse
+                        this.ui.maneuverNodeUI.update();
+
+                        this.renderer.updateManeuverNodes(
+                            this.maneuverNodeManager.nodes,
+                            this.ui.maneuverNodeUI.getHoverPosition(),
+                            this.ui.maneuverNodeUI.hoveredNodeId,
+                            this.ui.maneuverNodeUI.selectedNodeId
+                        );
+                    }
                 } else {
                     // Escape trajectory or hyperbolic orbit - use numerical prediction
                     this.rocket.body.orbit = null;

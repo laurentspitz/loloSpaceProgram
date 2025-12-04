@@ -4,6 +4,9 @@ import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
 import { SphereOfInfluence } from '../physics/SphereOfInfluence';
+import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
+import { ManeuverNode } from '../systems/ManeuverNode';
+import { ManeuverNodeUI } from './ManeuverNodeUI';
 
 import { Rocket } from '../entities/Rocket';
 
@@ -32,10 +35,14 @@ export class UI {
     fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
 
     // Autopilot state
-    autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' = 'off';
+    autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver' = 'off';
 
     // Navball
     navballRenderer: NavballRenderer | null = null;
+
+    // Maneuver nodes
+    maneuverNodeManager: ManeuverNodeManager | null = null;
+    maneuverNodeUI: ManeuverNodeUI | null = null;
 
     constructor(renderer: Renderer | ThreeRenderer) {
         this.renderer = renderer;
@@ -48,11 +55,25 @@ export class UI {
         this.initializeNavball();
     }
 
-    init(bodies: Body[], rocket?: Rocket) {
+    init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager) {
         this.bodies = bodies;
         if (rocket) {
             this.currentRocket = rocket;
         }
+        if (maneuverNodeManager) {
+            this.maneuverNodeManager = maneuverNodeManager;
+        }
+
+        if (this.maneuverNodeManager && this.currentRocket) {
+            this.maneuverNodeUI = new ManeuverNodeUI(this.maneuverNodeManager);
+            this.maneuverNodeUI.init(this.currentRocket, this.bodies, this.renderer);
+            this.maneuverNodeUI.onNodeChanged = () => {
+                if (this.renderer instanceof ThreeRenderer) {
+                    this.renderer.showTrajectory = true;
+                }
+            };
+        }
+
         this.createSelectionDropdown();
     }
 
@@ -93,10 +114,54 @@ export class UI {
             }
         };
 
+        // Add Maneuver Node button (temporary for testing)
+        const maneuverBtn = document.createElement('button');
+        maneuverBtn.innerText = '🎯 Add Maneuver';
+        maneuverBtn.style.backgroundColor = '#4a9eff';
+        maneuverBtn.style.color = 'white';
+        maneuverBtn.style.fontWeight = 'bold';
+        maneuverBtn.onclick = () => {
+            if (this.maneuverNodeManager && this.currentRocket) {
+                const orbit = this.currentRocket.body.orbit;
+                const parent = this.currentRocket.body.parent;
+
+                if (!orbit || !parent) return;
+
+                // Calculate position 30 minutes ahead
+                const orbitTime = 1800; // 30 minutes
+                const mu = 6.67430e-11 * parent.mass;
+                const n = Math.sqrt(mu / Math.pow(orbit.a, 3));
+                const currentM = this.currentRocket.body.meanAnomaly || 0;
+                const futureM = currentM + n * orbitTime;
+
+                let E = futureM;
+                for (let i = 0; i < 5; i++) {
+                    E = E - (E - orbit.e * Math.sin(E) - futureM) / (1 - orbit.e * Math.cos(E));
+                }
+
+                const x = orbit.a * (Math.cos(E) - orbit.e);
+                const y = orbit.b * Math.sin(E);
+
+                const node = new ManeuverNode(E, { x, y }, orbitTime);
+                node.progradeΔv = 50; // Default 50 m/s prograde
+                this.maneuverNodeManager.addNode(node);
+
+                // Show editor
+                if (this.maneuverNodeUI) {
+                    this.maneuverNodeUI.selectNode(node.id);
+                }
+
+                alert('Maneuver node created! Adjust delta-v in the panel.');
+            } else {
+                alert('Need rocket and maneuver manager');
+            }
+        };
+
         container.appendChild(zoomInBtn);
         container.appendChild(zoomOutBtn);
         container.appendChild(orbitBtn);
         container.appendChild(focusRocketBtn);
+        container.appendChild(maneuverBtn);
         document.body.appendChild(container);
 
         // Time Warp Controls
@@ -517,26 +582,14 @@ export class UI {
                 // Update dropdown
                 const select = document.getElementById('planet-select') as HTMLSelectElement;
                 if (select) select.value = clickedBody.name;
-                return; // Don't start drag if clicked on body? Or maybe allow both?
+                return; // Don't start drag if clicked on body
             }
 
-            // If we are following a body, clicking elsewhere might break follow?
-            // Or maybe drag breaks follow?
-            // Let's say drag breaks follow.
-
+            // Only start dragging if we didn't click on a body
             isDragging = true;
             lastPos = new Vector2(e.clientX, e.clientY);
 
-            if (this.renderer.followedBody) {
-                this.renderer.followedBody = null;
-                const select = document.getElementById('planet-select') as HTMLSelectElement;
-                if (select) select.value = "";
-
-                // We need to set offset to current position so it doesn't jump
-                // Current center was followedBody.position
-                // New offset should be followedBody.position
-                this.renderer.offset = this.renderer.getCenter();
-            }
+            // Don't remove follow on mousedown - only on actual drag movement
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -544,7 +597,23 @@ export class UI {
             const currentPos = new Vector2(e.clientX, e.clientY);
             const delta = currentPos.sub(lastPos);
 
-            this.renderer.offset = this.renderer.offset.sub(delta.scale(1 / this.renderer.scale));
+            // Only break follow if we've actually moved (not just a click)
+            if (delta.mag() > 2 && this.renderer.followedBody) {
+                this.renderer.followedBody = null;
+                const select = document.getElementById('planet-select') as HTMLSelectElement;
+                if (select) select.value = "";
+
+                // Set offset to current position so it doesn't jump
+                this.renderer.offset = this.renderer.getCenter();
+            }
+
+            const scaledDelta = delta.scale(1 / this.renderer.scale);
+            // X is subtracted (drag right -> move camera left -> map moves right)
+            // Y is added (drag down -> move camera up -> map moves down) because Y is inverted in renderer
+            this.renderer.offset = new Vector2(
+                this.renderer.offset.x - scaledDelta.x,
+                this.renderer.offset.y + scaledDelta.y
+            );
 
             lastPos = currentPos;
         });
@@ -896,7 +965,7 @@ export class UI {
                 // Calculate target angle based on velocity
                 targetAngle = Math.atan2(velocityVector.y, velocityVector.x);
 
-                // For retrograde, add 180 degrees
+                //For retrograde, add 180 degrees
                 if (this.autopilotMode === 'retrograde') {
                     targetAngle += Math.PI;
                 }
@@ -907,6 +976,13 @@ export class UI {
 
                 if (this.autopilotMode === 'anti-target') {
                     targetAngle += Math.PI;
+                }
+            } else if (this.autopilotMode === 'maneuver' && this.maneuverNodeUI) {
+                // Align with maneuver node delta-v direction
+                const nodes = this.maneuverNodeUI.manager.nodes;
+                if (nodes.length > 0) {
+                    const node = nodes[0];
+                    targetAngle = node.getΔvDirection(rocket, this.bodies);
                 }
             }
 
@@ -937,6 +1013,11 @@ export class UI {
         // Update navball
         if (this.navballRenderer && nearestBody) {
             this.navballRenderer.setRocket(rocket);
+            // Pass maneuver nodes to navball
+            if (this.maneuverNodeUI) {
+                const nodes = this.maneuverNodeUI.manager.nodes;
+                this.navballRenderer.setManeuverNodes(nodes, this.bodies);
+            }
             // Use target body for velocity reference if set
             const referenceBody = rocket.targetBody || nearestBody;
             const velocityVector = rocket.body.velocity.sub(referenceBody.velocity);
@@ -974,104 +1055,98 @@ export class UI {
         // Create container for autopilot buttons
         const container = document.createElement('div');
         container.style.position = 'absolute';
-        container.style.left = `${navballRect.left - 60}px`; // 60px to the left of navball
-        container.style.top = `${navballCenterY - 50}px`; // Center vertically (-50 = half of total height)
-        container.style.display = 'flex';
-        container.style.flexDirection = 'column';
-        container.style.gap = '10px';
+        container.style.left = `${navballRect.left - 80}px`;
+        container.style.top = `${navballCenterY - 60}px`;
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = 'repeat(2, 36px)';
+        container.style.gap = '8px';
 
         // Helper function to create icon canvas
-        const createIconCanvas = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target'): HTMLCanvasElement => {
+        const createIconCanvas = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver'): HTMLCanvasElement => {
             const canvas = document.createElement('canvas');
-            canvas.width = 40;
-            canvas.height = 40;
+            canvas.width = 32;
+            canvas.height = 32;
             const ctx = canvas.getContext('2d')!;
 
+            let strokeColor: string;
+            let fillColor: string;
+
             if (type === 'prograde' || type === 'retrograde') {
-                ctx.strokeStyle = '#FFD700'; // Yellow
-                ctx.fillStyle = '#FFD700';
+                strokeColor = '#FFD700';
+                fillColor = '#FFD700';
+            } else if (type === 'maneuver') {
+                strokeColor = '#00FFFF';
+                fillColor = '#00FFFF';
             } else {
-                ctx.strokeStyle = '#C71585'; // MediumVioletRed (Purple-ish)
-                ctx.fillStyle = '#C71585';
+                strokeColor = '#C71585';
+                fillColor = '#C71585';
             }
 
+            ctx.strokeStyle = strokeColor;
+            ctx.fillStyle = fillColor;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(20, 20, 12, 0, Math.PI * 2);
+            ctx.arc(16, 16, 10, 0, Math.PI * 2);
             ctx.stroke();
 
-            if (type === 'prograde') {
+            if (type === 'prograde' || type === 'target' || type === 'maneuver') {
                 // Draw center dot
                 ctx.beginPath();
-                ctx.arc(20, 20, 4, 0, Math.PI * 2);
+                ctx.arc(16, 16, 3, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (type === 'retrograde') {
+            } else if (type === 'retrograde' || type === 'anti-target') {
                 // Draw X
                 ctx.beginPath();
-                ctx.moveTo(13, 13);
-                ctx.lineTo(27, 27);
-                ctx.moveTo(27, 13);
-                ctx.lineTo(13, 27);
-                ctx.stroke();
-            } else if (type === 'target') {
-                // Draw center dot (Target)
-                ctx.beginPath();
-                ctx.arc(20, 20, 4, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (type === 'anti-target') {
-                // Draw X (Anti-Target)
-                ctx.beginPath();
-                ctx.moveTo(13, 13);
-                ctx.lineTo(27, 27);
-                ctx.moveTo(27, 13);
-                ctx.lineTo(13, 27);
+                ctx.moveTo(10, 10);
+                ctx.lineTo(22, 22);
+                ctx.moveTo(22, 10);
+                ctx.lineTo(10, 22);
                 ctx.stroke();
             }
 
             return canvas;
         };
 
-        // Prograde button
-        const progradeBtn = document.createElement('button');
-        progradeBtn.style.width = '40px';
-        progradeBtn.style.height = '40px';
-        progradeBtn.style.padding = '0';
-        progradeBtn.style.cursor = 'pointer';
-        progradeBtn.style.backgroundColor = 'transparent';
-        progradeBtn.style.border = 'none';
-        progradeBtn.style.borderRadius = '4px';
-        progradeBtn.title = 'Prograde: Auto-align with velocity';
+        // Helper to create styled button
+        const createAutopilotButton = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver', title: string) => {
+            const btn = document.createElement('button');
+            btn.style.width = '32px';
+            btn.style.height = '32px';
+            btn.style.padding = '0';
+            btn.style.cursor = 'pointer';
+            btn.style.backgroundColor = 'transparent';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '0';
+            btn.style.transition = 'filter 0.2s ease';
+            btn.title = title;
 
-        const progradeCanvas = createIconCanvas('prograde');
-        progradeBtn.appendChild(progradeCanvas);
+            const canvas = createIconCanvas(type);
+            btn.appendChild(canvas);
 
+            return btn;
+        };
+
+        // Create all autopilot buttons using helper
+        const progradeBtn = createAutopilotButton('prograde', 'Prograde: Auto-align with velocity');
+        const retroBtn = createAutopilotButton('retrograde', 'Retrograde: Auto-align opposite to velocity');
+        const targetBtn = createAutopilotButton('target', 'Target: Auto-align toward target');
+        const antiTargetBtn = createAutopilotButton('anti-target', 'Anti-Target: Auto-align away from target');
+        const maneuverBtn = createAutopilotButton('maneuver', 'Maneuver: Auto-align with maneuver node');
+
+        // Set up click handlers
         progradeBtn.onclick = () => {
             if (this.autopilotMode === 'prograde') {
                 this.autopilotMode = 'off';
                 progradeBtn.style.boxShadow = 'none';
             } else {
                 this.autopilotMode = 'prograde';
-                progradeBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
-                progradeBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                progradeBtn.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.9)';
                 retroBtn.style.boxShadow = 'none';
                 targetBtn.style.boxShadow = 'none';
                 antiTargetBtn.style.boxShadow = 'none';
+                maneuverBtn.style.boxShadow = 'none';
             }
         };
-
-        // Retrograde button
-        const retroBtn = document.createElement('button');
-        retroBtn.style.width = '40px';
-        retroBtn.style.height = '40px';
-        retroBtn.style.padding = '0';
-        retroBtn.style.cursor = 'pointer';
-        retroBtn.style.backgroundColor = 'transparent';
-        retroBtn.style.border = 'none';
-        retroBtn.style.borderRadius = '4px';
-        retroBtn.title = 'Retrograde: Auto-align opposite to velocity';
-
-        const retroCanvas = createIconCanvas('retrograde');
-        retroBtn.appendChild(retroCanvas);
 
         retroBtn.onclick = () => {
             if (this.autopilotMode === 'retrograde') {
@@ -1079,27 +1154,13 @@ export class UI {
                 retroBtn.style.boxShadow = 'none';
             } else {
                 this.autopilotMode = 'retrograde';
-                retroBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
-                retroBtn.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+                retroBtn.style.boxShadow = '0 0 15px rgba(255, 215, 0, 0.9)';
                 progradeBtn.style.boxShadow = 'none';
                 targetBtn.style.boxShadow = 'none';
                 antiTargetBtn.style.boxShadow = 'none';
+                maneuverBtn.style.boxShadow = 'none';
             }
         };
-
-        // Target button
-        const targetBtn = document.createElement('button');
-        targetBtn.style.width = '40px';
-        targetBtn.style.height = '40px';
-        targetBtn.style.padding = '0';
-        targetBtn.style.cursor = 'pointer';
-        targetBtn.style.backgroundColor = 'transparent';
-        targetBtn.style.border = 'none';
-        targetBtn.style.borderRadius = '4px';
-        targetBtn.title = 'Target: Auto-align to target';
-
-        const targetCanvas = createIconCanvas('target');
-        targetBtn.appendChild(targetCanvas);
 
         targetBtn.onclick = () => {
             if (this.autopilotMode === 'target') {
@@ -1107,26 +1168,13 @@ export class UI {
                 targetBtn.style.boxShadow = 'none';
             } else {
                 this.autopilotMode = 'target';
-                targetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.8)';
+                targetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.9)';
                 progradeBtn.style.boxShadow = 'none';
                 retroBtn.style.boxShadow = 'none';
                 antiTargetBtn.style.boxShadow = 'none';
+                maneuverBtn.style.boxShadow = 'none';
             }
         };
-
-        // Anti-Target button
-        const antiTargetBtn = document.createElement('button');
-        antiTargetBtn.style.width = '40px';
-        antiTargetBtn.style.height = '40px';
-        antiTargetBtn.style.padding = '0';
-        antiTargetBtn.style.cursor = 'pointer';
-        antiTargetBtn.style.backgroundColor = 'transparent';
-        antiTargetBtn.style.border = 'none';
-        antiTargetBtn.style.borderRadius = '4px';
-        antiTargetBtn.title = 'Anti-Target: Auto-align away from target';
-
-        const antiTargetCanvas = createIconCanvas('anti-target');
-        antiTargetBtn.appendChild(antiTargetCanvas);
 
         antiTargetBtn.onclick = () => {
             if (this.autopilotMode === 'anti-target') {
@@ -1134,10 +1182,25 @@ export class UI {
                 antiTargetBtn.style.boxShadow = 'none';
             } else {
                 this.autopilotMode = 'anti-target';
-                antiTargetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.8)';
+                antiTargetBtn.style.boxShadow = '0 0 15px rgba(199, 21, 133, 0.9)';
                 progradeBtn.style.boxShadow = 'none';
                 retroBtn.style.boxShadow = 'none';
                 targetBtn.style.boxShadow = 'none';
+                maneuverBtn.style.boxShadow = 'none';
+            }
+        };
+
+        maneuverBtn.onclick = () => {
+            if (this.autopilotMode === 'maneuver') {
+                this.autopilotMode = 'off';
+                maneuverBtn.style.boxShadow = 'none';
+            } else {
+                this.autopilotMode = 'maneuver';
+                maneuverBtn.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.9)';
+                progradeBtn.style.boxShadow = 'none';
+                retroBtn.style.boxShadow = 'none';
+                targetBtn.style.boxShadow = 'none';
+                antiTargetBtn.style.boxShadow = 'none';
             }
         };
 
@@ -1146,11 +1209,13 @@ export class UI {
         (this as any).retroBtn = retroBtn;
         (this as any).targetBtn = targetBtn;
         (this as any).antiTargetBtn = antiTargetBtn;
+        (this as any).maneuverBtn = maneuverBtn;
 
         container.appendChild(progradeBtn);
         container.appendChild(retroBtn);
         container.appendChild(targetBtn);
         container.appendChild(antiTargetBtn);
+        container.appendChild(maneuverBtn);
         document.body.appendChild(container);
 
         // Add keyboard listener to disable autopilot on manual rotation

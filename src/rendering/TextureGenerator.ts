@@ -459,4 +459,47 @@ export class TextureGenerator {
         texture.needsUpdate = true;
         return texture;
     }
+
+    /**
+     * Create a target icon for maneuver nodes
+     */
+    static createManeuverIcon(): THREE.CanvasTexture {
+        const size = 64;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        const center = size / 2;
+
+        // Clear
+        ctx.clearRect(0, 0, size, size);
+
+        // Outer ring
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(center, center, size * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner dot
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(center, center, size * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Crosshair
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(center - size * 0.5, center);
+        ctx.lineTo(center - size * 0.25, center);
+        ctx.moveTo(center + size * 0.25, center);
+        ctx.lineTo(center + size * 0.5, center);
+        ctx.moveTo(center, center - size * 0.5);
+        ctx.lineTo(center, center - size * 0.25);
+        ctx.moveTo(center, center + size * 0.25);
+        ctx.lineTo(center, center + size * 0.5);
+        ctx.stroke();
+
+        return new THREE.CanvasTexture(canvas);
+    }
 }

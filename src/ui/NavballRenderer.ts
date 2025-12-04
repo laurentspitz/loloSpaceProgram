@@ -1,5 +1,7 @@
 import { Rocket } from '../entities/Rocket';
 import { Vector2 } from '../core/Vector2';
+import type { ManeuverNode } from '../systems/ManeuverNode';
+import type { Body } from '../core/Body';
 
 /**
  * NavballRenderer - Renders a KSP-style navball with integrated fuel gauge
@@ -13,6 +15,8 @@ export class NavballRenderer {
     private radius: number = 80; // Navball sphere radius
 
     private currentRocket: Rocket | null = null;
+    private maneuverNodes: ManeuverNode[] = [];
+    private bodies: Body[] = [];
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -27,6 +31,11 @@ export class NavballRenderer {
 
     setRocket(rocket: Rocket) {
         this.currentRocket = rocket;
+    }
+
+    setManeuverNodes(nodes: ManeuverNode[], bodies: Body[]) {
+        this.maneuverNodes = nodes;
+        this.bodies = bodies;
     }
 
     /**
@@ -134,6 +143,11 @@ export class NavballRenderer {
         // Draw target markers if target is set
         if (rocket.targetBody) {
             this.drawTargetMarkers(rocket, navballRotation);
+        }
+
+        // Draw maneuver marker if maneuver node exists
+        if (this.maneuverNodes.length > 0) {
+            this.drawManeuverMarker(rocket, navballRotation);
         }
 
         // Draw central crosshair (not rotated - screen space)
@@ -294,6 +308,50 @@ export class NavballRenderer {
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText('RETRO', x, y + 20);
             }
+        }
+    }
+
+    /**
+     * Draw maneuver marker (cyan circle with dot)
+     */
+    private drawManeuverMarker(rocket: Rocket, _navballRotation: number) {
+        if (this.maneuverNodes.length === 0 || !this.currentRocket) return;
+
+        const node = this.maneuverNodes[0]; // Use first node
+
+        // Get maneuver delta-v direction
+        const dvAngle = node.getΔvDirection(this.currentRocket, this.bodies);
+        const rocketAngle = rocket.rotation;
+
+        // Relative angle in [-PI, PI]
+        let relativeAngle = dvAngle - rocketAngle;
+        while (relativeAngle > Math.PI) relativeAngle -= Math.PI * 2;
+        while (relativeAngle < -Math.PI) relativeAngle += Math.PI * 2;
+
+        // Maneuver Marker (Cyan)
+        if (Math.abs(relativeAngle) < Math.PI / 2) {
+            // Front hemisphere
+            const x = Math.sin(relativeAngle) * this.radius;
+            const y = 0;
+
+            // Draw cyan circle with dot
+            this.ctx.strokeStyle = '#00FFFF';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+            this.ctx.stroke();
+
+            // Inner dot
+            this.ctx.fillStyle = '#00FFFF';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Label
+            this.ctx.fillStyle = '#00FFFF';
+            this.ctx.font = 'bold 10px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('MNV', x, y + 20);
         }
     }
 

@@ -10,6 +10,7 @@ import { Background } from './Background';
 import { Debris } from '../entities/Debris';
 import { Particle } from '../entities/Particle';
 import { ThrustParticleSystem } from './ThrustParticleSystem';
+import { ManeuverNode } from '../systems/ManeuverNode';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -37,7 +38,6 @@ export class ThreeRenderer {
 
     // Display options
     showOrbits: boolean = true;
-    showColliders: boolean = false;
 
     // Store bodies for selection
     currentBodies: Body[] = [];
@@ -49,14 +49,16 @@ export class ThreeRenderer {
     debrisMeshes: Map<Body, THREE.Group> = new Map();
     particleMeshes: Map<Particle, THREE.Mesh> = new Map();
 
-    // Debug collision box
+    // Debug
+    showColliders: boolean = false;
     debugCollisionBox: THREE.Line | null = null;
     debugCollisionCircle: THREE.Line | null = null;
     debugPlanetColliders: Map<Body, THREE.Line> = new Map();
 
-    // Rocket mesh
-
-    // Rocket mesh
+    // Maneuver Nodes
+    maneuverMeshes: Map<string, THREE.Group> = new Map();
+    ghostNodeMesh: THREE.Object3D | null = null;
+    maneuverIconTexture: THREE.Texture | null = null;
 
     // Rocket mesh
     rocketMesh: THREE.Group | null = null;
@@ -68,6 +70,7 @@ export class ThreeRenderer {
 
     // Trajectory line
     trajectoryLine: THREE.Line | null = null;
+    maneuverTrajectoryLines: THREE.Line[] = []; // Separate lines for maneuver prediction
     showTrajectory: boolean = false;
 
     // Background
@@ -79,7 +82,7 @@ export class ThreeRenderer {
 
     // Helpers
     private orbitRenderer: OrbitRenderer;
-    private inputHandler: InputHandler;
+    public inputHandler: InputHandler;
     private thrustParticleSystem: ThrustParticleSystem;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -159,13 +162,25 @@ export class ThreeRenderer {
     }
 
     worldToScreen(pos: Vector2): Vector2 {
+        // Use Three.js camera projection for accurate coordinates
         const center = this.getCenter();
-        const width = this.renderer.domElement.width;
-        const height = this.renderer.domElement.height;
-        return new Vector2(
-            (pos.x - center.x) * this.scale + width / 2,
-            (pos.y - center.y) * this.scale + height / 2
-        );
+
+        // Convert world position to Three.js scene coordinates
+        const sceneX = (pos.x - center.x) * this.scale;
+        const sceneY = (pos.y - center.y) * this.scale;
+
+        // Use Three.js projection
+        const vector = new THREE.Vector3(sceneX, sceneY, 0);
+        vector.project(this.camera);
+
+        // Convert NDC (-1 to 1) to screen coordinates
+        const width = this.width || this.renderer.domElement.clientWidth;
+        const height = this.height || this.renderer.domElement.clientHeight;
+
+        const screenX = (vector.x + 1) * width / 2;
+        const screenY = (-vector.y + 1) * height / 2; // Invert Y
+
+        return new Vector2(screenX, screenY);
     }
 
     getVisualPosition(body: Body): Vector2 {
@@ -181,13 +196,26 @@ export class ThreeRenderer {
         return body.position;
     }
 
-    screenToWorld(pos: Vector2): Vector2 {
+    screenToWorld(screenPos: Vector2): Vector2 {
         const center = this.getCenter();
-        const width = this.renderer.domElement.width;
-        const height = this.renderer.domElement.height;
+        const width = this.width;
+        const height = this.height;
+
+        // 1. Convert Screen(Pixels) to NDC
+        const ndcX = (screenPos.x / width) * 2 - 1;
+        const ndcY = -(screenPos.y / height) * 2 + 1;
+
+        // 2. Map NDC to Scene coordinates (orthographic)
+        // For orthographic camera: NDC [-1,1] maps linearly to [camera.left, camera.right]
+        const frustumWidth = this.camera.right - this.camera.left;
+        const frustumHeight = this.camera.top - this.camera.bottom;
+        const sceneX = ndcX * frustumWidth / 2;
+        const sceneY = ndcY * frustumHeight / 2;
+
+        // 3. Convert Scene(Units) to World(Meters)
         return new Vector2(
-            (pos.x - width / 2) / this.scale + center.x,
-            (pos.y - height / 2) / this.scale + center.y
+            sceneX / this.scale + center.x,
+            sceneY / this.scale + center.y
         );
     }
 
@@ -592,8 +620,8 @@ export class ThreeRenderer {
             // Convert to Pixels
             const heightPixels = heightWorldUnits * pixelsPerUnit;
 
-            // Threshold: if height < 2 pixels, show icon
-            if (heightPixels < 2) {
+            // Increased threshold to 50px for easier node placement
+            if (heightPixels < 50) { // Assuming screenDistPixels was a typo and meant heightPixels
                 this.rocketIcon.visible = true;
                 const worldX = (this.currentRocket.body.position.x - center.x) * this.scale;
                 const worldY = (this.currentRocket.body.position.y - center.y) * this.scale;
@@ -809,6 +837,239 @@ export class ThreeRenderer {
             this.trajectoryLine.geometry.dispose();
             this.trajectoryLine.geometry = geometry;
         }
+    }
+
+    /**
+     * Update maneuver trajectory with multiple colored segments
+     */
+    updateManeuverTrajectory(segments: Vector2[][], colors: string[]) {
+        if (!this.showTrajectory) {
+            return;
+        }
+
+        // Clear old maneuver trajectory lines (but keep trajectoryLine which is the current orbit)
+        this.maneuverTrajectoryLines.forEach(line => {
+            this.scene.remove(line);
+        });
+        this.maneuverTrajectoryLines = [];
+
+        // Render each segment with its own color
+        segments.forEach((points, index) => {
+            if (points.length < 2) return;
+
+            const center = this.getCenter();
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(points.length * 3);
+
+            for (let i = 0; i < points.length; i++) {
+                const x = (points[i].x - center.x) * this.scale;
+                const y = (points[i].y - center.y) * this.scale;
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = 0;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const color = colors[index] === '#00ffff' ? 0x00ffff : 0xff8800;
+            const material = new THREE.LineBasicMaterial({
+                color: color,
+                opacity: 0.8, // Slightly more opaque
+                transparent: true,
+                linewidth: 3
+            });
+
+            const line = new THREE.Line(geometry, material);
+            line.position.z = 0.1; // Render above current orbit (green)
+            this.scene.add(line);
+
+            // Store in maneuverTrajectoryLines instead of trajectoryLine
+            this.maneuverTrajectoryLines.push(line);
+        });
+    }
+
+    /**
+     * Update maneuver node visuals
+     */
+    updateManeuverNodes(nodes: ManeuverNode[], hoverPos: Vector2 | null, hoveredNodeId: string | null = null, selectedNodeId: string | null = null) {
+        // Initialize texture if needed
+        if (!this.maneuverIconTexture) {
+            this.maneuverIconTexture = TextureGenerator.createManeuverIcon();
+        }
+
+        // Calculate pixel-to-unit ratio using actual camera frustum
+        // camera.top is half the frustum height
+        const frustumHeight = (this.camera.top - this.camera.bottom);
+        const pixelToUnit = frustumHeight / (this.height || 1);
+
+        // 1. Handle Ghost Node (Hover)
+        if (hoverPos) {
+            if (!this.ghostNodeMesh) {
+                const material = new THREE.SpriteMaterial({
+                    map: this.maneuverIconTexture,
+                    color: 0xff0000,
+                    opacity: 0.5,
+                    transparent: true,
+                    depthTest: false
+                });
+                this.ghostNodeMesh = new THREE.Sprite(material);
+                this.ghostNodeMesh.renderOrder = 999;
+                this.scene.add(this.ghostNodeMesh);
+            }
+
+            // Position ghost node
+            const center = this.getCenter();
+            this.ghostNodeMesh.position.set(
+                (hoverPos.x - center.x) * this.scale,
+                (hoverPos.y - center.y) * this.scale,
+                0.2
+            );
+
+            // Scale: 20px fixed size
+            const scale = 20 * pixelToUnit;
+            this.ghostNodeMesh.scale.set(scale, scale, 1);
+            this.ghostNodeMesh.visible = true;
+        } else if (this.ghostNodeMesh) {
+            this.ghostNodeMesh.visible = false;
+        }
+
+        // 2. Handle Existing Nodes
+        // Remove old meshes
+        this.maneuverMeshes.forEach(mesh => {
+            this.scene.remove(mesh);
+            // Dispose geometry/material
+            mesh.traverse((child) => {
+                if (child instanceof THREE.Sprite) {
+                    child.material.dispose();
+                } else if (child instanceof THREE.Mesh) { // For the new ring
+                    child.geometry.dispose();
+                    (child.material as THREE.Material).dispose();
+                }
+            });
+        });
+        this.maneuverMeshes.clear(); // Clear the map
+
+        if (!this.currentRocket) return;
+
+        nodes.forEach(node => {
+            let mesh = this.maneuverMeshes.get(node.id);
+
+            // Force recreate if it's an old mesh type (doesn't have icon sprite)
+            if (mesh && !mesh.getObjectByName('icon')) {
+                this.scene.remove(mesh);
+                this.maneuverMeshes.delete(node.id);
+                mesh = undefined;
+            }
+
+            if (!mesh) {
+                mesh = new THREE.Group();
+
+                // Icon Sprite
+                const material = new THREE.SpriteMaterial({
+                    map: this.maneuverIconTexture!,
+                    color: 0x4a9eff, // Blue (will be updated below)
+                    transparent: true,
+                    opacity: 1.0,
+                    depthTest: false
+                });
+                const sprite = new THREE.Sprite(material);
+                sprite.name = 'icon';
+                mesh.add(sprite);
+
+                // Arrow for Delta-V
+                const arrowGeom = new THREE.BufferGeometry();
+                const arrowMat = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+                const arrow = new THREE.Line(arrowGeom, arrowMat);
+                arrow.name = 'arrow';
+                mesh.add(arrow);
+
+                this.scene.add(mesh);
+                this.maneuverMeshes.set(node.id, mesh);
+            }
+
+            // Update position
+            const worldPos = node.getWorldPosition(this.currentRocket!, this.currentBodies);
+            const screenX = (worldPos.x - this.getCenter().x) * this.scale;
+            const screenY = (worldPos.y - this.getCenter().y) * this.scale;
+            mesh.position.set(screenX, screenY, 6); // z=6 (top)
+
+            // Reset scale of group to 1 (in case it was modified)
+            mesh.scale.set(1, 1, 1);
+
+            // Update scale and color based on hover/selection
+            const isHovered = node.id === hoveredNodeId;
+            const isSelected = node.id === selectedNodeId;
+            const baseSize = (isHovered || isSelected) ? 30 : 20;
+            const size = baseSize * pixelToUnit;
+
+            const sprite = mesh.getObjectByName('icon') as THREE.Sprite;
+            if (sprite) {
+                sprite.scale.set(size, size, 1);
+                // Update color: white if selected, cyan if hovered, blue otherwise
+                if (isSelected) {
+                    (sprite.material as THREE.SpriteMaterial).color.setHex(0xffffff);
+                } else if (isHovered) {
+                    (sprite.material as THREE.SpriteMaterial).color.setHex(0x00ffff);
+                } else {
+                    (sprite.material as THREE.SpriteMaterial).color.setHex(0x4a9eff);
+                }
+            }
+
+            // Add/update ring for hovered or selected nodes
+            let ring = mesh.getObjectByName('ring') as THREE.Mesh;
+            if (isHovered || isSelected) {
+                if (!ring) {
+                    const ringGeometry = new THREE.RingGeometry(0.4, 0.5, 32);
+                    const ringMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xffffff,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.8,
+                        depthTest: false
+                    });
+                    ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                    ring.name = 'ring';
+                    mesh.add(ring);
+                }
+                ring.visible = true;
+                // Update ring color and scale
+                const ringScale = size * 1.3;
+                ring.scale.set(ringScale, ringScale, 1);
+                (ring.material as THREE.MeshBasicMaterial).color.setHex(isSelected ? 0xffffff : 0x00ffff);
+            } else if (ring) {
+                ring.visible = false;
+            }
+
+            // Update Arrow
+            const arrow = mesh.getObjectByName('arrow') as THREE.Line;
+            if (arrow && node.getTotalΔv() > 0.1) {
+                const dvAngle = node.getΔvDirection(this.currentRocket!, this.currentBodies);
+                // Arrow length proportional to dv, but clamped for visuals
+                // In screen pixels: min 15, max 60
+                const dvMag = node.getTotalΔv();
+                const pixelLength = Math.min(60, Math.max(15, dvMag));
+
+                // Convert pixels to units
+                const length = pixelLength * pixelToUnit;
+
+                // Local coordinates (relative to mesh position)
+                const endX = Math.cos(dvAngle) * length;
+                const endY = Math.sin(dvAngle) * length;
+
+                const points = [
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(endX, endY, 0),
+                    // Arrowhead
+                    new THREE.Vector3(endX - Math.cos(dvAngle - 0.5) * length * 0.2, endY - Math.sin(dvAngle - 0.5) * length * 0.2, 0),
+                    new THREE.Vector3(endX, endY, 0),
+                    new THREE.Vector3(endX - Math.cos(dvAngle + 0.5) * length * 0.2, endY - Math.sin(dvAngle + 0.5) * length * 0.2, 0)
+                ];
+                arrow.geometry.setFromPoints(points);
+                arrow.visible = true;
+            } else if (arrow) {
+                arrow.visible = false;
+            }
+        });
     }
 
     public selectBodyAt(screenPos: Vector2): Body | null {

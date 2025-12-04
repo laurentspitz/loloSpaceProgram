@@ -13,6 +13,8 @@ export class InputHandler {
     private lastX: number = 0;
     private lastY: number = 0;
 
+    public enabled: boolean = true; // Can be disabled during maneuver node operations
+
     constructor(renderer: ThreeRenderer, canvas: HTMLCanvasElement) {
         this.renderer = renderer;
         this.canvas = canvas;
@@ -32,6 +34,7 @@ export class InputHandler {
         });
 
         this.canvas.addEventListener('mousedown', (e) => {
+            if (!this.enabled) return;
             this.isDragging = true;
             this.lastX = e.clientX;
             this.lastY = e.clientY;
@@ -50,6 +53,7 @@ export class InputHandler {
         });
 
         this.canvas.addEventListener('mousemove', (e) => {
+            if (!this.enabled) return;
             if (this.isDragging) {
                 const dx = e.clientX - this.lastX;
                 const dy = e.clientY - this.lastY;

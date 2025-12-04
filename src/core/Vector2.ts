@@ -33,6 +33,10 @@ export class Vector2 {
         return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2));
     }
 
+    distanceToSquared(v: Vector2): number {
+        return Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2);
+    }
+
     clone(): Vector2 {
         return new Vector2(this.x, this.y);
     }

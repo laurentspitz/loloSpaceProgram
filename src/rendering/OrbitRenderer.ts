@@ -93,7 +93,7 @@ export class OrbitRenderer {
                     color: body.name === 'Rocket' ? 0x00ff00 : (isMoon ? 0xaaaaaa : 0xffffff),
                     opacity: adaptiveOpacity,
                     transparent: true,
-                    linewidth: 2
+                    linewidth: 3
                 });
 
                 orbitLine = new THREE.Line(geometry, material);
