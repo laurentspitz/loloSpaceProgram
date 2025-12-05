@@ -1,22 +1,31 @@
 import * as THREE from 'three';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 /**
  * OrbitRenderer - Handles high-precision orbit rendering
  * Uses CPU-side double precision calculations to avoid GPU Float32 limitations
  */
 export class OrbitRenderer {
-    private orbitLines: Map<Body, THREE.Line> = new Map();
+    private orbitLines: Map<Body, Line2> = new Map();
     private orbitData: Map<Body, { points: Float64Array, sourceOrbit: any }> = new Map();
     private scene: THREE.Scene;
     private scale: number;
     private moonScale: number;
+    private resolution: THREE.Vector2;
 
     constructor(scene: THREE.Scene, scale: number, moonScale: number) {
         this.scene = scene;
         this.scale = scale;
         this.moonScale = moonScale;
+        this.resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
+
+        window.addEventListener('resize', () => {
+            this.resolution.set(window.innerWidth, window.innerHeight);
+        });
     }
 
     /**
@@ -60,8 +69,6 @@ export class OrbitRenderer {
                 return;
             }
 
-
-
             // Calculate adaptive opacity based on zoom
             const baseOpacity = 0.3;
             const zoomFactor = Math.min(4, Math.max(1, this.scale / 1e-9));
@@ -73,9 +80,11 @@ export class OrbitRenderer {
             // High segment count to reduce chord error (gap between line segment and actual curve)
             // Target segment length: ~1000 km (gives very low error)
             const circumference = 2 * Math.PI * body.orbit.a;
-            const targetSegmentLength = 1000000; // 1,000 km (was 50,000 km)
-            // Clamp between 16k and 200k segments to ensure smooth updates
-            const segments = Math.min(200000, Math.max(16384, Math.ceil(circumference / targetSegmentLength)));
+            const targetSegmentLength = 1000000; // 1,000 km
+
+            // Reduced max segments for Line2 performance (was 200k)
+            // Line2 generates geometry (quads), so we need to be conservative
+            const segments = Math.min(4096, Math.max(1024, Math.ceil(circumference / targetSegmentLength)));
 
             // 1. Pre-calculate orbit points in high precision (Float64)
             // Check if orbit has changed (recalculated by physics) or if not cached yet
@@ -108,42 +117,33 @@ export class OrbitRenderer {
 
             // 2. Create or update Line geometry
             if (!orbitLine) {
-                const geometry = new THREE.BufferGeometry();
-                // Initialize with empty data, will be updated below
-                const positions = new Float32Array((segments + 1) * 3);
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const geometry = new LineGeometry();
+                // Initialize with empty data (will be set below)
 
-                const material = new THREE.LineBasicMaterial({
-                    color: body.name === 'Rocket' ? 0x00ff00 : (isMoon ? 0xaaaaaa : 0xffffff),
+                const color = body.name === 'Rocket' ? 0x00ff00 : (isMoon ? 0xaaaaaa : 0xffffff);
+                const material = new LineMaterial({
+                    color: color,
                     opacity: adaptiveOpacity,
                     transparent: true,
-                    linewidth: 3
+                    linewidth: 3, // 3px width
+                    worldUnits: false, // Use screen pixels
+                    resolution: this.resolution,
+                    dashed: false
                 });
 
-                orbitLine = new THREE.Line(geometry, material);
+                orbitLine = new Line2(geometry, material);
                 orbitLine.frustumCulled = false;
                 this.scene.add(orbitLine);
                 this.orbitLines.set(body, orbitLine);
             } else if (orbitChanged) {
-                // If orbit changed, we might need to resize the buffer if segment count changed
-                // For simplicity, we assume segment count is stable for a body, or we recreate the buffer if needed.
-                // Here we just check size.
-                const currentSize = orbitLine.geometry.attributes.position.count;
-                if (currentSize !== segments + 1) {
-                    orbitLine.geometry.dispose();
-                    const positions = new Float32Array((segments + 1) * 3);
-                    orbitLine.geometry = new THREE.BufferGeometry();
-                    orbitLine.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                }
+                // If orbit changed, we might need to recreate geometry if size changed significantly
+                // But LineGeometry handles setPositions well
             }
 
             // 3. Project points to screen space on CPU to ensure Float32 precision
             // We do this every frame (or when camera moves)
-            // The calculation: ScreenPos = (ParentPos + OrbitRelPos - CameraCenter) * Scale
-            // Since ParentPos, OrbitRelPos and CameraCenter are Doubles, we preserve precision before scaling.
 
             const data = this.orbitData.get(body)!;
-            const positions = orbitLine.geometry.attributes.position.array as Float32Array;
 
             const parentX = body.parent.position.x;
             const parentY = body.parent.position.y;
@@ -151,8 +151,8 @@ export class OrbitRenderer {
             const centerY = center.y;
             const scale = this.scale;
 
-            // Optimization: Only update if visible? 
-            // For now update all to ensure correctness. 16k points is fast in JS.
+            // Create flat array for LineGeometry
+            const positions: number[] = [];
 
             for (let i = 0; i <= segments; i++) {
                 const relX = data.points[i * 2] * orbitScale; // Apply moon scale if needed
@@ -168,19 +168,19 @@ export class OrbitRenderer {
                     worldY = 0;
                 }
 
-                positions[i * 3] = worldX;
-                positions[i * 3 + 1] = worldY;
-                positions[i * 3 + 2] = -0.01;
+                positions.push(worldX, worldY, -0.01);
             }
 
-            orbitLine.geometry.attributes.position.needsUpdate = true;
+            // Update LineGeometry
+            orbitLine.geometry.setPositions(positions);
 
             // Reset mesh transform since we projected points manually
             orbitLine.position.set(0, 0, 0);
             orbitLine.scale.set(1, 1, 1);
 
             // Update material opacity
-            (orbitLine.material as THREE.LineBasicMaterial).opacity = adaptiveOpacity;
+            (orbitLine.material as LineMaterial).opacity = adaptiveOpacity;
+            (orbitLine.material as LineMaterial).resolution = this.resolution;
         });
     }
 

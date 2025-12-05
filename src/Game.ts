@@ -37,6 +37,7 @@ export class Game {
     private sceneSetup: typeof SceneSetup;
     private animationFrameId: number | null = null;
     private isDisposed: boolean = false;
+    private lastOrbitUpdateTime: number = 0;
 
     constructor(assembly?: any) {
         this.sceneSetup = SceneSetup;
@@ -241,9 +242,15 @@ export class Game {
                         const de = Math.abs(orbit.e - old.e);
                         const dOmega = Math.abs(orbit.omega - old.omega);
 
-                        // Update if semi-major axis changes by > 0.001% or eccentricity/omega by > 0.0001
-                        // Tightened thresholds to prevent visual jitter
-                        if (da < 0.00001 && de < 0.0001 && dOmega < 0.0001) {
+                        // Time-based hysteresis: Only update every 0.5s unless change is massive
+                        const now = performance.now();
+                        const timeSinceLastUpdate = now - (this.lastOrbitUpdateTime || 0);
+                        const isMassiveChange = da > 0.1 || de > 0.1; // > 10% change
+
+                        if (!isMassiveChange && timeSinceLastUpdate < 500) {
+                            shouldUpdate = false;
+                        } else if (da < 0.00001 && de < 0.0001 && dOmega < 0.0001) {
+                            // Still keep the tight threshold for small changes even after time passes
                             shouldUpdate = false;
                         }
                     }
@@ -251,6 +258,7 @@ export class Game {
                     if (shouldUpdate) {
                         // Valid elliptical orbit - use analytical solution
                         this.rocket.body.orbit = orbit;
+                        this.lastOrbitUpdateTime = performance.now();
                     }
 
                     // CRITICAL: Clear numerical trajectory to prevent z-fighting and stale lines

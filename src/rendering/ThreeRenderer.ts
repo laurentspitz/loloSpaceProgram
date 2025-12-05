@@ -73,9 +73,7 @@ export class ThreeRenderer {
     isRocketResting: boolean = false; // Track if rocket is resting on surface
 
     // Trajectory line
-    trajectoryLine: THREE.Line | null = null;
-    maneuverTrajectoryLines: Line2[] = []; // Separate lines for maneuver prediction
-    showTrajectory: boolean = false;
+
 
     // Background
     stars: THREE.Points | null = null;
@@ -794,45 +792,60 @@ export class ThreeRenderer {
 
             // Scale
             this.debugCollisionCircle.scale.set(rocketScale, rocketScale, 1);
-
-            // Ensure it's on top
-            this.debugCollisionCircle.position.z = 3;
-
             this.debugCollisionCircle.visible = true;
-        } else if (this.debugCollisionCircle) {
-            this.debugCollisionCircle.visible = false;
         }
     }
 
+    // Trajectory line
+    trajectoryLine: Line2 | null = null;
+    maneuverTrajectoryLines: Line2[] = []; // Separate lines for maneuver prediction
+    showTrajectory: boolean = false;
+
+    /**
+     * Update the trajectory line
+     */
     updateTrajectory(points: Vector2[], center: Vector2) {
-        if (!this.showTrajectory) {
+        if (!this.showTrajectory || points.length < 2) {
             if (this.trajectoryLine) {
                 this.scene.remove(this.trajectoryLine);
+                // Dispose geometry/material
+                if (this.trajectoryLine.geometry) this.trajectoryLine.geometry.dispose();
+                if (this.trajectoryLine.material) (this.trajectoryLine.material as LineMaterial).dispose();
                 this.trajectoryLine = null;
             }
             return;
         }
 
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(points.length * 3);
+        const positions: number[] = [];
 
         for (let i = 0; i < points.length; i++) {
             const x = (points[i].x - center.x) * this.scale;
             const y = (points[i].y - center.y) * this.scale;
-            positions[i * 3] = x;
-            positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = 0;
+            positions.push(x, y, 0);
         }
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
         if (!this.trajectoryLine) {
-            const material = new THREE.LineBasicMaterial({ color: 0x00FF00, opacity: 0.5, transparent: true });
-            this.trajectoryLine = new THREE.Line(geometry, material);
+            const geometry = new LineGeometry();
+            geometry.setPositions(positions);
+
+            const material = new LineMaterial({
+                color: 0x00FF00,
+                opacity: 0.5,
+                transparent: true,
+                linewidth: 3, // 3px width
+                worldUnits: false,
+                resolution: new THREE.Vector2(this.width, this.height),
+                dashed: false
+            });
+
+            this.trajectoryLine = new Line2(geometry, material);
+            this.trajectoryLine.computeLineDistances();
+            this.trajectoryLine.position.z = 0; // Render below maneuver lines
             this.scene.add(this.trajectoryLine);
         } else {
-            this.trajectoryLine.geometry.dispose();
-            this.trajectoryLine.geometry = geometry;
+            this.trajectoryLine.geometry.setPositions(positions);
+            this.trajectoryLine.computeLineDistances();
+            (this.trajectoryLine.material as LineMaterial).resolution.set(this.width, this.height);
         }
     }
 
