@@ -3,6 +3,7 @@ import { Vector2 } from '../core/Vector2';
 import type { Rocket } from '../entities/Rocket';
 import type { Body } from '../core/Body';
 import { Physics } from '../physics/Physics';
+import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 
 /**
  * ManeuverNodeManager - Manages all maneuver nodes and trajectory predictions
@@ -118,7 +119,7 @@ export class ManeuverNodeManager {
                 // For subsequent segments, use numerical prediction
                 const stepsToNode = Math.max(1, Math.floor(timeToNode / timeStep));
 
-                // Only simulate gravity from the parent body
+                // Use Patched Conics: start with parent body, switch if we exit SOI
                 const parentBody = rocket.body.parent;
                 const gravityBodies = parentBody ? [parentBody] : bodies;
 
@@ -147,8 +148,7 @@ export class ManeuverNodeManager {
         // Predict remaining trajectory after last node
         const remainingSteps = numSteps - segments.reduce((sum, seg) => sum + seg.length, 0);
         if (remainingSteps > 0) {
-            // IMPORTANT: Only simulate gravity from the parent body
-            // Using all bodies would make Earth/Sun dominate the simulation
+            // Use Patched Conics
             const parentBody = rocket.body.parent;
             const gravityBodies = parentBody ? [parentBody] : bodies;
 
@@ -232,6 +232,10 @@ export class ManeuverNodeManager {
      * Predict a single trajectory segment (no maneuvers)
      * Works in the parent body's reference frame for stability
      */
+    /**
+     * Predict a single trajectory segment using Patched Conics approximation
+     * Handles SOI transitions (e.g. Moon -> Earth) by switching reference frames
+     */
     private predictSegment(
         startPos: Vector2,
         startVel: Vector2,
@@ -241,32 +245,64 @@ export class ManeuverNodeManager {
     ): Vector2[] {
         const points: Vector2[] = [];
 
-        // If simulating around a single parent body, work in its reference frame
-        const parentBody = bodies.length === 1 ? bodies[0] : null;
+        // Determine initial reference body
+        // If bodies has 1 element, it's the parent. If multiple, it's N-body (fallback)
+        let currentBody = bodies.length === 1 ? bodies[0] : null;
 
-        if (parentBody) {
-            // Work in parent's reference frame
-            let simPos = startPos.sub(parentBody.position);
-            let simVel = startVel.sub(parentBody.velocity);
+        if (currentBody) {
+            // Patched Conics Simulation
+
+            // Work in current body's reference frame
+            let simPos = startPos.sub(currentBody.position);
+            let simVel = startVel.sub(currentBody.velocity);
 
             for (let i = 0; i < numSteps; i++) {
                 // Store absolute position for rendering
-                points.push(simPos.add(parentBody.position));
+                const absPos = simPos.add(currentBody.position);
+                points.push(absPos);
 
-                // Calculate gravitational acceleration in parent's frame
+                // 1. Calculate Gravity from current body
                 const dist = simPos.mag();
-                if (dist < 0.1) continue;
+                if (dist < 0.1) continue; // Avoid singularity
 
-                const forceMag = (Physics.G * parentBody.mass) / (dist * dist);
+                const forceMag = (Physics.G * currentBody.mass) / (dist * dist);
                 const dir = simPos.scale(-1).normalize(); // Direction toward center
                 const totalForce = dir.scale(forceMag);
 
-                // Symplectic Euler integration
+                // 2. Integrate (Symplectic Euler)
                 simVel = simVel.add(totalForce.scale(timeStep));
                 simPos = simPos.add(simVel.scale(timeStep));
+
+                // 3. Check for SOI Exit
+                // If we are far enough, check if we should switch to parent
+                // (Optimization: only check if dist > 0.8 * SOI)
+                if (currentBody.parent) {
+                    // We need a temporary Rocket object or just use distance check
+                    // SphereOfInfluence.calculateSOI requires a Body, let's use that directly
+                    const soiRadius = SphereOfInfluence.calculateSOI(currentBody);
+
+                    if (dist > soiRadius) {
+                        // SOI Exit Detected! Switch to parent (e.g. Moon -> Earth)
+                        const newBody = currentBody.parent;
+
+                        // Transform Position: Pos_new = Pos_old + (Body_old - Body_new)
+                        // This is vector addition of relative positions
+                        const bodyOffset = currentBody.position.sub(newBody.position);
+                        simPos = simPos.add(bodyOffset);
+
+                        // Transform Velocity: Vel_new = Vel_old + (Body_old - Body_new)
+                        const velOffset = currentBody.velocity.sub(newBody.velocity);
+                        simVel = simVel.add(velOffset);
+
+                        // Update current body reference
+                        currentBody = newBody;
+
+                        // Continue simulation in new frame...
+                    }
+                }
             }
         } else {
-            // Multi-body simulation (absolute frame)
+            // Multi-body simulation (absolute frame) - Fallback for solar system scale
             let simPos = startPos.clone();
             let simVel = startVel.clone();
 
