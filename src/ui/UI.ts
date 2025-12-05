@@ -5,7 +5,7 @@ import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
 import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
-import { ManeuverNode } from '../systems/ManeuverNode';
+
 import { ManeuverNodeUI } from './ManeuverNodeUI';
 import { IconGenerator } from './IconGenerator';
 import { controls } from '../config/Controls';
@@ -87,21 +87,8 @@ export class UI {
         container.style.display = 'flex';
         container.style.gap = '10px';
 
-        const zoomInBtn = document.createElement('button');
-        zoomInBtn.innerText = 'Zoom In (+)';
-        zoomInBtn.onclick = () => this.zoom(1.5);
-
-        const zoomOutBtn = document.createElement('button');
-        zoomOutBtn.innerText = 'Zoom Out (-)';
-        zoomOutBtn.onclick = () => this.zoom(1 / 1.5);
-
-        const orbitBtn = document.createElement('button');
-        orbitBtn.innerText = 'Toggle Orbits';
-        orbitBtn.onclick = () => {
-            this.renderer.showOrbits = !this.renderer.showOrbits;
-        };
-
         const focusRocketBtn = document.createElement('button');
+        focusRocketBtn.innerText = '🚀 Focus Rocket';
         focusRocketBtn.style.fontSize = '14px';
         focusRocketBtn.style.cursor = 'pointer';
         focusRocketBtn.style.backgroundColor = '#333';
@@ -109,18 +96,8 @@ export class UI {
         focusRocketBtn.style.border = '1px solid #555';
         focusRocketBtn.style.borderRadius = '3px';
         focusRocketBtn.style.marginBottom = '5px';
-        focusRocketBtn.style.display = 'flex';
-        focusRocketBtn.style.alignItems = 'center';
-        focusRocketBtn.style.gap = '5px';
+        focusRocketBtn.style.padding = '5px 10px';
 
-        // Add rocket icon (larger for visibility)
-        const rocketIcon = IconGenerator.createRocketIcon(24, '#ffffff');
-        rocketIcon.style.display = 'inline-block';
-        rocketIcon.style.verticalAlign = 'middle';
-        focusRocketBtn.appendChild(rocketIcon);
-
-        const buttonText = document.createTextNode(' Focus Rocket');
-        focusRocketBtn.appendChild(buttonText);
         focusRocketBtn.onclick = () => {
             // Check if renderer is ThreeRenderer (has currentRocket property)
             if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
@@ -131,54 +108,7 @@ export class UI {
             }
         };
 
-        // Add Maneuver Node button (temporary for testing)
-        const maneuverBtn = document.createElement('button');
-        maneuverBtn.innerText = '🎯 Add Maneuver';
-        maneuverBtn.style.backgroundColor = '#4a9eff';
-        maneuverBtn.style.color = 'white';
-        maneuverBtn.style.fontWeight = 'bold';
-        maneuverBtn.onclick = () => {
-            if (this.maneuverNodeManager && this.currentRocket) {
-                const orbit = this.currentRocket.body.orbit;
-                const parent = this.currentRocket.body.parent;
-
-                if (!orbit || !parent) return;
-
-                // Calculate position 30 minutes ahead
-                const orbitTime = 1800; // 30 minutes
-                const mu = 6.67430e-11 * parent.mass;
-                const n = Math.sqrt(mu / Math.pow(orbit.a, 3));
-                const currentM = this.currentRocket.body.meanAnomaly || 0;
-                const futureM = currentM + n * orbitTime;
-
-                let E = futureM;
-                for (let i = 0; i < 5; i++) {
-                    E = E - (E - orbit.e * Math.sin(E) - futureM) / (1 - orbit.e * Math.cos(E));
-                }
-
-                const x = orbit.a * (Math.cos(E) - orbit.e);
-                const y = orbit.b * Math.sin(E);
-
-                const node = new ManeuverNode(E, { x, y }, orbitTime);
-                node.progradeΔv = 50; // Default 50 m/s prograde
-                this.maneuverNodeManager.addNode(node);
-
-                // Show editor
-                if (this.maneuverNodeUI) {
-                    this.maneuverNodeUI.selectNode(node.id);
-                }
-
-                alert('Maneuver node created! Adjust delta-v in the panel.');
-            } else {
-                alert('Need rocket and maneuver manager');
-            }
-        };
-
-        container.appendChild(zoomInBtn);
-        container.appendChild(zoomOutBtn);
-        container.appendChild(orbitBtn);
         container.appendChild(focusRocketBtn);
-        container.appendChild(maneuverBtn);
         document.body.appendChild(container);
 
         // Time Warp Controls

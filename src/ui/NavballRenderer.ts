@@ -34,8 +34,8 @@ export class NavballRenderer {
         this.centerX = this.size / 2;
         this.centerY = this.size / 2;
 
-        // Pre-generate icon canvases (20px size for navball)
-        const iconSize = 20;
+        // Pre-generate icon canvases (32px size for navball to match UI)
+        const iconSize = 32;
         this.progradeIconCanvas = IconGenerator.createProgradeIcon(iconSize, '#FFD700');
         this.retrogradeIconCanvas = IconGenerator.createRetrogradeIcon(iconSize, '#FFD700');
         this.targetIconCanvas = IconGenerator.createTargetIcon(iconSize, '#C71585');
