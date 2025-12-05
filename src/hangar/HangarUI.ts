@@ -13,6 +13,7 @@ export class HangarUI {
     onLaunch: () => void;
     onSave: (name: string) => void;
     onLoad: (assembly: RocketAssembly) => void;
+    onBack: () => void;
 
     // Stat value elements
     massValue!: HTMLSpanElement;
@@ -25,13 +26,15 @@ export class HangarUI {
         onPartSelected: (partId: string) => void,
         onLaunch: () => void,
         onSave: (name: string) => void,
-        onLoad: (assembly: RocketAssembly) => void
+        onLoad: (assembly: RocketAssembly) => void,
+        onBack: () => void
     ) {
         this.assembly = assembly;
         this.onPartSelected = onPartSelected;
         this.onLaunch = onLaunch;
         this.onSave = onSave;
         this.onLoad = onLoad;
+        this.onBack = onBack;
 
         this.container = document.createElement('div');
         this.container.id = 'hangar-ui';
@@ -47,10 +50,35 @@ export class HangarUI {
 
         this.container.appendChild(this.palette);
         this.container.appendChild(this.statsPanel);
+        this.container.appendChild(this.createBackButton());
+
         document.body.appendChild(this.container);
 
         // Initial stats update
         this.updateStats();
+    }
+
+    private createBackButton(): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.innerHTML = '⬅️';
+        btn.style.position = 'absolute';
+        btn.style.top = '20px';
+        btn.style.right = '20px';
+        btn.style.padding = '10px 20px';
+        btn.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+        btn.style.color = '#fff';
+        btn.style.border = '1px solid #444';
+        btn.style.borderRadius = '5px';
+        btn.style.cursor = 'pointer';
+        btn.style.pointerEvents = 'auto';
+        btn.style.fontWeight = 'bold';
+        btn.style.fontSize = '14px';
+
+        btn.onmouseover = () => btn.style.backgroundColor = '#3a3a3a';
+        btn.onmouseout = () => btn.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+
+        btn.onclick = () => this.onBack();
+        return btn;
     }
 
     private createPalette(): HTMLDivElement {
@@ -302,7 +330,9 @@ export class HangarUI {
 
     showSaveDialog() {
         const existingDialog = document.getElementById('save-dialog');
-        if (existingDialog) existingDialog.remove();
+        if (existingDialog && existingDialog.parentElement && existingDialog.parentElement.parentElement) {
+            existingDialog.parentElement.parentElement.removeChild(existingDialog.parentElement);
+        }
 
         const overlay = this.createDialogOverlay();
         const dialog = document.createElement('div');
@@ -357,10 +387,13 @@ export class HangarUI {
 
             // Check if rocket already exists
             if (RocketSaveManager.exists(name)) {
-                if (confirm(`A rocket named "${name}" already exists. Do you want to overwrite it?`)) {
-                    this.onSave(name);
-                    overlay.remove();
-                }
+                this.showConfirmDialog(
+                    `Override "${name}"?`,
+                    () => {
+                        this.onSave(name);
+                        overlay.remove();
+                    }
+                );
             } else {
                 this.onSave(name);
                 overlay.remove();
@@ -393,7 +426,9 @@ export class HangarUI {
 
     showLoadDialog() {
         const existingDialog = document.getElementById('load-dialog');
-        if (existingDialog) existingDialog.remove();
+        if (existingDialog && existingDialog.parentElement && existingDialog.parentElement.parentElement) {
+            existingDialog.parentElement.parentElement.removeChild(existingDialog.parentElement);
+        }
 
         const savedRockets = RocketSaveManager.list();
 
@@ -466,10 +501,13 @@ export class HangarUI {
                 deleteBtn.style.marginLeft = '10px';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
-                    if (confirm(`Delete "${rocket.name}"?`)) {
-                        RocketSaveManager.delete(rocket.name);
-                        this.showLoadDialog(); // Refresh list
-                    }
+                    this.showConfirmDialog(
+                        `Delete "${rocket.name}"?`,
+                        () => {
+                            RocketSaveManager.delete(rocket.name);
+                            this.showLoadDialog(); // Refresh list
+                        }
+                    );
                 };
                 item.appendChild(deleteBtn);
 
@@ -501,6 +539,67 @@ export class HangarUI {
         closeBtn.style.cursor = 'pointer';
         closeBtn.onclick = () => overlay.remove();
         dialog.appendChild(closeBtn);
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+    }
+
+    showConfirmDialog(message: string, onConfirm: () => void, onCancel?: () => void) {
+        const overlay = this.createDialogOverlay();
+        // Higher z-index to be on top of load dialog
+        overlay.style.zIndex = '20000';
+
+        const dialog = document.createElement('div');
+        dialog.style.backgroundColor = '#2a2a2a';
+        dialog.style.border = '2px solid #ff4444'; // Red border for danger
+        dialog.style.borderRadius = '8px';
+        dialog.style.padding = '20px';
+        dialog.style.minWidth = '300px';
+        dialog.style.maxWidth = '400px';
+        dialog.style.textAlign = 'center';
+
+        const text = document.createElement('p');
+        text.textContent = message;
+        text.style.color = '#fff';
+        text.style.marginBottom = '20px';
+        text.style.fontSize = '16px';
+        dialog.appendChild(text);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '10px';
+        buttonContainer.style.justifyContent = 'center';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Confirm';
+        confirmBtn.style.padding = '8px 20px';
+        confirmBtn.style.backgroundColor = '#ff4444';
+        confirmBtn.style.color = 'white';
+        confirmBtn.style.border = 'none';
+        confirmBtn.style.borderRadius = '4px';
+        confirmBtn.style.cursor = 'pointer';
+        confirmBtn.style.fontWeight = 'bold';
+        confirmBtn.onclick = () => {
+            onConfirm();
+            overlay.remove();
+        };
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.padding = '8px 20px';
+        cancelBtn.style.backgroundColor = '#5a5a5a';
+        cancelBtn.style.color = 'white';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.borderRadius = '4px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.onclick = () => {
+            if (onCancel) onCancel();
+            overlay.remove();
+        };
+
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(confirmBtn);
+        dialog.appendChild(buttonContainer);
 
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);

@@ -67,6 +67,10 @@ export class Hangar {
                 this.scene.update();
                 this.ui.updateStats();
                 alert('Rocket loaded successfully!');
+            },
+            () => {
+                // Back callback
+                window.dispatchEvent(new CustomEvent('navigate-menu'));
             }
         );
 
@@ -78,19 +82,6 @@ export class Hangar {
             this.scene.update();
             this.ui.updateStats();
         }
-
-        // Back Button (Temporary, should be in UI)
-        const backButton = document.createElement('button');
-        backButton.textContent = 'Back to Menu';
-        backButton.style.position = 'absolute';
-        backButton.style.top = '20px';
-        backButton.style.right = '20px';
-        backButton.style.padding = '10px 20px';
-        backButton.style.zIndex = '1000';
-        backButton.onclick = () => {
-            window.dispatchEvent(new CustomEvent('navigate-menu'));
-        };
-        this.container.appendChild(backButton);
     }
 
     dispose() {

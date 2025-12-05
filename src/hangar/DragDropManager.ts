@@ -107,8 +107,11 @@ export class DragDropManager {
 
     private onMouseUp = (event: MouseEvent) => {
         if (this.dragGhost && this.draggedPartId) {
-            // Check if dropped on trash
-            if (this.isOverTrash(event.clientX, event.clientY)) {
+            // Check if dropped on trash OR on any other UI element
+            // If we drop on the palette or a dialog, we cancel/delete
+            const isOverUI = event.target !== this.scene.renderer.domElement;
+
+            if (this.isOverTrash(event.clientX, event.clientY) || isOverUI) {
                 // Delete (just remove ghost)
                 this.scene.scene.remove(this.dragGhost);
                 this.dragGhost = null;
@@ -138,6 +141,11 @@ export class DragDropManager {
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         this.raycaster.setFromCamera(this.mouse, this.scene.camera);
+
+        // CRITICAL FIX: Ignore clicks on UI elements (only interact with canvas)
+        if (event.target !== this.scene.renderer.domElement) {
+            return;
+        }
 
         // Check if we clicked a part
         const clickedInstanceId = this.scene.getPartAt(this.raycaster);
