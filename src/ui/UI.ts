@@ -102,10 +102,25 @@ export class UI {
         };
 
         const focusRocketBtn = document.createElement('button');
-        focusRocketBtn.innerText = '🚀 Focus Rocket';
-        focusRocketBtn.style.backgroundColor = '#E74C3C';
-        focusRocketBtn.style.color = 'white';
-        focusRocketBtn.style.fontWeight = 'bold';
+        focusRocketBtn.style.fontSize = '14px';
+        focusRocketBtn.style.cursor = 'pointer';
+        focusRocketBtn.style.backgroundColor = '#333';
+        focusRocketBtn.style.color = '#fff';
+        focusRocketBtn.style.border = '1px solid #555';
+        focusRocketBtn.style.borderRadius = '3px';
+        focusRocketBtn.style.marginBottom = '5px';
+        focusRocketBtn.style.display = 'flex';
+        focusRocketBtn.style.alignItems = 'center';
+        focusRocketBtn.style.gap = '5px';
+
+        // Add rocket icon (larger for visibility)
+        const rocketIcon = IconGenerator.createRocketIcon(24, '#ffffff');
+        rocketIcon.style.display = 'inline-block';
+        rocketIcon.style.verticalAlign = 'middle';
+        focusRocketBtn.appendChild(rocketIcon);
+
+        const buttonText = document.createTextNode(' Focus Rocket');
+        focusRocketBtn.appendChild(buttonText);
         focusRocketBtn.onclick = () => {
             // Check if renderer is ThreeRenderer (has currentRocket property)
             if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
@@ -1064,50 +1079,22 @@ export class UI {
         container.style.gridTemplateColumns = 'repeat(2, 36px)';
         container.style.gap = '8px';
 
-        // Helper function to create icon canvas
+        // Helper function to create icon canvas using IconGenerator
         const createIconCanvas = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver'): HTMLCanvasElement => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32;
-            canvas.height = 32;
-            const ctx = canvas.getContext('2d')!;
+            const size = 32;
 
-            let strokeColor: string;
-            let fillColor: string;
-
-            if (type === 'prograde' || type === 'retrograde') {
-                strokeColor = '#FFD700';
-                fillColor = '#FFD700';
-            } else if (type === 'maneuver') {
-                strokeColor = '#00FFFF';
-                fillColor = '#00FFFF';
-            } else {
-                strokeColor = '#C71585';
-                fillColor = '#C71585';
+            switch (type) {
+                case 'prograde':
+                    return IconGenerator.createProgradeIcon(size, '#FFD700');
+                case 'retrograde':
+                    return IconGenerator.createRetrogradeIcon(size, '#FFD700');
+                case 'target':
+                    return IconGenerator.createTargetIcon(size, '#C71585');
+                case 'anti-target':
+                    return IconGenerator.createAntiTargetIcon(size, '#C71585');
+                case 'maneuver':
+                    return IconGenerator.createManeuverIcon(size); // Uses default blue
             }
-
-            ctx.strokeStyle = strokeColor;
-            ctx.fillStyle = fillColor;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(16, 16, 10, 0, Math.PI * 2);
-            ctx.stroke();
-
-            if (type === 'prograde' || type === 'target' || type === 'maneuver') {
-                // Draw center dot
-                ctx.beginPath();
-                ctx.arc(16, 16, 3, 0, Math.PI * 2);
-                ctx.fill();
-            } else if (type === 'retrograde' || type === 'anti-target') {
-                // Draw X
-                ctx.beginPath();
-                ctx.moveTo(10, 10);
-                ctx.lineTo(22, 22);
-                ctx.moveTo(22, 10);
-                ctx.lineTo(10, 22);
-                ctx.stroke();
-            }
-
-            return canvas;
         };
 
         // Helper to create styled button

@@ -2,6 +2,7 @@ import { Rocket } from '../entities/Rocket';
 import { Vector2 } from '../core/Vector2';
 import type { ManeuverNode } from '../systems/ManeuverNode';
 import type { Body } from '../core/Body';
+import { IconGenerator } from './IconGenerator';
 
 /**
  * NavballRenderer - Renders a KSP-style navball with integrated fuel gauge
@@ -18,6 +19,13 @@ export class NavballRenderer {
     private maneuverNodes: ManeuverNode[] = [];
     private bodies: Body[] = [];
 
+    // Pre-generated icon canvases for performance
+    private progradeIconCanvas: HTMLCanvasElement;
+    private retrogradeIconCanvas: HTMLCanvasElement;
+    private targetIconCanvas: HTMLCanvasElement;
+    private antiTargetIconCanvas: HTMLCanvasElement;
+    private maneuverIconCanvas: HTMLCanvasElement;
+
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d')!;
@@ -25,6 +33,14 @@ export class NavballRenderer {
         this.canvas.height = this.size;
         this.centerX = this.size / 2;
         this.centerY = this.size / 2;
+
+        // Pre-generate icon canvases (20px size for navball)
+        const iconSize = 20;
+        this.progradeIconCanvas = IconGenerator.createProgradeIcon(iconSize, '#FFD700');
+        this.retrogradeIconCanvas = IconGenerator.createRetrogradeIcon(iconSize, '#FFD700');
+        this.targetIconCanvas = IconGenerator.createTargetIcon(iconSize, '#C71585');
+        this.antiTargetIconCanvas = IconGenerator.createAntiTargetIcon(iconSize, '#C71585');
+        this.maneuverIconCanvas = IconGenerator.createManeuverIcon(iconSize, '#4a9eff');
 
         this.setupInteraction();
     }
@@ -312,7 +328,7 @@ export class NavballRenderer {
     }
 
     /**
-     * Draw maneuver marker (cyan target icon - same as trajectory nodes)
+     * Draw maneuver marker (blue target icon - same as trajectory nodes)
      */
     private drawManeuverMarker(rocket: Rocket, _navballRotation: number) {
         if (this.maneuverNodes.length === 0 || !this.currentRocket) return;
@@ -328,43 +344,18 @@ export class NavballRenderer {
         while (relativeAngle > Math.PI) relativeAngle -= Math.PI * 2;
         while (relativeAngle < -Math.PI) relativeAngle += Math.PI * 2;
 
-        // Maneuver Marker (Cyan Target)
+        // Maneuver Marker (Blue Target) - using pre-generated canvas
         if (Math.abs(relativeAngle) < Math.PI / 2) {
             // Front hemisphere
             const x = Math.sin(relativeAngle) * this.radius;
             const y = 0;
-            const size = 20; // Icon size - larger to match trajectory nodes
 
-            // Draw target icon (same as createManeuverIcon)
-            this.ctx.strokeStyle = '#00FFFF';
-            this.ctx.fillStyle = '#00FFFF';
-
-            // Outer ring
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
-            this.ctx.stroke();
-
-            // Inner dot
-            this.ctx.beginPath();
-            this.ctx.arc(x, y, size * 0.15, 0, Math.PI * 2);
-            this.ctx.fill();
-
-            // Crosshair
-            this.ctx.lineWidth = 1.5;
-            this.ctx.beginPath();
-            this.ctx.moveTo(x - size * 0.5, y);
-            this.ctx.lineTo(x - size * 0.25, y);
-            this.ctx.moveTo(x + size * 0.25, y);
-            this.ctx.lineTo(x + size * 0.5, y);
-            this.ctx.moveTo(x, y - size * 0.5);
-            this.ctx.lineTo(x, y - size * 0.25);
-            this.ctx.moveTo(x, y + size * 0.25);
-            this.ctx.lineTo(x, y + size * 0.5);
-            this.ctx.stroke();
+            // Draw icon using pre-generated canvas
+            const halfSize = this.maneuverIconCanvas.width / 2;
+            this.ctx.drawImage(this.maneuverIconCanvas, x - halfSize, y - halfSize);
 
             // Label
-            this.ctx.fillStyle = '#00FFFF';
+            this.ctx.fillStyle = '#4a9eff'; // Blue
             this.ctx.font = 'bold 10px monospace';
             this.ctx.textAlign = 'center';
             this.ctx.fillText('MNV', x, y + 20);
@@ -423,77 +414,37 @@ export class NavballRenderer {
     }
 
     /**
-     * Draw target marker (purple circle with dot)
+     * Draw target marker using pre-generated canvas
      */
     private drawTargetMarker(x: number, y: number) {
-        this.ctx.strokeStyle = '#C71585';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
-        this.ctx.stroke();
-
-        // Inner dot
-        this.ctx.fillStyle = '#C71585';
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 3, 0, Math.PI * 2);
-        this.ctx.fill();
+        const halfSize = this.targetIconCanvas.width / 2;
+        this.ctx.drawImage(this.targetIconCanvas, x - halfSize, y - halfSize);
     }
 
     /**
-     * Draw anti-target marker (purple circle with X)
+     * Draw anti-target marker using pre-generated canvas
      */
     private drawAntiTargetMarker(x: number, y: number) {
-        this.ctx.strokeStyle = '#C71585';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
-        this.ctx.stroke();
-
-        // X through circle
-        this.ctx.beginPath();
-        this.ctx.moveTo(x - 7, y - 7);
-        this.ctx.lineTo(x + 7, y + 7);
-        this.ctx.moveTo(x + 7, y - 7);
-        this.ctx.lineTo(x - 7, y + 7);
-        this.ctx.stroke();
+        const halfSize = this.antiTargetIconCanvas.width / 2;
+        this.ctx.drawImage(this.antiTargetIconCanvas, x - halfSize, y - halfSize);
     }
 
 
 
     /**
-     * Draw prograde marker (yellow circle)
+     * Draw prograde marker using pre-generated canvas
      */
     private drawProgradeMarker(x: number, y: number) {
-        this.ctx.strokeStyle = '#FFD700';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
-        this.ctx.stroke();
-
-        // Inner dot
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 3, 0, Math.PI * 2);
-        this.ctx.fill();
+        const halfSize = this.progradeIconCanvas.width / 2;
+        this.ctx.drawImage(this.progradeIconCanvas, x - halfSize, y - halfSize);
     }
 
     /**
-     * Draw retrograde marker (yellow circle with X)
+     * Draw retrograde marker using pre-generated canvas
      */
     private drawRetrogradeMarker(x: number, y: number) {
-        this.ctx.strokeStyle = '#FFD700';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, 10, 0, Math.PI * 2);
-        this.ctx.stroke();
-
-        // X through circle
-        this.ctx.beginPath();
-        this.ctx.moveTo(x - 7, y - 7);
-        this.ctx.lineTo(x + 7, y + 7);
-        this.ctx.moveTo(x + 7, y - 7);
-        this.ctx.lineTo(x - 7, y + 7);
-        this.ctx.stroke();
+        const halfSize = this.retrogradeIconCanvas.width / 2;
+        this.ctx.drawImage(this.retrogradeIconCanvas, x - halfSize, y - halfSize);
     }
 
     /**

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { TextureGenerator } from './TextureGenerator';
+import { IconGenerator } from '../ui/IconGenerator';
 import { OrbitRenderer } from './OrbitRenderer';
 import { Rocket } from '../entities/Rocket';
 import { RocketRenderer } from './RocketRenderer';
@@ -595,20 +596,13 @@ export class ThreeRenderer {
         // 2. Update Rocket Icon
         if (this.currentRocket) {
             if (!this.rocketIcon) {
-                // Create rocket emoji texture with higher resolution
-                const canvas = document.createElement('canvas');
-                canvas.width = 128;  // Increased from 64
-                canvas.height = 128; // Increased from 64
-                const ctx = canvas.getContext('2d')!;
-
-                // Draw emoji larger
-                ctx.font = '96px Arial'; // Increased from 48px
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('🚀', 64, 64); // Centered at 64,64 instead of 32,32
-
-                const texture = new THREE.CanvasTexture(canvas);
-                const material = new THREE.SpriteMaterial({ map: texture });
+                // Create sprite material with icon from IconGenerator
+                const iconCanvas = IconGenerator.createRocketIcon(128, '#ffffff');
+                const texture = new THREE.CanvasTexture(iconCanvas);
+                const material = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true,
+                });
                 const sprite = new THREE.Sprite(material);
 
                 this.rocketIcon = new THREE.Group();

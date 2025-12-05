@@ -462,11 +462,11 @@ export class TextureGenerator {
     }
 
     /**
-     * Create a target icon for maneuver nodes
+     * Create a target icon for maneuver nodes (blue)
      */
     static createManeuverIcon(): THREE.CanvasTexture {
         const size = 64;
-        const canvas = IconGenerator.createManeuverIcon(size, '#ffffff');
+        const canvas = IconGenerator.createManeuverIcon(size); // Uses default blue
         return new THREE.CanvasTexture(canvas);
     }
 }
