@@ -30,13 +30,37 @@ export class OrbitRenderer {
     /**
      * Render all orbits for the given bodies
      */
-    renderOrbits(bodies: Body[], center: Vector2, showOrbits: boolean) {
-        if (!showOrbits) return;
+    renderOrbits(bodies: Body[], center: Vector2, showOrbits: boolean, showTrajectory: boolean = true) {
+        if (!showOrbits && !showTrajectory) {
+            this.orbitLines.forEach(line => line.visible = false);
+            return;
+        }
+
+        // Ensure lines are visible (if they were hidden by toggle)
+        // But respect the specific flags for rocket vs planets
+        this.orbitLines.forEach((line, body) => {
+            if (body.name === 'Rocket') {
+                line.visible = showTrajectory;
+            } else {
+                line.visible = showOrbits;
+            }
+        });
 
         bodies.forEach(body => {
-            if (!body.parent || !body.orbit) return;
-
             let orbitLine = this.orbitLines.get(body);
+
+            if (!body.parent || !body.orbit) {
+                // If line exists but no orbit, remove it
+                if (orbitLine) {
+                    this.scene.remove(orbitLine);
+                    if (orbitLine.geometry) orbitLine.geometry.dispose();
+                    if (orbitLine.material) (orbitLine.material as THREE.Material).dispose();
+                    this.orbitLines.delete(body);
+                }
+                return;
+            }
+
+
 
             // Calculate adaptive opacity based on zoom
             const baseOpacity = 0.3;
@@ -135,8 +159,14 @@ export class OrbitRenderer {
                 const relY = data.points[i * 2 + 1] * orbitScale;
 
                 // The magic happens here: Double precision subtraction before scaling
-                const worldX = (parentX + relX - centerX) * scale;
-                const worldY = (parentY + relY - centerY) * scale;
+                let worldX = (parentX + relX - centerX) * scale;
+                let worldY = (parentY + relY - centerY) * scale;
+
+                // Safeguard against NaN
+                if (isNaN(worldX) || isNaN(worldY)) {
+                    worldX = 0;
+                    worldY = 0;
+                }
 
                 positions[i * 3] = worldX;
                 positions[i * 3 + 1] = worldY;

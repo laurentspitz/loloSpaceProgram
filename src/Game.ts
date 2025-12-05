@@ -233,8 +233,28 @@ export class Game {
                 const orbit = OrbitUtils.calculateOrbit(this.rocket.body, dominantBody);
 
                 if (orbit) {
-                    // Valid elliptical orbit - use analytical solution
-                    this.rocket.body.orbit = orbit;
+                    // Stability check: Only update if orbit changed significantly
+                    let shouldUpdate = true;
+                    if (this.rocket.body.orbit && this.rocket.body.parent === dominantBody) {
+                        const old = this.rocket.body.orbit;
+                        const da = Math.abs(orbit.a - old.a) / old.a;
+                        const de = Math.abs(orbit.e - old.e);
+                        const dOmega = Math.abs(orbit.omega - old.omega);
+
+                        // Update if semi-major axis changes by > 0.001% or eccentricity/omega by > 0.0001
+                        // Tightened thresholds to prevent visual jitter
+                        if (da < 0.00001 && de < 0.0001 && dOmega < 0.0001) {
+                            shouldUpdate = false;
+                        }
+                    }
+
+                    if (shouldUpdate) {
+                        // Valid elliptical orbit - use analytical solution
+                        this.rocket.body.orbit = orbit;
+                    }
+
+                    // CRITICAL: Clear numerical trajectory to prevent z-fighting and stale lines
+                    this.renderer.updateTrajectory([], this.renderer.getCenter());
 
                     // Check if we have maneuver nodes
                     if (this.maneuverNodeManager.nodes.length > 0) {
@@ -279,6 +299,7 @@ export class Game {
             } else {
                 this.rocket.body.orbit = null;
                 this.renderer.updateTrajectory([], this.renderer.getCenter());
+                this.renderer.updateManeuverTrajectory([], []);
             }
         }
 

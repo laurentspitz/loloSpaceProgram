@@ -285,7 +285,7 @@ export class ThreeRenderer {
         this.orbitRenderer.updateScale(this.scale, this.moonScale);
 
         // Render orbits using OrbitRenderer
-        this.orbitRenderer.renderOrbits(bodies, center, this.showOrbits);
+        this.orbitRenderer.renderOrbits(bodies, center, this.showOrbits, this.showTrajectory);
 
         // Render bodies
         bodies.forEach(body => {
@@ -840,10 +840,6 @@ export class ThreeRenderer {
      * Update maneuver trajectory with multiple colored segments
      */
     updateManeuverTrajectory(segments: Vector2[][], colors: string[]) {
-        if (!this.showTrajectory) {
-            return;
-        }
-
         // Clear old maneuver trajectory lines (but keep trajectoryLine which is the current orbit)
         this.maneuverTrajectoryLines.forEach(line => {
             this.scene.remove(line);
@@ -857,6 +853,10 @@ export class ThreeRenderer {
             }
         });
         this.maneuverTrajectoryLines = [];
+
+        if (!this.showTrajectory) {
+            return;
+        }
 
         // Render each segment with its own color
         segments.forEach((points, index) => {

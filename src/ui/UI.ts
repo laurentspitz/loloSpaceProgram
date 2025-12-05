@@ -108,7 +108,31 @@ export class UI {
             }
         };
 
+        // Show Trajectory Button
+        const trajectoryBtn = document.createElement('button');
+        trajectoryBtn.innerText = '💫 Trajectory';
+        trajectoryBtn.title = 'Toggle Trajectory';
+        trajectoryBtn.style.fontSize = '14px';
+        trajectoryBtn.style.cursor = 'pointer';
+        trajectoryBtn.style.backgroundColor = '#333';
+        trajectoryBtn.style.color = '#fff'; // White text
+        trajectoryBtn.style.border = '1px solid #555';
+        trajectoryBtn.style.borderRadius = '3px';
+        trajectoryBtn.style.marginBottom = '5px';
+        trajectoryBtn.style.padding = '5px 10px';
+
+        trajectoryBtn.onclick = () => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.showTrajectory = !this.renderer.showTrajectory;
+                // Visual feedback: Blue background when active, Dark when inactive
+                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : '#333';
+                // Text always white
+                trajectoryBtn.style.color = '#fff';
+            }
+        };
+
         container.appendChild(focusRocketBtn);
+        container.appendChild(trajectoryBtn);
         document.body.appendChild(container);
 
         // Time Warp Controls
@@ -220,6 +244,7 @@ export class UI {
         toggleBtn.style.cursor = 'pointer';
 
         const contentDiv = document.createElement('div');
+        contentDiv.style.display = 'none'; // Collapsed by default
 
         toggleBtn.onclick = () => {
             if (contentDiv.style.display === 'none') {
@@ -235,22 +260,6 @@ export class UI {
         titleBar.appendChild(toggleBtn);
         container.appendChild(titleBar);
 
-        // Free cam button
-        const freeCamBtn = document.createElement('button');
-        freeCamBtn.innerText = 'Free Cam';
-        freeCamBtn.style.width = '100%';
-        freeCamBtn.style.marginBottom = '10px';
-        freeCamBtn.style.padding = '5px';
-        freeCamBtn.onclick = () => {
-            this.renderer.followedBody = null;
-            // Highlight active button
-            document.querySelectorAll('#body-list button').forEach(btn => {
-                (btn as HTMLButtonElement).style.backgroundColor = '';
-            });
-            freeCamBtn.style.backgroundColor = '#4CAF50';
-        };
-        contentDiv.appendChild(freeCamBtn);
-
         // Body list
         const bodyList = document.createElement('div');
         bodyList.id = 'body-list';
@@ -259,6 +268,8 @@ export class UI {
         const roots = this.bodies.filter(b => !b.parent);
 
         roots.forEach(root => {
+            // Add root body (Sun) with buttons
+            // Ensure we pass indentLevel 0
             this.addBodyRow(bodyList, root, 0);
 
             // Find children (Planets)
@@ -313,31 +324,27 @@ export class UI {
         };
         row.appendChild(focusBtn);
 
-        // Orbit button (only for non-Sun bodies)
-        if (body.name !== 'Sun') {
-            const orbitBtn = document.createElement('button');
-            orbitBtn.innerText = '🛸';
-            orbitBtn.title = `Orbit ${body.name}`;
-            orbitBtn.style.padding = '2px 8px';
-            orbitBtn.style.fontSize = '12px';
-            orbitBtn.onclick = () => {
-                this.placeRocketInOrbit(body);
-            };
-            row.appendChild(orbitBtn);
-        }
+        // Orbit button (Allowed for Sun too now)
+        const orbitBtn = document.createElement('button');
+        orbitBtn.innerText = '🛸';
+        orbitBtn.title = `Orbit ${body.name}`;
+        orbitBtn.style.padding = '2px 8px';
+        orbitBtn.style.fontSize = '12px';
+        orbitBtn.onclick = () => {
+            this.placeRocketInOrbit(body);
+        };
+        row.appendChild(orbitBtn);
 
-        // Target button (for all bodies except Sun)
-        if (body.name !== 'Sun') {
-            const targetBtn = document.createElement('button');
-            targetBtn.innerText = '🎯';
-            targetBtn.title = `Set ${body.name} as Target`;
-            targetBtn.style.padding = '2px 8px';
-            targetBtn.style.fontSize = '12px';
-            targetBtn.onclick = () => {
-                this.setTarget(body);
-            };
-            row.appendChild(targetBtn);
-        }
+        // Target button (Allowed for Sun too now)
+        const targetBtn = document.createElement('button');
+        targetBtn.innerText = '🎯';
+        targetBtn.title = `Set ${body.name} as Target`;
+        targetBtn.style.padding = '2px 8px';
+        targetBtn.style.fontSize = '12px';
+        targetBtn.onclick = () => {
+            this.setTarget(body);
+        };
+        row.appendChild(targetBtn);
 
         parent.appendChild(row);
     }
@@ -350,17 +357,6 @@ export class UI {
         const rendererRocket = (this.renderer as any).currentRocket;
         const uiRocket = this.currentRocket;
 
-        console.log('=== ROCKET REFERENCE DEBUG ===');
-        console.log(`renderer.currentRocket exists: ${!!rendererRocket}`);
-        console.log(`this.currentRocket exists: ${!!uiRocket}`);
-
-        if (rendererRocket) {
-            console.log(`renderer.currentRocket position: (${rendererRocket.body.position.x.toFixed(0)}, ${rendererRocket.body.position.y.toFixed(0)})`);
-        }
-        if (uiRocket) {
-            console.log(`this.currentRocket position: (${uiRocket.body.position.x.toFixed(0)}, ${uiRocket.body.position.y.toFixed(0)})`);
-        }
-
         // Use renderer rocket if available, otherwise UI rocket
         const rocket = rendererRocket || uiRocket;
 
@@ -368,22 +364,6 @@ export class UI {
             console.warn('No rocket available from any source!');
             return;
         }
-
-        console.log(`Using rocket from: ${rendererRocket ? 'renderer' : 'UI'}`);
-        console.log('=== END DEBUG ===');
-        console.log(`=== Placing rocket in orbit around ${body.name} === `);
-        console.log(`Body name: ${body.name}`);
-        console.log(`Body mass: ${body.mass.toExponential(2)} kg`);
-        console.log(`Body position: (${body.position.x.toFixed(0)}, ${body.position.y.toFixed(0)})`);
-        console.log(`Body physical radius: ${(body.radius / 1000).toFixed(0)} km`);
-
-        // Check all bodies to see their positions
-        console.log('All bodies:');
-        this.bodies.forEach(b => {
-            if (b.name === 'Earth' || b.name === 'Moon') {
-                console.log(`  ${b.name}: pos=(${b.position.x.toFixed(0)}, ${b.position.y.toFixed(0)}), radius=${(b.radius / 1000).toFixed(0)}km`);
-            }
-        });
 
         // Orbit calculation
         const physicalRadius = body.radius;
@@ -417,6 +397,7 @@ export class UI {
         console.log(`New rocket velocity: (${newVelX.toFixed(2)}, ${newVelY.toFixed(2)})`);
 
         // Use setTimeout to ensure position is set AFTER current frame/update cycle
+        // TODO voir si on peut ce passer de ce setTimeout
         setTimeout(() => {
             // CREATE NEW Vector2 objects instead of mutating
             rocket.body.position = new Vector2(newPosX, newPosY);
@@ -439,9 +420,6 @@ export class UI {
                 // CRITICAL: Reset resting state so rocket can move freely
                 game.isRocketResting = false;
                 game.restingOn = null;
-
-                console.log('✓ Updated Matter.js physics body');
-                console.log('✓ Reset resting state');
             }
 
             // Focus camera on rocket but zoom to show the planet for context
@@ -451,31 +429,15 @@ export class UI {
                 this.renderer.autoZoomToBody(body);
             }
 
-            // Verify position was set
-            console.log('=== VERIFICATION (after setTimeout) ===');
-            console.log(`Rocket actual position: (${rocket.body.position.x.toFixed(0)}, ${rocket.body.position.y.toFixed(0)})`);
-            console.log(`Rocket actual velocity: (${rocket.body.velocity.x.toFixed(2)}, ${rocket.body.velocity.y.toFixed(2)})`);
-            console.log(`Distance to ${body.name}: ${Math.sqrt(
-                Math.pow(rocket.body.position.x - body.position.x, 2) +
-                Math.pow(rocket.body.position.y - body.position.y, 2)
-            ).toFixed(0)} m`);
-
             console.log(`✓ Rocket placed in ${(orbitAltitude / 1000).toFixed(0)} km orbit around ${body.name}`);
 
             // Monitor position for 2 seconds to see if it changes
             let checkCount = 0;
             const monitorInterval = setInterval(() => {
                 checkCount++;
-                const currentPos = rocket.body.position;
-                const distToMoon = Math.sqrt(
-                    Math.pow(currentPos.x - body.position.x, 2) +
-                    Math.pow(currentPos.y - body.position.y, 2)
-                );
-                console.log(`[Monitor ${checkCount}] Pos: (${currentPos.x.toFixed(0)}, ${currentPos.y.toFixed(0)}), Dist to ${body.name}: ${(distToMoon / 1000).toFixed(0)} km`);
 
                 if (checkCount >= 20) {
                     clearInterval(monitorInterval);
-                    console.log('=== End orbit placement ===');
                 }
             }, 100);
         }, 100); // Wait 100ms to let all systems settle
@@ -1200,29 +1162,7 @@ export class UI {
         panel.appendChild(fuelContainer);
 
         // Trajectory Toggle
-        const trajContainer = document.createElement('div');
-        trajContainer.style.display = 'flex';
-        trajContainer.style.alignItems = 'center';
-        trajContainer.style.gap = '5px';
 
-        const trajCheck = document.createElement('input');
-        trajCheck.type = 'checkbox';
-        trajCheck.id = 'debug-trajectory';
-        trajCheck.checked = false; // Default off
-        trajCheck.onchange = (e) => {
-            if (this.renderer instanceof ThreeRenderer) {
-                this.renderer.showTrajectory = (e.target as HTMLInputElement).checked;
-            }
-        };
-
-        const trajLabel = document.createElement('label');
-        trajLabel.htmlFor = 'debug-trajectory';
-        trajLabel.innerText = 'Show Trajectory';
-        trajLabel.style.cursor = 'pointer';
-
-        trajContainer.appendChild(trajCheck);
-        trajContainer.appendChild(trajLabel);
-        panel.appendChild(trajContainer);
 
         // Show Colliders Toggle
         const colliderContainer = document.createElement('div');
@@ -1283,7 +1223,5 @@ export class UI {
                 el.parentNode.removeChild(el);
             }
         });
-
-        console.log('UI disposed');
     }
 }
