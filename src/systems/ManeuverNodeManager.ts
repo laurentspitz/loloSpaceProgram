@@ -107,6 +107,7 @@ export class ManeuverNodeManager {
                     node,
                     100 // Number of points for smooth curve
                 );
+
                 segments.push(segmentPoints);
                 colors.push('#00ffff'); // Cyan
 
@@ -179,17 +180,27 @@ export class ManeuverNodeManager {
         const orbit = rocket.body.orbit!;
         const parent = rocket.body.parent!;
 
-        // Get current and target eccentric anomalies
-        const currentM = rocket.body.meanAnomaly || 0;
-        const targetE = targetNode.eccentricAnomaly;
+        // Calculate current eccentric anomaly from ACTUAL position
+        const relPos = rocket.body.position.sub(parent.position);
 
-        // Convert current M to E
-        let currentE = currentM;
-        for (let i = 0; i < 5; i++) {
-            currentE = currentE - (currentE - orbit.e * Math.sin(currentE) - currentM) / (1 - orbit.e * Math.cos(currentE));
-        }
+        // Rotate to orbital frame (inverse rotation by -omega)
+        const cosO = Math.cos(-orbit.omega);
+        const sinO = Math.sin(-orbit.omega);
+        const x = relPos.x * cosO - relPos.y * sinO;
+        const y = relPos.x * sinO + relPos.y * cosO;
 
-        // Calculate angular span
+        // Calculate E from position: x = a*(cos(E) - e), y = b*sin(E)
+        // Use atan2 for robust angle calculation
+        let currentE = Math.atan2(y / orbit.b, (x / orbit.a + orbit.e));
+
+        // Normalize to [0, 2π]
+        if (currentE < 0) currentE += 2 * Math.PI;
+
+        // Get target eccentric anomaly (should already be in [0, 2π])
+        let targetE = targetNode.eccentricAnomaly;
+        if (targetE < 0) targetE += 2 * Math.PI;
+
+        // Calculate angular span - always go forward in time
         let deltaE = targetE - currentE;
         if (deltaE < 0) deltaE += 2 * Math.PI;
 
@@ -198,14 +209,14 @@ export class ManeuverNodeManager {
             const E = currentE + (deltaE * i) / numPoints;
 
             // Calculate position at this E
-            const x = orbit.a * (Math.cos(E) - orbit.e);
-            const y = orbit.b * Math.sin(E);
+            const xOrb = orbit.a * (Math.cos(E) - orbit.e);
+            const yOrb = orbit.b * Math.sin(E);
 
             // Rotate by omega
-            const cosO = Math.cos(orbit.omega);
-            const sinO = Math.sin(orbit.omega);
-            const rotX = x * cosO - y * sinO;
-            const rotY = x * sinO + y * cosO;
+            const cosOmega = Math.cos(orbit.omega);
+            const sinOmega = Math.sin(orbit.omega);
+            const rotX = xOrb * cosOmega - yOrb * sinOmega;
+            const rotY = xOrb * sinOmega + yOrb * cosOmega;
 
             // Add parent position
             points.push(new Vector2(

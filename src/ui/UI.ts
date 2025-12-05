@@ -444,8 +444,9 @@ export class UI {
         const visualRadius = physicalRadius * VISUAL_SCALE;
 
         // Orbit altitude above VISUAL surface (not physical)
-        // For moons: 50km, for planets: 200km
-        const orbitAltitude = body.radius < 2000000 ? 50000 : 200000; // 50km or 200km
+        // Use a safer margin: 10% of visual radius or 200km, whichever is larger
+        // This prevents minor perturbations from crashing the rocket into the "visual" surface
+        const orbitAltitude = Math.max(200000, visualRadius * 0.1);
 
         // Orbit radius from center = visual radius + altitude above visual surface
         const orbitRadius = visualRadius + orbitAltitude;

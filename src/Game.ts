@@ -31,9 +31,9 @@ export class Game {
     frameCount: number = 0;
     orbitRecalcInterval: number = 1; // Recalculate orbits every frame for smooth visualization
 
-    // Max physics step size for stability (e.g. 1000 seconds)
+    // Max physics step size for stability (e.g. 1 second)
     // If we warp time, we take multiple steps of this size or smaller
-    readonly MAX_PHYSICS_STEP = 100;
+    readonly MAX_PHYSICS_STEP = 1;
     private sceneSetup: typeof SceneSetup;
     private animationFrameId: number | null = null;
     private isDisposed: boolean = false;

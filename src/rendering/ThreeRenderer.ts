@@ -11,6 +11,9 @@ import { Debris } from '../entities/Debris';
 import { Particle } from '../entities/Particle';
 import { ThrustParticleSystem } from './ThrustParticleSystem';
 import { ManeuverNode } from '../systems/ManeuverNode';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -70,7 +73,7 @@ export class ThreeRenderer {
 
     // Trajectory line
     trajectoryLine: THREE.Line | null = null;
-    maneuverTrajectoryLines: THREE.Line[] = []; // Separate lines for maneuver prediction
+    maneuverTrajectoryLines: Line2[] = []; // Separate lines for maneuver prediction
     showTrajectory: boolean = false;
 
     // Background
@@ -850,6 +853,14 @@ export class ThreeRenderer {
         // Clear old maneuver trajectory lines (but keep trajectoryLine which is the current orbit)
         this.maneuverTrajectoryLines.forEach(line => {
             this.scene.remove(line);
+            if (line.geometry) line.geometry.dispose();
+            if (line.material) {
+                if (Array.isArray(line.material)) {
+                    line.material.forEach(m => m.dispose());
+                } else {
+                    line.material.dispose();
+                }
+            }
         });
         this.maneuverTrajectoryLines = [];
 
@@ -858,28 +869,28 @@ export class ThreeRenderer {
             if (points.length < 2) return;
 
             const center = this.getCenter();
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(points.length * 3);
+            const positions: number[] = [];
 
             for (let i = 0; i < points.length; i++) {
                 const x = (points[i].x - center.x) * this.scale;
                 const y = (points[i].y - center.y) * this.scale;
-                positions[i * 3] = x;
-                positions[i * 3 + 1] = y;
-                positions[i * 3 + 2] = 0;
+                positions.push(x, y, 0);
             }
 
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const geometry = new LineGeometry();
+            geometry.setPositions(positions);
 
             const color = colors[index] === '#00ffff' ? 0x00ffff : 0xff8800;
-            const material = new THREE.LineBasicMaterial({
+            const material = new LineMaterial({
                 color: color,
-                opacity: 0.8, // Slightly more opaque
-                transparent: true,
-                linewidth: 3
+                linewidth: 3, // 3px width
+                worldUnits: false, // Use screen pixels, not world units
+                resolution: new THREE.Vector2(this.width, this.height),
+                dashed: false,
             });
 
-            const line = new THREE.Line(geometry, material);
+            const line = new Line2(geometry, material);
+            line.computeLineDistances();
             line.position.z = 0.1; // Render above current orbit (green)
             this.scene.add(line);
 
