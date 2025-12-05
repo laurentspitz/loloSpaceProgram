@@ -1189,6 +1189,42 @@ export class UI {
         colliderContainer.appendChild(colliderLabel);
         panel.appendChild(colliderContainer);
 
+        // FPS Counter
+        const fpsContainer = document.createElement('div');
+        fpsContainer.style.display = 'flex';
+        fpsContainer.style.alignItems = 'center';
+        fpsContainer.style.gap = '5px';
+        fpsContainer.style.marginLeft = '10px';
+        fpsContainer.style.borderLeft = '1px solid #555';
+        fpsContainer.style.paddingLeft = '10px';
+
+        const fpsLabel = document.createElement('span');
+        fpsLabel.innerText = 'FPS: --';
+        fpsLabel.style.color = '#00C851';
+        fpsContainer.appendChild(fpsLabel);
+        panel.appendChild(fpsContainer);
+
+        // FPS Calculation Loop
+        let lastTime = performance.now();
+        let frames = 0;
+        const updateFPS = () => {
+            const now = performance.now();
+            frames++;
+            if (now >= lastTime + 1000) {
+                const fps = frames; // Since it's exactly 1 second roughly
+                fpsLabel.innerText = `FPS: ${fps}`;
+
+                if (fps < 30) fpsLabel.style.color = '#ff4444';
+                else if (fps < 50) fpsLabel.style.color = '#ffbb33';
+                else fpsLabel.style.color = '#00C851';
+
+                frames = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(updateFPS);
+        };
+        requestAnimationFrame(updateFPS);
+
         document.body.appendChild(panel);
     }
 

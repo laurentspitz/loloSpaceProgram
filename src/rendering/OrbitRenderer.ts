@@ -11,7 +11,7 @@ import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
  */
 export class OrbitRenderer {
     private orbitLines: Map<Body, Line2> = new Map();
-    private orbitData: Map<Body, { points: Float64Array, sourceOrbit: any }> = new Map();
+    private orbitData: Map<Body, { points: Float64Array, sourceOrbit: any, renderBuffer?: Float32Array }> = new Map();
     private scene: THREE.Scene;
     private scale: number;
     private moonScale: number;
@@ -151,11 +151,16 @@ export class OrbitRenderer {
             const centerY = center.y;
             const scale = this.scale;
 
-            // Create flat array for LineGeometry
-            const positions: number[] = [];
+            // Reuse or resize buffer (stored in orbitData to persist across frames)
+            // data.renderBuffer is a Float32Array
+            const requiredSize = (segments + 1) * 3;
+            if (!data.renderBuffer || data.renderBuffer.length < requiredSize) {
+                data.renderBuffer = new Float32Array(requiredSize);
+            }
+            const positions = data.renderBuffer;
 
             for (let i = 0; i <= segments; i++) {
-                const relX = data.points[i * 2] * orbitScale; // Apply moon scale if needed
+                const relX = data.points[i * 2] * orbitScale;
                 const relY = data.points[i * 2 + 1] * orbitScale;
 
                 // The magic happens here: Double precision subtraction before scaling
@@ -168,11 +173,18 @@ export class OrbitRenderer {
                     worldY = 0;
                 }
 
-                positions.push(worldX, worldY, -0.01);
+                // Direct write to reused buffer
+                positions[i * 3] = worldX;
+                positions[i * 3 + 1] = worldY;
+                positions[i * 3 + 2] = -0.01;
             }
 
             // Update LineGeometry
-            orbitLine.geometry.setPositions(positions);
+            // setPositions accepts Float32Array directly
+            // We strip the array to exact length using subarray if needed, 
+            // but Line2 usually handles it if we pass the whole thing? 
+            // Actually setPositions expects number[] or Float32Array.
+            orbitLine.geometry.setPositions(positions.subarray(0, requiredSize));
 
             // Reset mesh transform since we projected points manually
             orbitLine.position.set(0, 0, 0);

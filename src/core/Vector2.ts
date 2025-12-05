@@ -40,4 +40,66 @@ export class Vector2 {
     clone(): Vector2 {
         return new Vector2(this.x, this.y);
     }
+
+    // --- Mutable Methods (Optimization) ---
+
+    set(x: number, y: number): this {
+        this.x = x;
+        this.y = y;
+        return this;
+    }
+
+    copy(v: Vector2): this {
+        this.x = v.x;
+        this.y = v.y;
+        return this;
+    }
+
+    addVectors(a: Vector2, b: Vector2): this {
+        this.x = a.x + b.x;
+        this.y = a.y + b.y;
+        return this;
+    }
+
+    subVectors(a: Vector2, b: Vector2): this {
+        this.x = a.x - b.x;
+        this.y = a.y - b.y;
+        return this;
+    }
+
+    scaleVector(v: Vector2, s: number): this {
+        this.x = v.x * s;
+        this.y = v.y * s;
+        return this;
+    }
+
+    addInPlace(v: Vector2): this {
+        this.x += v.x;
+        this.y += v.y;
+        return this;
+    }
+
+    subInPlace(v: Vector2): this {
+        this.x -= v.x;
+        this.y -= v.y;
+        return this;
+    }
+
+    scaleInPlace(s: number): this {
+        this.x *= s;
+        this.y *= s;
+        return this;
+    }
+
+    normalizeInPlace(): this {
+        const m = this.mag();
+        if (m === 0) {
+            this.x = 0;
+            this.y = 0;
+        } else {
+            this.x /= m;
+            this.y /= m;
+        }
+        return this;
+    }
 }
