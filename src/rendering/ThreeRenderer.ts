@@ -827,7 +827,7 @@ export class ThreeRenderer {
             const y = (points[i].y - center.y) * this.scale;
             positions[i * 3] = x;
             positions[i * 3 + 1] = y;
-            positions[i * 3 + 2] = 0; // z=0 (behind rocket)
+            positions[i * 3 + 2] = 0;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));

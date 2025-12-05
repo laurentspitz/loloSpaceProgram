@@ -1,6 +1,7 @@
 /**
  * MainMenu - Handles the start screen UI
  */
+import { SettingsPanel } from './SettingsPanel';
 export class MainMenu {
     container: HTMLDivElement;
     onStartGame: () => void;
@@ -51,7 +52,18 @@ export class MainMenu {
         hangarBtn.onclick = () => this.onOpenHangar();
         buttonContainer.appendChild(hangarBtn);
 
+        // Settings Button
+        const settingsBtn = this.createButton('Settings', '#aaaaaa');
+        settingsBtn.onclick = () => this.openSettings();
+        buttonContainer.appendChild(settingsBtn);
+
         document.body.appendChild(this.container);
+    }
+
+    private openSettings() {
+        const panel = new SettingsPanel(() => {
+            panel.dispose();
+        });
     }
 
     private createButton(text: string, color: string): HTMLButtonElement {

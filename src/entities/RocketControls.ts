@@ -1,7 +1,9 @@
 /**
  * RocketControls - Handles keyboard input for rocket control
- * Controls: Q/D for rotation, Z for thrust, S for retrograde
+ * Controls are now configurable via Settings panel
  */
+import { controls } from '../config/Controls';
+
 export interface RocketInput {
     throttle: number;   // 0 to 1
     rotation: number;   // -1 (left) to 1 (right)
@@ -36,27 +38,27 @@ export class RocketControls {
     }
 
     /**
-     * Get current input state from keyboard
+     * Get current input state from keyboard (using configured controls)
      */
     getInput(): RocketInput {
         let rotation = 0;
 
-        // Rotation controls (Q = left, D = right)
-        if (this.keys.has('q')) rotation -= 1;
-        if (this.keys.has('d')) rotation += 1;
+        // Rotation controls (configurable)
+        if (this.keys.has(controls.getControl('rotateLeft').toLowerCase())) rotation -= 1;
+        if (this.keys.has(controls.getControl('rotateRight').toLowerCase())) rotation += 1;
 
-        // Throttle controls
-        if (this.keys.has('z')) {
-            // Z = full thrust
+        // Throttle controls (configurable)
+        if (this.keys.has(controls.getControl('thrust').toLowerCase())) {
+            // Full thrust
             this.throttle = 1.0;
-        } else if (this.keys.has('s')) {
-            // S = cut engines
+        } else if (this.keys.has(controls.getControl('cutEngines').toLowerCase())) {
+            // Cut engines
             this.throttle = 0;
-        } else if (this.keys.has('shift')) {
-            // Shift = increase throttle gradually
+        } else if (this.keys.has(controls.getControl('increaseThrottle').toLowerCase())) {
+            // Increase throttle gradually
             this.throttle = Math.min(1.0, this.throttle + 0.02);
-        } else if (this.keys.has('control')) {
-            // Ctrl = decrease throttle gradually
+        } else if (this.keys.has(controls.getControl('decreaseThrottle').toLowerCase())) {
+            // Decrease throttle gradually
             this.throttle = Math.max(0, this.throttle - 0.02);
         }
 

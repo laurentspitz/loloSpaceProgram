@@ -7,6 +7,8 @@ import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
 import { ManeuverNode } from '../systems/ManeuverNode';
 import { ManeuverNodeUI } from './ManeuverNodeUI';
+import { IconGenerator } from './IconGenerator';
+import { controls } from '../config/Controls';
 
 import { Rocket } from '../entities/Rocket';
 
@@ -849,9 +851,9 @@ export class UI {
 
         panel.innerHTML = `
             <div><strong>CONTROLS</strong></div>
-            <div>Thrust: Z / S</div>
-            <div>Rotate: Q / D</div>
-            <div>Fine Ctrl: Shift / Ctrl</div>
+            <div>Thrust: ${controls.getControl('thrust').toUpperCase()} / ${controls.getControl('cutEngines').toUpperCase()}</div>
+            <div>Rotate: ${controls.getControl('rotateLeft').toUpperCase()} / ${controls.getControl('rotateRight').toUpperCase()}</div>
+            <div>Fine Ctrl: ${controls.getControl('increaseThrottle')} / ${controls.getControl('decreaseThrottle')}</div>
         `;
 
         document.body.appendChild(panel);

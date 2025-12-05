@@ -312,7 +312,7 @@ export class NavballRenderer {
     }
 
     /**
-     * Draw maneuver marker (cyan circle with dot)
+     * Draw maneuver marker (cyan target icon - same as trajectory nodes)
      */
     private drawManeuverMarker(rocket: Rocket, _navballRotation: number) {
         if (this.maneuverNodes.length === 0 || !this.currentRocket) return;
@@ -328,24 +328,40 @@ export class NavballRenderer {
         while (relativeAngle > Math.PI) relativeAngle -= Math.PI * 2;
         while (relativeAngle < -Math.PI) relativeAngle += Math.PI * 2;
 
-        // Maneuver Marker (Cyan)
+        // Maneuver Marker (Cyan Target)
         if (Math.abs(relativeAngle) < Math.PI / 2) {
             // Front hemisphere
             const x = Math.sin(relativeAngle) * this.radius;
             const y = 0;
+            const size = 20; // Icon size - larger to match trajectory nodes
 
-            // Draw cyan circle with dot
+            // Draw target icon (same as createManeuverIcon)
             this.ctx.strokeStyle = '#00FFFF';
+            this.ctx.fillStyle = '#00FFFF';
+
+            // Outer ring
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 10, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 0.4, 0, Math.PI * 2);
             this.ctx.stroke();
 
             // Inner dot
-            this.ctx.fillStyle = '#00FFFF';
             this.ctx.beginPath();
-            this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+            this.ctx.arc(x, y, size * 0.15, 0, Math.PI * 2);
             this.ctx.fill();
+
+            // Crosshair
+            this.ctx.lineWidth = 1.5;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x - size * 0.5, y);
+            this.ctx.lineTo(x - size * 0.25, y);
+            this.ctx.moveTo(x + size * 0.25, y);
+            this.ctx.lineTo(x + size * 0.5, y);
+            this.ctx.moveTo(x, y - size * 0.5);
+            this.ctx.lineTo(x, y - size * 0.25);
+            this.ctx.moveTo(x, y + size * 0.25);
+            this.ctx.lineTo(x, y + size * 0.5);
+            this.ctx.stroke();
 
             // Label
             this.ctx.fillStyle = '#00FFFF';
