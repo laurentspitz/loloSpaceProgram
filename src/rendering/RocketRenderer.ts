@@ -243,8 +243,50 @@ export class RocketRenderer {
         const head = new THREE.Mesh(headGeometry, headMaterial);
         group.add(head);
 
+
         return group;
     }
+
+    /**
+     * Create center of gravity marker (crosshair)
+     */
+    static createCoGMarker(): THREE.Group {
+        const group = new THREE.Group();
+
+        // Create crosshair lines
+        const lineLength = 2; // meters in local space
+        const lineWidth = 0.1;
+
+        // Horizontal line
+        const hLineGeometry = new THREE.PlaneGeometry(lineLength, lineWidth);
+        const lineMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFF00FF, // Magenta for CoG
+            transparent: true,
+            opacity: 0.8,
+            side: THREE.DoubleSide
+        });
+        const hLine = new THREE.Mesh(hLineGeometry, lineMaterial);
+        group.add(hLine);
+
+        // Vertical line
+        const vLineGeometry = new THREE.PlaneGeometry(lineWidth, lineLength);
+        const vLine = new THREE.Mesh(vLineGeometry, lineMaterial.clone());
+        group.add(vLine);
+
+        // Center circle
+        const circleGeometry = new THREE.CircleGeometry(0.3, 32);
+        const circleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xFF00FF,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+        group.add(circle);
+
+        return group;
+    }
+
     /**
      * Create debris mesh from parts
      */

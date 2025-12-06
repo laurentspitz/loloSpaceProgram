@@ -80,6 +80,10 @@ export class Hangar {
             (active) => {
                 // Toggle Mirror
                 this.dragDropManager.setMirrorMode(active);
+            },
+            (active) => {
+                // Toggle CoG
+                this.scene.showCoG = active;
             }
         );
 

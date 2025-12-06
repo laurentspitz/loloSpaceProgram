@@ -23,9 +23,12 @@ export class HangarUI {
 
     rocketNameInput!: HTMLInputElement;
     mirrorButton!: HTMLButtonElement;
+    cogButton!: HTMLButtonElement;
     isMirrorActive: boolean = false;
+    isCoGActive: boolean = false;
 
     onToggleMirror: (active: boolean) => void;
+    onToggleCoG: (active: boolean) => void;
 
     constructor(
         assembly: RocketAssembly,
@@ -34,7 +37,8 @@ export class HangarUI {
         onSave: (name: string) => void,
         onLoad: (assembly: RocketAssembly) => void,
         onBack: () => void,
-        onToggleMirror: (active: boolean) => void
+        onToggleMirror: (active: boolean) => void,
+        onToggleCoG: (active: boolean) => void
     ) {
         this.assembly = assembly;
         this.onPartSelected = onPartSelected;
@@ -43,6 +47,7 @@ export class HangarUI {
         this.onLoad = onLoad;
         this.onBack = onBack;
         this.onToggleMirror = onToggleMirror;
+        this.onToggleCoG = onToggleCoG;
 
         this.container = document.createElement('div');
         this.container.id = 'hangar-ui';
@@ -57,11 +62,13 @@ export class HangarUI {
         this.statsPanel = this.createStatsPanel();
         this.rocketNameInput = this.createNameInput();
         this.mirrorButton = this.createMirrorButton();
+        this.cogButton = this.createCoGButton();
 
         this.container.appendChild(this.palette);
         this.container.appendChild(this.statsPanel);
         this.container.appendChild(this.rocketNameInput);
         this.container.appendChild(this.mirrorButton);
+        this.container.appendChild(this.cogButton);
         this.container.appendChild(this.createBackButton());
 
         document.body.appendChild(this.container);
@@ -70,6 +77,9 @@ export class HangarUI {
         window.addEventListener('keydown', (e) => {
             if (e.key.toLowerCase() === 'm' && document.activeElement !== this.rocketNameInput) {
                 this.toggleMirror();
+            }
+            if (e.key.toLowerCase() === 'c' && document.activeElement !== this.rocketNameInput) {
+                this.toggleCoG();
             }
         });
 
@@ -81,6 +91,12 @@ export class HangarUI {
         this.isMirrorActive = !this.isMirrorActive;
         this.mirrorButton.style.backgroundColor = this.isMirrorActive ? '#00aaff' : 'rgba(30, 30, 30, 0.9)';
         this.onToggleMirror(this.isMirrorActive);
+    }
+
+    private toggleCoG() {
+        this.isCoGActive = !this.isCoGActive;
+        this.cogButton.style.backgroundColor = this.isCoGActive ? '#FF00FF' : 'rgba(30, 30, 30, 0.9)';
+        this.onToggleCoG(this.isCoGActive);
     }
 
     private createMirrorButton(): HTMLButtonElement {
@@ -101,6 +117,27 @@ export class HangarUI {
         btn.style.fontSize = '14px';
 
         btn.onclick = () => this.toggleMirror();
+        return btn;
+    }
+
+    private createCoGButton(): HTMLButtonElement {
+        const btn = document.createElement('button');
+        btn.innerHTML = '⊕ Show CoG (C)';
+        btn.style.position = 'absolute';
+        btn.style.top = '100px'; // Below mirror button
+        btn.style.left = '50%';
+        btn.style.transform = 'translateX(-50%)';
+        btn.style.padding = '8px 15px';
+        btn.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+        btn.style.color = '#fff';
+        btn.style.border = '1px solid #444';
+        btn.style.borderRadius = '4px';
+        btn.style.cursor = 'pointer';
+        btn.style.pointerEvents = 'auto';
+        btn.style.fontWeight = 'bold';
+        btn.style.fontSize = '14px';
+
+        btn.onclick = () => this.toggleCoG();
         return btn;
     }
 

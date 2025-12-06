@@ -55,9 +55,11 @@ export class ThreeRenderer {
 
     // Debug
     showColliders: boolean = false;
+    showCoG: boolean = false; // Show center of gravity marker
     debugCollisionBox: THREE.Line | null = null;
     debugCollisionCircle: THREE.Line | null = null;
     debugPlanetColliders: Map<Body, THREE.Line> = new Map();
+    cogMarker: THREE.Group | null = null; // Center of gravity marker
 
     // Maneuver Nodes
     maneuverMeshes: Map<string, THREE.Group> = new Map();
@@ -252,14 +254,14 @@ export class ThreeRenderer {
                     if (isEngine || (isRCS && part.active)) {
                         const h = part.definition.height;
 
-                        // Part center relative to rocket center (CoM)
+                        // Part center relative to rocket center (CoM) - in meters
                         const px = (part.position?.x || 0) - centerOffsetX;
                         const py = (part.position?.y || 0) - centerOffsetY;
 
                         // Part Rotation
                         const pr = part.rotation || 0;
 
-                        // Nozzle Offset (Local to Part) - Bottom of part, or Center for RCS
+                        // Nozzle Offset (Local to Part) - Bottom of part, or Center for RCS - in meters
                         const curNozzleX = 0;
                         const curNozzleY = isRCS ? 0 : -h / 2;
 
@@ -269,9 +271,14 @@ export class ThreeRenderer {
                         const nozzleRotX = curNozzleX * cosPr - curNozzleY * sinPr;
                         const nozzleRotY = curNozzleX * sinPr + curNozzleY * cosPr;
 
-                        // Total Local Position (Part Center + Nozzle Offset) (Rocket Local Frame, unrotated)
+                        // Total Local Position (Part Center + Nozzle Offset) (Rocket Local Frame, unrotated) - in meters
                         const localX = px + nozzleRotX;
                         const localY = py + nozzleRotY;
+
+                        // CRITICAL: Apply visualScale to match the rocket mesh scaling
+                        // The rocket mesh is scaled by visualScale, so local positions must be too
+                        const scaledLocalX = localX * this.visualScale;
+                        const scaledLocalY = localY * this.visualScale;
 
                         // Rotate by Rocket Rotation to get World Offset
                         // Rocket Body Angle (Up) is PI/2 in physics, but Sprite Up is Y+.
@@ -280,8 +287,8 @@ export class ThreeRenderer {
                         const sinRr = Math.sin(rocketRot);
                         const cosRr = Math.cos(rocketRot);
 
-                        const worldOffsetX = localX * cosRr - localY * sinRr;
-                        const worldOffsetY = localX * sinRr + localY * cosRr;
+                        const worldOffsetX = scaledLocalX * cosRr - scaledLocalY * sinRr;
+                        const worldOffsetY = scaledLocalX * sinRr + scaledLocalY * cosRr;
 
                         const worldPos = new THREE.Vector3(
                             this.currentRocket!.body.position.x + worldOffsetX,
@@ -810,6 +817,44 @@ export class ThreeRenderer {
         } else {
             // Hide velocity indicator when trajectory is disabled
             this.velocityIndicator.visible = false;
+        }
+
+        // Render center of gravity marker if enabled
+        if (this.showCoG) {
+            if (!this.cogMarker) {
+                this.cogMarker = RocketRenderer.createCoGMarker();
+                this.scene.add(this.cogMarker);
+            }
+
+            // Position at rocket's center of mass (in world coordinates)
+            // The rocket mesh is positioned at the body position (which is the CoM in physics)
+            // But visually, the mesh is centered around the CoM
+            // So we need to offset the CoG marker based on the rocket's centerOfMass offset
+
+            // If rocket has a calculated CoM, use it
+            if (rocket.centerOfMass) {
+                // The rocket mesh is already centered on the CoM
+                // So we just need to position the marker at the mesh center
+                this.cogMarker.position.copy(this.rocketMesh.position);
+
+                // NOTE: The centerOfMass is in local rocket coordinates
+                // Since the mesh is built with CoM at (0,0), the marker goes at mesh origin
+                this.cogMarker.position.z = 3; // On top of rocket and velocity indicator
+            } else {
+                // Fallback: position at rocket body position
+                this.cogMarker.position.copy(this.rocketMesh.position);
+                this.cogMarker.position.z = 3;
+            }
+
+            // Match rocket rotation
+            this.cogMarker.rotation.z = rocket.rotation - Math.PI / 2;
+
+            // Scale based on zoom
+            const cogScale = this.scale * this.visualScale;
+            this.cogMarker.scale.set(cogScale, cogScale, 1);
+            this.cogMarker.visible = true;
+        } else if (this.cogMarker) {
+            this.cogMarker.visible = false;
         }
 
         // Render debug collision box if enabled

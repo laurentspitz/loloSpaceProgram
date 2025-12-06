@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RocketAssembly, type PlacedPart } from './RocketAssembly';
 import { PartRegistry } from './PartRegistry';
+import { RocketRenderer } from '../rendering/RocketRenderer';
 
 export class HangarScene {
     scene: THREE.Scene;
@@ -11,6 +12,10 @@ export class HangarScene {
     public partMeshes: Map<string, THREE.Group> = new Map();
     public selectedInstanceIds: Set<string> = new Set();
     private textureLoader = new THREE.TextureLoader();
+
+    // Center of Gravity visualization
+    public showCoG: boolean = false;
+    private cogMarker: THREE.Group | null = null;
 
     private selectionBox: HTMLDivElement;
 
@@ -171,6 +176,41 @@ export class HangarScene {
                 }
             }
         });
+
+        // Update Center of Gravity marker
+        if (this.showCoG && this.assembly.parts.length > 0) {
+            if (!this.cogMarker) {
+                this.cogMarker = RocketRenderer.createCoGMarker();
+                this.scene.add(this.cogMarker);
+            }
+
+            // Calculate CoG from assembly
+            let totalMass = 0;
+            let weightedX = 0;
+            let weightedY = 0;
+
+            this.assembly.parts.forEach(part => {
+                const def = PartRegistry.get(part.partId);
+                if (def) {
+                    const m = def.stats.mass + (def.stats.fuel || 0);
+                    totalMass += m;
+                    weightedX += part.position.x * m;
+                    weightedY += part.position.y * m;
+                }
+            });
+
+            if (totalMass > 0) {
+                const cogX = weightedX / totalMass;
+                const cogY = weightedY / totalMass;
+                this.cogMarker.position.set(cogX, cogY, 1); // z=1 on top
+                this.cogMarker.rotation.z = 0; // No rotation needed
+                this.cogMarker.visible = true;
+            } else {
+                this.cogMarker.visible = false;
+            }
+        } else if (this.cogMarker) {
+            this.cogMarker.visible = false;
+        }
     }
 
     private createPartMesh(part: PlacedPart): THREE.Group {

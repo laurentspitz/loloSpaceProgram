@@ -1250,6 +1250,32 @@ export class UI {
         colliderContainer.appendChild(colliderLabel);
         panel.appendChild(colliderContainer);
 
+        // Show CoG Toggle
+        const cogContainer = document.createElement('div');
+        cogContainer.style.display = 'flex';
+        cogContainer.style.alignItems = 'center';
+        cogContainer.style.gap = '5px';
+
+        const cogCheck = document.createElement('input');
+        cogCheck.type = 'checkbox';
+        cogCheck.id = 'debug-cog';
+        cogCheck.checked = false;
+        cogCheck.onchange = (e) => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.showCoG = (e.target as HTMLInputElement).checked;
+            }
+        };
+
+        const cogLabel = document.createElement('label');
+        cogLabel.htmlFor = 'debug-cog';
+        cogLabel.innerText = 'Show CoG';
+        cogLabel.style.cursor = 'pointer';
+
+        cogContainer.appendChild(cogCheck);
+        cogContainer.appendChild(cogLabel);
+        panel.appendChild(cogContainer);
+
+
         // FPS Counter
         const fpsContainer = document.createElement('div');
         fpsContainer.style.display = 'flex';
