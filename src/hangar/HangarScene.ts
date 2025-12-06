@@ -136,9 +136,16 @@ export class HangarScene {
             }
 
             // Update position
-            const zOffset = part.partId === 'radial_node' ? 0.1 : 0;
-            mesh.position.set(part.position.x, part.position.y, zOffset);
+            // Update position
+            mesh.position.set(part.position.x, part.position.y, 0);
             mesh.rotation.z = part.rotation;
+            // Handle Mirroring
+            mesh.scale.set(part.flipped ? -1 : 1, 1, 1);
+
+            // Add Radial Node visual offset if needed?
+            // Radial Node Z offset logic is inside DragDropManager ghost creation?
+            // HangarScene usually doesn't handle radial node z offset except implicit order.
+            // Let's stick to scale/pos/rot.
 
             // Update Selection Highlight
             const isSelected = this.selectedInstanceIds.has(part.instanceId);

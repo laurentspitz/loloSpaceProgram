@@ -8,6 +8,7 @@ export interface PlacedPart {
     position: Vector2; // Hangar coordinates
     rotation: number;  // Radians
     attachedTo?: string; // instanceId of parent part
+    flipped?: boolean;
 }
 
 export class RocketAssembly {
@@ -19,7 +20,7 @@ export class RocketAssembly {
         PartRegistry.init();
     }
 
-    addPart(partId: string, position: Vector2, rotation: number = 0): PlacedPart {
+    addPart(partId: string, position: Vector2, rotation: number = 0, flipped: boolean = false): PlacedPart {
         const def = PartRegistry.get(partId);
         if (!def) throw new Error(`Part ${partId} not found`);
 
@@ -28,7 +29,8 @@ export class RocketAssembly {
             instanceId,
             partId,
             position,
-            rotation
+            rotation,
+            flipped
         };
 
         if (this.parts.length === 0) {
@@ -125,7 +127,9 @@ export class RocketAssembly {
             return {
                 partId: p.partId,
                 definition: def!,
-                position: p.position
+                position: p.position,
+                rotation: p.rotation,
+                flipped: p.flipped
             };
         });
     }

@@ -26,10 +26,10 @@ export class Rocket {
     readonly engineHeight: number = 1.8;   // Smaller engine
 
     // Part stack from assembly (if built in Hangar)
-    partStack?: Array<{ partId: string; definition: any; position: any }>;
+    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }>;
 
     // Stages (arrays of parts, from top to bottom)
-    stages: Array<Array<{ partId: string; definition: any; position: any }>> = [];
+    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }>> = [];
     currentStageIndex: number = 0;
 
     // Callback for stage separation (to spawn debris)
@@ -120,9 +120,9 @@ export class Rocket {
      * Initialize stages from part stack
      * Splits parts into stages based on decouplers
      */
-    private initializeStages(parts: Array<{ partId: string; definition: any; position: any }>) {
+    private initializeStages(parts: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }>) {
         this.stages = [];
-        let currentStage: Array<{ partId: string; definition: any; position: any }> = [];
+        let currentStage: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }> = [];
 
         // Iterate from top to bottom (assuming parts are sorted by Y or we sort them)
         // Actually, let's sort them by Y descending (top first)

@@ -9,6 +9,7 @@ interface DraggedItem {
     offsetX: number;
     offsetY: number;
     rotation: number; // Relative rotation
+    flipped?: boolean;
 }
 
 export class DragDropManager {
@@ -22,8 +23,21 @@ export class DragDropManager {
     draggedPartId: string | null = null; // Anchor part ID
     draggedGroup: DraggedItem[] = []; // Items being dragged (including anchor)
 
-    dragGhost: THREE.Group | null = null;
+    private dragGhost: THREE.Object3D | null = null;
+    private mirrorGhost: THREE.Object3D | null = null;
+    public isMirrorMode: boolean = false;
 
+    public setMirrorMode(active: boolean) {
+        this.isMirrorMode = active;
+        // If currently dragging, update ghosts?
+        // For simplicity, only apply to NEXT drag start or if we handle dynamic toggle?
+        // Dynamic toggle would require creating/destroying ghost mid-drag.
+        // Let's keep simple: Mode affects start of drag or requires re-click for now?
+        // Actually, user might toggle WHILE holding.
+        // Let's just set flag. `onMouseMove` could handle creation if missing? 
+        // Better: handle in start/end or simple check in move. 
+        // Let's Stick to standard init.
+    }
     private raycaster = new THREE.Raycaster();
     private mouse = new THREE.Vector2();
     private plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); // Z=0 plane
@@ -56,6 +70,24 @@ export class DragDropManager {
             this.raycaster.setFromCamera(this.mouse, this.scene.camera);
             this.raycaster.ray.intersectPlane(this.plane, target);
             this.dragGhost.position.copy(target);
+
+            if (this.isMirrorMode) {
+                this.mirrorGhost = this.dragGhost.clone();
+                this.mirrorGhost.userData.isGhost = true;
+
+                const axisX = this.getSymmetryAxisX();
+                this.mirrorGhost.position.x = 2 * axisX - this.dragGhost.position.x;
+                this.mirrorGhost.position.y = this.dragGhost.position.y;
+                this.mirrorGhost.position.z = 1;
+                this.mirrorGhost.scale.x = -1;
+                this.mirrorGhost.rotation.z = -this.dragGhost.rotation.z;
+
+                // Check visibility immediately
+                const distFromCenter = Math.abs(this.dragGhost.position.x - axisX);
+                this.mirrorGhost.visible = distFromCenter >= 0.1;
+
+                this.scene.scene.add(this.mirrorGhost);
+            }
         }
 
         this.isDragging = true;
@@ -87,13 +119,20 @@ export class DragDropManager {
                     partId: p.partId,
                     offsetX: v.x,
                     offsetY: v.y,
-                    rotation: p.rotation - anchorRot
+                    rotation: p.rotation - anchorRot,
+                    flipped: p.flipped
                 });
             }
         });
 
         this.scene.selectedInstanceIds.forEach(id => {
+            const part = this.assembly.parts.find(p => p.instanceId === id);
             this.assembly.removePart(id);
+
+            // Also remove symmetric counterpart if in Mirror Mode
+            if (this.isMirrorMode && part) {
+                this.removeSymmetricPart(part, this.getSymmetryAxisX());
+            }
         });
 
         this.createGhost();
@@ -102,14 +141,74 @@ export class DragDropManager {
         if (this.dragGhost) {
             this.dragGhost.position.set(anchorPos.x, anchorPos.y, 0);
             this.dragGhost.rotation.z = anchorRot;
+
+            if (this.isMirrorMode) {
+                this.mirrorGhost = this.dragGhost.clone();
+                this.mirrorGhost.userData.isGhost = true;
+
+                // Mirror around symmetry axis
+                const axisX = this.getSymmetryAxisX();
+                // mirrorX = axisX - (dragX - axisX) = 2*axisX - dragX
+                this.mirrorGhost.position.x = 2 * axisX - this.dragGhost.position.x;
+                this.mirrorGhost.position.y = this.dragGhost.position.y;
+                this.mirrorGhost.position.z = 1;
+                this.mirrorGhost.scale.x = -1;
+                this.mirrorGhost.rotation.z = -this.dragGhost.rotation.z;
+
+                // Check visibility immediately
+                const distFromCenter = Math.abs(this.dragGhost.position.x - axisX);
+                this.mirrorGhost.visible = distFromCenter >= 0.1;
+
+                this.scene.scene.add(this.mirrorGhost);
+            }
         }
 
         this.isDragging = true;
     }
 
+    /**
+     * Get the X position of the symmetry axis (usually the root part)
+     */
+    private getSymmetryAxisX(): number {
+        if (this.assembly.rootPartId) {
+            const root = this.assembly.parts.find(p => p.instanceId === this.assembly.rootPartId);
+            if (root) return root.position.x;
+        }
+        // Fallback: Use average X of all parts? Or just 0?
+        // If rocket is built at X=100, we probably want 100.
+        // If no root, try first part.
+        if (this.assembly.parts.length > 0) {
+            return this.assembly.parts[0].position.x;
+        }
+        return 0;
+    }
+
+    private removeSymmetricPart(part: any, axisX: number) {
+        // Calculate expected symmetric position
+        const symX = 2 * axisX - part.position.x;
+        const symY = part.position.y;
+
+        // Find existing part near this position with same ID
+        // Tolerance needed for float comparison
+        const TOLERANCE = 0.5; // Enough to catch it
+        const counterPart = this.assembly.parts.find(p =>
+            p.partId === part.partId &&
+            Math.abs(p.position.x - symX) < TOLERANCE &&
+            Math.abs(p.position.y - symY) < TOLERANCE
+        );
+
+        if (counterPart) {
+            this.assembly.removePart(counterPart.instanceId);
+        }
+    }
+
     private createGhost() {
         if (this.dragGhost) {
             this.scene.scene.remove(this.dragGhost);
+        }
+        if (this.mirrorGhost) {
+            this.scene.scene.remove(this.mirrorGhost);
+            this.mirrorGhost = null;
         }
 
         this.dragGhost = new THREE.Group();
@@ -130,6 +229,7 @@ export class DragDropManager {
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(item.offsetX, item.offsetY, 0);
             mesh.rotation.z = item.rotation;
+            if (item.flipped) mesh.scale.x = -1;
 
             // Add Z offset for radial node inside group
             if (item.partId === 'radial_node') mesh.position.z += 0.1;
@@ -229,9 +329,24 @@ export class DragDropManager {
             this.dragGhost.rotation.z = snap.rot;
         } else {
             this.dragGhost.rotation.z = 0; // Or keep original rotation?
-            // If dragging existing parts, we usually want to keep their rotation unless snapped?
-            // For now, reset to 0 implies "align to grid".
             this.dragGhost.position.z = 1;
+        }
+
+        if (this.mirrorGhost) {
+            const axisX = this.getSymmetryAxisX();
+
+            // Check if close to center (Single Part Mode)
+            const distFromCenter = Math.abs(this.dragGhost.position.x - axisX);
+            if (distFromCenter < 0.1) {
+                this.mirrorGhost.visible = false;
+            } else {
+                this.mirrorGhost.visible = true;
+                this.mirrorGhost.position.x = 2 * axisX - this.dragGhost.position.x;
+                this.mirrorGhost.position.y = this.dragGhost.position.y;
+                this.mirrorGhost.position.z = 1;
+                this.mirrorGhost.scale.x = -1;
+                this.mirrorGhost.rotation.z = -this.dragGhost.rotation.z;
+            }
         }
     }
 
@@ -287,6 +402,11 @@ export class DragDropManager {
             const isOverUI = event.target !== this.scene.renderer.domElement;
             if (this.isOverTrash(event.clientX, event.clientY) || isOverUI) {
                 this.scene.scene.remove(this.dragGhost);
+                // Also remove mirror ghost if cancelled/trashed
+                if (this.mirrorGhost) {
+                    this.scene.scene.remove(this.mirrorGhost);
+                    this.mirrorGhost = null;
+                }
             } else {
                 const anchorPos = new Vector2(this.dragGhost.position.x, this.dragGhost.position.y);
                 const anchorRot = this.dragGhost.rotation.z;
@@ -300,14 +420,40 @@ export class DragDropManager {
                     const finalPos = anchorPos.clone().add(v);
                     const finalRot = anchorRot + item.rotation;
 
-                    const newPart = this.assembly.addPart(item.partId, finalPos, finalRot);
+                    const newPart = this.assembly.addPart(item.partId, finalPos, finalRot, item.flipped);
                     this.scene.selectedInstanceIds.add(newPart.instanceId);
                 });
+
+                // Place Mirror Part
+                if (this.mirrorGhost && this.isMirrorMode && this.mirrorGhost.visible) {
+                    this.draggedGroup.forEach(item => {
+                        // ...
+                        // 1. Calculate Normal World Pos
+                        const normalV = new Vector2(item.offsetX, item.offsetY);
+                        normalV.rotateAround(new Vector2(0, 0), anchorRot);
+                        const normalWorldPos = anchorPos.clone().add(normalV);
+                        const normalWorldRot = anchorRot + item.rotation;
+
+                        // 2. Mirror It
+                        const axisX = this.getSymmetryAxisX();
+                        const finalMirrorPos = new Vector2(2 * axisX - normalWorldPos.x, normalWorldPos.y);
+                        const finalMirrorRot = -normalWorldRot;
+
+                        // Mirror flipped state: Flipped -> Standard (false), Standard -> Flipped (true)
+                        const mirrorFlipped = !item.flipped;
+                        const newMirrorPart = this.assembly.addPart(item.partId, finalMirrorPos, finalMirrorRot, mirrorFlipped);
+                        this.scene.selectedInstanceIds.add(newMirrorPart.instanceId);
+                    });
+
+                    this.scene.scene.remove(this.mirrorGhost);
+                    this.mirrorGhost = null;
+                }
             }
 
-            // Cleanup
+            // Cleanup Drag Ghost
             if (this.dragGhost) this.scene.scene.remove(this.dragGhost);
             this.dragGhost = null;
+
             this.draggedPartId = null;
             this.draggedGroup = [];
             this.onPartPlaced();

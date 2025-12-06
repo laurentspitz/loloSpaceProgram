@@ -43,6 +43,7 @@ export class RocketRenderer {
             const centerOffset = (maxY + minY) / 2;
 
             // Render each part
+            // Render each part
             rocket.partStack.forEach(part => {
                 const def = part.definition;
                 const texture = this.textureLoader.load(def.texture);
@@ -53,7 +54,19 @@ export class RocketRenderer {
                     side: THREE.DoubleSide
                 });
                 const mesh = new THREE.Mesh(geometry, material);
+
+                // Position relative to center
+                mesh.position.x = part.position.x || 0;
                 mesh.position.y = part.position.y - centerOffset;
+
+                // Rotation
+                mesh.rotation.z = part.rotation || 0;
+
+                // Mirror/Scale
+                if (part.flipped) {
+                    mesh.scale.x = -1;
+                }
+
                 group.add(mesh);
             });
 
@@ -252,8 +265,16 @@ export class RocketRenderer {
                     side: THREE.DoubleSide
                 });
                 const mesh = new THREE.Mesh(geometry, material);
+
                 // Position relative to center of debris
+                mesh.position.x = part.position.x || 0;
                 mesh.position.y = part.position.y - centerOffset;
+                mesh.rotation.z = part.rotation || 0;
+
+                if (part.flipped) {
+                    mesh.scale.x = -1;
+                }
+
                 group.add(mesh);
             });
         }

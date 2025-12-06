@@ -76,6 +76,10 @@ export class Hangar {
             () => {
                 // Back callback
                 window.dispatchEvent(new CustomEvent('navigate-menu'));
+            },
+            (active) => {
+                // Toggle Mirror
+                this.dragDropManager.setMirrorMode(active);
             }
         );
 
