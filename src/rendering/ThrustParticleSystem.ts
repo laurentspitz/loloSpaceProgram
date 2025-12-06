@@ -14,7 +14,6 @@ export class ThrustParticleSystem {
     private colors: Float32Array;
     private maxLifetime: number = 2.5; // Longer for smoke trail
     private emissionRate: number = 8000; // Very high density for continuous flame
-    private timeSinceLastEmit: number = 0;
     private activeParticles: number = 0;
     private nextParticleIndex: number = 0; // Ring buffer index
 
@@ -81,22 +80,35 @@ export class ThrustParticleSystem {
     /**
      * Update particle system
      */
-    update(deltaTime: number, throttle: number, emitPosition: THREE.Vector3, emitDirection: THREE.Vector3) {
-        // Emit new particles based on throttle
-        if (throttle > 0) {
-            this.timeSinceLastEmit += deltaTime;
-            const emitInterval = 1 / (this.emissionRate * throttle);
+    /**
+     * Update particle system
+     */
+    update(deltaTime: number, emitters: Array<{ pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }>) {
+        if (emitters.length === 0) return;
 
-            // Limit max particles emitted per frame to avoid freezing
-            const maxEmitPerFrame = 200;
-            let emitted = 0;
+        // Process emissions for each emitter
+        emitters.forEach(emitter => {
+            if (emitter.throttle > 0) {
+                const effectiveRate = this.emissionRate * emitter.throttle;
 
-            while (this.timeSinceLastEmit >= emitInterval && emitted < maxEmitPerFrame) {
-                this.emitParticle(emitPosition, emitDirection, throttle);
-                this.timeSinceLastEmit -= emitInterval;
-                emitted++;
+                // Track time per emitter?
+                // Currently `timeSinceLastEmit` is global. This implies bursty emission if sharing.
+                // For simplicity, let's treat emission as global pool but distributed.
+                // Or better: pass `deltaTime` * `effectiveRate` = number of particles to emit.
+
+                const count = deltaTime * effectiveRate;
+                const intCount = Math.floor(count);
+                const prob = count - intCount;
+                let particlesToEmit = intCount + (Math.random() < prob ? 1 : 0);
+
+                // Limit max particles per frame per emitter
+                particlesToEmit = Math.min(particlesToEmit, 100);
+
+                for (let i = 0; i < particlesToEmit; i++) {
+                    this.emitParticle(emitter);
+                }
             }
-        }
+        });
 
         // Update existing particles
         this.activeParticles = 0;
@@ -116,8 +128,7 @@ export class ThrustParticleSystem {
                 this.physicsPositions[i3 + 1] += this.velocities[i3 + 1] * deltaTime;
                 this.physicsPositions[i3 + 2] += this.velocities[i3 + 2] * deltaTime;
 
-                // Drag/Slowdown for smoke effect
-                // Smoke slows down over time
+                // Drag/Slowdown
                 const drag = 0.5 * deltaTime;
                 this.velocities[i3] *= (1 - drag);
                 this.velocities[i3 + 1] *= (1 - drag);
@@ -126,30 +137,58 @@ export class ThrustParticleSystem {
                 // Update color and size based on age
                 const age = this.maxLifetime - this.lifetimes[i]; // Time alive
 
-                // Flame phase (0 - 0.3s) -> Smoke phase (> 0.3s)
+                // Retrieve Type from user data? We don't store type in buffer.
+                // We should store 'type' in a float buffer or infer from color?
+                // Actually, let's look at initial color to determine evolution?
+                // Or just use a simple general evolution.
+
+                // Hack: If initial Green component is high relative to Red, it's blue flame?
+                // Standard: R=1, G=1, B=0.9
+                // Blue: R=0.2, G=0.8, B=1.0
+
+                const r = this.colors[i3];
+                const b = this.colors[i3 + 2];
+
+                const isBlue = b > r; // Simple heuristic
+
                 const flameDuration = 0.4;
 
                 if (age < flameDuration) {
-                    // FLAME: White -> Yellow -> Orange
                     const t = age / flameDuration;
-                    this.colors[i3] = 1.0; // R
-                    this.colors[i3 + 1] = 1.0 - t * 0.5; // G (1.0 -> 0.5)
-                    this.colors[i3 + 2] = 0.9 - t * 0.9; // B (0.9 -> 0.0)
 
-                    // Size grows slightly
-                    this.sizes[i] = 80 + t * 40;
+                    if (isBlue) {
+                        // Blue Flame: Cyan -> Blue -> Dark Blue
+                        this.colors[i3] = 0.2 + t * 0.1; // R
+                        this.colors[i3 + 1] = 0.8 - t * 0.4; // G
+                        this.colors[i3 + 2] = 1.0; // B
+
+                        this.sizes[i] = 100 + t * 60;
+                    } else {
+                        // Standard: White -> Yellow -> Orange
+                        this.colors[i3] = 1.0;
+                        this.colors[i3 + 1] = 1.0 - t * 0.5;
+                        this.colors[i3 + 2] = 0.9 - t * 0.9;
+
+                        this.sizes[i] = 80 + t * 40;
+                    }
                 } else {
-                    // SMOKE: Orange -> Faint Grey -> Transparent
+                    // Smoke Phase
                     const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
-
-                    // Fade out color intensity
                     const intensity = 0.5 * (1 - t);
-                    this.colors[i3] = 1.0 * intensity; // Red tint fading
-                    this.colors[i3 + 1] = 0.5 * intensity; // Orange tint fading
-                    this.colors[i3 + 2] = 0.5 * intensity; // Greyish
 
-                    // Smoke expands significantly
-                    this.sizes[i] = 120 + t * 200;
+                    if (isBlue) {
+                        // Blue smoke (lighter)
+                        this.colors[i3] = 0.3 * intensity;
+                        this.colors[i3 + 1] = 0.4 * intensity;
+                        this.colors[i3 + 2] = 0.8 * intensity;
+                        this.sizes[i] = 150 + t * 250;
+                    } else {
+                        // Standard smoke
+                        this.colors[i3] = 1.0 * intensity;
+                        this.colors[i3 + 1] = 0.5 * intensity;
+                        this.colors[i3 + 2] = 0.5 * intensity;
+                        this.sizes[i] = 120 + t * 200;
+                    }
                 }
             }
         }
@@ -172,16 +211,12 @@ export class ThrustParticleSystem {
 
                 renderPositions[i3] = x;
                 renderPositions[i3 + 1] = y;
-                renderPositions[i3 + 2] = 2; // Z=2 to ensure visibility on top of planets/rocket
+                renderPositions[i3 + 2] = 2; // Z=2
 
-                // Calculate size in pixels
                 const physicalSize = this.sizes[i];
-                // Scale size but clamp to avoid disappearing
                 const pixelSize = Math.max(8, physicalSize * scale * 2);
                 sizes[i] = pixelSize;
-
             } else {
-                // Move dead particles out of view
                 const i3 = i * 3;
                 renderPositions[i3] = 0;
                 renderPositions[i3 + 1] = 0;
@@ -198,47 +233,48 @@ export class ThrustParticleSystem {
     /**
      * Emit a new particle using Ring Buffer
      */
-    private emitParticle(position: THREE.Vector3, direction: THREE.Vector3, throttle: number) {
+    private emitParticle(config: { pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }) {
         const i = this.nextParticleIndex;
-
         // Advance ring buffer
         this.nextParticleIndex = (this.nextParticleIndex + 1) % this.particleCount;
 
         const i3 = i * 3;
+        const isBlue = config.type === 'blue_flame';
 
-        // Set position with slight randomness (nozzle width)
-        const nozzleRadius = 1.5;
+        // Position with randomness
+        const nozzleRadius = isBlue ? 2.5 : 1.5;
+        this.physicsPositions[i3] = config.pos.x + (Math.random() - 0.5) * nozzleRadius;
+        this.physicsPositions[i3 + 1] = config.pos.y + (Math.random() - 0.5) * nozzleRadius;
+        this.physicsPositions[i3 + 2] = config.pos.z;
 
-        this.physicsPositions[i3] = position.x + (Math.random() - 0.5) * nozzleRadius;
-        this.physicsPositions[i3 + 1] = position.y + (Math.random() - 0.5) * nozzleRadius;
-        this.physicsPositions[i3 + 2] = position.z;
+        // Velocity
+        const spread = isBlue ? 0.2 : 0.3; // Blue is more focused
+        // Blue flame is faster
+        const speedMult = isBlue ? 1.5 : 1.0;
 
-        // Set velocity (exhaust direction + randomness)
-        const spread = 0.3;
-
-        // Speed calculation: always have slow particles near engine, throttle extends the maximum range
-        // Min speed (always present): 50 m/s -> stays near engine
-        // Max speed (scales with throttle): 50 + throttle * 250 -> extends flame length
-        // At throttle=0.1: 50-75 m/s (short flame)
-        // At throttle=1.0: 50-300 m/s (long flame from engine to far tip)
-        const minSpeed = 50;
-        const maxSpeed = 50 + throttle * 250;
+        const minSpeed = 50 * speedMult;
+        const maxSpeed = (50 + config.throttle * 250) * speedMult;
         const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
 
-        this.velocities[i3] = direction.x * speed + (Math.random() - 0.5) * spread * speed;
-        this.velocities[i3 + 1] = direction.y * speed + (Math.random() - 0.5) * spread * speed;
-        this.velocities[i3 + 2] = direction.z * speed + (Math.random() - 0.5) * spread * speed;
+        this.velocities[i3] = config.dir.x * speed + (Math.random() - 0.5) * spread * speed;
+        this.velocities[i3 + 1] = config.dir.y * speed + (Math.random() - 0.5) * spread * speed;
+        this.velocities[i3 + 2] = config.dir.z * speed + (Math.random() - 0.5) * spread * speed;
 
-        // Set lifetime (randomized)
+        // Lifetime
         this.lifetimes[i] = this.maxLifetime * (0.8 + Math.random() * 0.4);
 
-        // Set initial color (white/bright yellow)
-        this.colors[i3] = 1.0;
-        this.colors[i3 + 1] = 1.0;
-        this.colors[i3 + 2] = 0.9;
-
-        // Set initial size
-        this.sizes[i] = 80 + Math.random() * 40;
+        // Initial Color
+        if (isBlue) {
+            this.colors[i3] = 0.2; // R
+            this.colors[i3 + 1] = 0.8; // G
+            this.colors[i3 + 2] = 1.0; // B
+            this.sizes[i] = 100 + Math.random() * 50;
+        } else {
+            this.colors[i3] = 1.0;
+            this.colors[i3 + 1] = 1.0;
+            this.colors[i3 + 2] = 0.9;
+            this.sizes[i] = 80 + Math.random() * 40;
+        }
     }
 
     /**

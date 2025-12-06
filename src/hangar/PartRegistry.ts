@@ -79,7 +79,30 @@ export class PartRegistry {
             },
             nodes: [
                 { id: 'top', position: new Vector2(0, engineHeight / 2), direction: new Vector2(0, 1), type: 'top' }
-            ]
+            ],
+            effect: 'standard'
+        });
+
+        // 3.5 KS-25 "Titan" Liquid Fuel Engine
+        const titanHeight = 140 * SCALE;
+        this.register({
+            id: 'engine_titan',
+            name: 'KS-25 "Titan"',
+            type: 'engine',
+            description: 'A high-performance engine with a distinctive blue exhaust.',
+            texture: '/textures/engine_titan.png',
+            width: 2.5,
+            height: titanHeight,
+            stats: {
+                mass: 2000,
+                cost: 4000000,
+                thrust: 1500000, // 1.5 MN
+                isp: 320
+            },
+            nodes: [
+                { id: 'top', position: new Vector2(0, titanHeight / 2), direction: new Vector2(0, 1), type: 'top' }
+            ],
+            effect: 'blue_flame'
         });
 
         // 4. Decoupler (90px × 9px)

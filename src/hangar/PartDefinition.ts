@@ -27,4 +27,5 @@ export interface PartDefinition {
     height: number;     // meters
     stats: PartStats;
     nodes: ConnectionNode[];
+    effect?: 'standard' | 'blue_flame';
 }

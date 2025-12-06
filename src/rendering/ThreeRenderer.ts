@@ -227,36 +227,91 @@ export class ThreeRenderer {
         // Update thrust particles
         if (this.currentRocket) {
             const throttle = this.currentRocket.controls.getThrottle();
-
-            // Calculate nozzle position in world space
-            const nozzleOffset = RocketRenderer.getNozzlePosition(this.currentRocket);
-
-            // The nozzle offset is along the rocket's longitudinal axis.
-            // If rocket is pointing at angle alpha, the nozzle is at position -height/2 along that angle.
-            // Physics rotation 'r' is direction of nose.
-            // Nozzle is opposite to nose.
-
             const r = this.currentRocket.rotation;
+            const emitters: Array<{ pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }> = [];
 
-            // Rocket "Forward" is (cos(r), sin(r)).
-            // Nozzle is "Backward" * distance.
-            // Distance from center to nozzle is abs(nozzleOffset).
-            // So nozzlePos = center - Forward * distance.
+            if (this.currentRocket.partStack && this.currentRocket.partStack.length > 0) {
+                const parts = this.currentRocket.partStack;
+                // Calculate center offset (must match RocketRenderer logic)
+                const minY = Math.min(...parts.map((p) => (p.position?.y || 0) - p.definition.height / 2));
+                const maxY = Math.max(...parts.map((p) => (p.position?.y || 0) + p.definition.height / 2));
+                const centerOffset = (maxY + minY) / 2;
 
-            // IMPORTANT: Apply visualScale because the rocket mesh is scaled visually!
-            const dist = Math.abs(nozzleOffset) * this.visualScale;
-            const nozzlePos = new THREE.Vector3(
-                this.currentRocket.body.position.x - Math.cos(r) * dist,
-                this.currentRocket.body.position.y - Math.sin(r) * dist,
-                0
-            );
+                parts.forEach(part => {
+                    if (part.definition.type === 'engine') {
+                        const h = part.definition.height;
 
-            // Emission direction is opposite to thrust (backward)
-            // Thrust is forward (cos(r), sin(r))
-            // So emission is (-cos(r), -sin(r))
-            const direction = new THREE.Vector3(-Math.cos(r), -Math.sin(r), 0);
+                        // Part center relative to rocket center
+                        const px = part.position?.x || 0;
+                        const py = (part.position?.y || 0) - centerOffset;
 
-            this.thrustParticleSystem.update(deltaTime, throttle, nozzlePos, direction);
+                        // Nozzle relative to part center (bottom)
+                        // If type is 'engine', nozzle is usually at bottom
+                        const nx = 0;
+                        const ny = -h / 2;
+
+                        // Rotate nozzle offset by part rotation
+                        const pr = part.rotation || 0;
+                        const rnx = nx * Math.cos(pr) - ny * Math.sin(pr);
+                        const rny = nx * Math.sin(pr) + ny * Math.cos(pr);
+
+                        // Total local pos (Rocket Visual Frame)
+                        const tx = px + rnx;
+                        const ty = py + rny;
+
+                        // Scale by Visual Scale
+                        const sx = tx * this.visualScale;
+                        const sy = ty * this.visualScale;
+
+                        // Rotate by Rocket Global Rotation to get World Offset
+                        // Rocket physics Angle is `r`. Visual "Up" is `r - PI/2`.
+                        const gr = r - Math.PI / 2;
+                        const wx = sx * Math.cos(gr) - sy * Math.sin(gr);
+                        const wy = sx * Math.sin(gr) + sy * Math.cos(gr);
+
+                        const nozzlePos = new THREE.Vector3(
+                            this.currentRocket!.body.position.x + wx,
+                            this.currentRocket!.body.position.y + wy,
+                            0
+                        );
+
+                        // Emission Direction
+                        // Vector (0, -1) (Down) relative to part
+                        // Rotated by (RocketGlobal + PartLocal)
+                        const totalRot = gr + pr;
+                        // Rotate (0, -1) by totalRot
+                        // x = 0*c - (-1)*s = s
+                        // y = 0*s + (-1)*c = -c
+                        const dir = new THREE.Vector3(Math.sin(totalRot), -Math.cos(totalRot), 0);
+
+                        emitters.push({
+                            pos: nozzlePos,
+                            dir: dir,
+                            throttle: throttle,
+                            type: part.definition.effect
+                        });
+                    }
+                });
+            } else {
+                // Fallback for default simple rocket
+                const nozzleOffset = RocketRenderer.getNozzlePosition(this.currentRocket);
+                const dist = Math.abs(nozzleOffset) * this.visualScale;
+                const nozzlePos = new THREE.Vector3(
+                    this.currentRocket.body.position.x - Math.cos(r) * dist,
+                    this.currentRocket.body.position.y - Math.sin(r) * dist,
+                    0
+                );
+                const dir = new THREE.Vector3(-Math.cos(r), -Math.sin(r), 0);
+
+                emitters.push({
+                    pos: nozzlePos,
+                    dir: dir,
+                    throttle: throttle,
+                    type: 'standard'
+                });
+            }
+
+            this.thrustParticleSystem.update(deltaTime, emitters);
         }
 
         // Update camera position
