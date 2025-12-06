@@ -233,17 +233,25 @@ export class ThreeRenderer {
             if (this.currentRocket.partStack && this.currentRocket.partStack.length > 0) {
                 const parts = this.currentRocket.partStack;
                 // Calculate center offset (must match RocketRenderer logic)
-                const minY = Math.min(...parts.map((p) => (p.position?.y || 0) - p.definition.height / 2));
-                const maxY = Math.max(...parts.map((p) => (p.position?.y || 0) + p.definition.height / 2));
-                const centerOffset = (maxY + minY) / 2;
+                let centerOffsetY = 0;
+                let centerOffsetX = 0;
+
+                if (this.currentRocket.centerOfMass) {
+                    centerOffsetY = this.currentRocket.centerOfMass.y;
+                    centerOffsetX = this.currentRocket.centerOfMass.x;
+                } else {
+                    const minY = Math.min(...parts.map((p) => (p.position?.y || 0) - p.definition.height / 2));
+                    const maxY = Math.max(...parts.map((p) => (p.position?.y || 0) + p.definition.height / 2));
+                    centerOffsetY = (maxY + minY) / 2;
+                }
 
                 parts.forEach(part => {
                     if (part.definition.type === 'engine') {
                         const h = part.definition.height;
 
-                        // Part center relative to rocket center
-                        const px = part.position?.x || 0;
-                        const py = (part.position?.y || 0) - centerOffset;
+                        // Part center relative to rocket center (CoM)
+                        const px = (part.position?.x || 0) - centerOffsetX;
+                        const py = (part.position?.y || 0) - centerOffsetY;
 
                         // Nozzle relative to part center (bottom)
                         // If type is 'engine', nozzle is usually at bottom

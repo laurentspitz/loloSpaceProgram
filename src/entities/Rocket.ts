@@ -16,6 +16,11 @@ export class Rocket {
 
     // Rocket state
     rotation: number = Math.PI / 2; // Angle in radians (starts pointing up)
+    angularVelocity: number = 0;
+    angularDamping: number = 0.5; // Stability
+    momentOfInertia: number = 1000;
+    centerOfMass: Vector2 = new Vector2(0, 0); // Local CoM
+
     dryMass: number; // Mass without fuel
     isActive: boolean = true;
 
@@ -52,6 +57,7 @@ export class Rocket {
         // Initialize stages if parts are provided
         if (this.partStack && this.partStack.length > 0) {
             this.initializeStages(this.partStack);
+            this.calculateMassProperties();
         }
 
         // Create physics body
@@ -73,47 +79,172 @@ export class Rocket {
 
         // Create controls
         this.controls = new RocketControls();
+
+        // Initial mass props
+        if (this.partStack) {
+            this.calculateMassProperties();
+        }
     }
 
     /**
      * Update rocket physics and state
      */
-    update(deltaTime: number, physicsDeltaTime: number) {
+    update(_deltaTime: number, physicsDeltaTime: number) {
         if (!this.isActive) return;
 
         // Get player input
         const input = this.controls.getInput();
 
-        // Update rotation (using real-time delta for controllable input)
-        this.rotation += input.rotation * deltaTime;
+        // 1. Calculate Forces and Torques
+        let totalForce = new Vector2(0, 0); // Local Frame force
+        let totalTorque = 0;
 
-        // Calculate thrust direction (rotation = 0 is right, PI/2 is up)
-        const thrustDir = new Vector2(
-            Math.cos(this.rotation),
-            Math.sin(this.rotation)
-        );
+        // Engines
+        if (input.throttle > 0 && this.partStack) {
+            let activeThrust = 0;
 
-        // Apply thrust if throttle > 0 and has fuel
-        if (input.throttle > 0 && this.engine.hasFuel()) {
-            const thrust = this.engine.getThrust(input.throttle);
-            const force = thrustDir.scale(thrust);
+            this.partStack.forEach(part => {
+                if (part.definition.type === 'engine' && part.definition.stats.thrust) {
+                    if (this.engine.hasFuel()) {
+                        const maxThrust = part.definition.stats.thrust;
+                        const thrustMag = maxThrust * input.throttle;
+                        activeThrust += thrustMag;
 
-            // F = ma => a = F/m
-            const acceleration = force.scale(1 / this.body.mass);
+                        // Force Direction in Part Frame: (0, 1) [Up/Forward]
+                        // Rotate by Part Rotation
+                        const pr = part.rotation || 0;
+                        const tx = 0 * Math.cos(pr) - 1 * Math.sin(pr);
+                        const ty = 0 * Math.sin(pr) + 1 * Math.cos(pr);
+                        const force = new Vector2(tx, ty).scale(thrustMag);
 
-            // Apply acceleration directly to velocity
-            // Use physicsDeltaTime to match the simulation speed
-            this.body.velocity = this.body.velocity.add(acceleration.scale(physicsDeltaTime));
+                        totalForce = totalForce.add(force);
 
-            // Consume fuel and update mass
+                        // Torque = r x F
+                        // Lever arm r = PartPos - CoM
+                        const px = part.position.x || 0;
+                        const py = part.position.y || 0;
+                        // Handle incomplete position objects if necessary, but Hangar provides them.
+                        const pos = new Vector2(px, py);
+                        const arm = pos.sub(this.centerOfMass);
+
+                        // Cross product in 2D: x*y - y*x
+                        const torque = arm.x * force.y - arm.y * force.x;
+                        totalTorque += torque;
+                    }
+                }
+            });
+
+            // If no explicit engines in stack (fallback or simplified mode), use default
+            if (activeThrust === 0 && (!this.partStack || this.partStack.length === 0)) {
+                // Fallback logic for simple rocket
+                const thrust = this.engine.getThrust(input.throttle);
+                totalForce = new Vector2(0, 1).scale(thrust);
+                // No torque for centered engine
+            }
+
+            // Consume fuel
+            // Note: We use the activeThrust sum to consume fuel proportionally?
+            // Currently RocketEngine manages fuel globally. 
+            // Better to let RocketEngine consume based on total Request.
+            // But we already summed thrust.
+            // Let's just use existing consumeFuel which subtracts mass uniformly.
             const fuelConsumed = this.engine.consumeFuel(input.throttle, physicsDeltaTime);
             this.body.mass = Math.max(this.dryMass, this.body.mass - fuelConsumed);
         }
+
+        // Reaction Wheels / RCS (Control Torque)
+        const controlPower = this.body.mass * 800; // Scale with mass for consistent handling
+        const controlTorque = input.rotation * controlPower;
+        totalTorque += controlTorque;
+
+        // Active Stability Assist (SAS) - Damping
+        // Stronger damping when no input
+        if (input.rotation === 0) {
+            const dampingTorque = -this.angularVelocity * this.momentOfInertia * 2.0;
+            totalTorque += dampingTorque;
+        } else {
+            // Lighter damping during maneuver to prevent overshoot
+            const dampingTorque = -this.angularVelocity * this.momentOfInertia * 0.5;
+            totalTorque += dampingTorque;
+        }
+
+        // 2. Integrate Physics
+
+        // Angular
+        const angularAccel = totalTorque / Math.max(1, this.momentOfInertia);
+        this.angularVelocity += angularAccel * physicsDeltaTime;
+        this.rotation += this.angularVelocity * physicsDeltaTime;
+
+        // Linear
+        // Rotate local Force to World Force
+        // Rocket Local Up is Y+. Rocket Angle is `rotation`.
+        // World Angle of Rocket Y+ is `rotation - PI/2` (since rotation=PI/2 means Up).
+        const angle = this.rotation - Math.PI / 2;
+        const wx = totalForce.x * Math.cos(angle) - totalForce.y * Math.sin(angle);
+        const wy = totalForce.x * Math.sin(angle) + totalForce.y * Math.cos(angle);
+        const worldForce = new Vector2(wx, wy);
+
+        // F = ma
+        const linearAccel = worldForce.scale(1 / this.body.mass);
+        this.body.velocity = this.body.velocity.add(linearAccel.scale(physicsDeltaTime));
 
         // Check for staging
         if (input.stage) {
             this.activateStage();
         }
+    }
+
+    /**
+     * Calculate Center of Mass and Inertia
+     */
+    private calculateMassProperties() {
+        if (!this.partStack || this.partStack.length === 0) {
+            this.momentOfInertia = this.body.mass * 20; // Default approximation
+            this.centerOfMass = new Vector2(0, 0);
+            return;
+        }
+
+        let totalMass = 0;
+        let weightedPos = new Vector2(0, 0);
+
+        this.partStack.forEach(part => {
+            const m = part.definition.stats.mass + (part.definition.stats.fuel || 0);
+            totalMass += m;
+
+            const px = part.position.x || 0;
+            const py = part.position.y || 0;
+            const pos = new Vector2(px, py);
+
+            weightedPos = weightedPos.add(pos.scale(m));
+        });
+
+        if (totalMass > 0) {
+            this.centerOfMass = weightedPos.scale(1 / totalMass);
+        }
+
+        // Calculate Moment of Inertia (I = sum(m * r^2))
+        let inertia = 0;
+        this.partStack.forEach(part => {
+            const m = part.definition.stats.mass + (part.definition.stats.fuel || 0);
+            const px = part.position.x || 0;
+            const py = part.position.y || 0;
+            const pos = new Vector2(px, py);
+
+            const rSq = pos.distanceToSquared(this.centerOfMass);
+
+            // Approximate part as point mass + small intrinsic inertia
+            // Box inertia: m * (w^2 + h^2) / 12
+            const w = part.definition.width;
+            const h = part.definition.height;
+            const intrinsic = m * (w * w + h * h) / 12;
+
+            inertia += m * rSq + intrinsic;
+        });
+
+        this.momentOfInertia = inertia;
+
+        // Debug
+        // console.log(`Mass Props: Mass=${totalMass}, CoM=(${this.centerOfMass.x.toFixed(2)}, ${this.centerOfMass.y.toFixed(2)}), I=${inertia.toFixed(0)}`);
     }
 
     /**
@@ -353,6 +484,9 @@ export class Rocket {
             thrust: newThrust,
             fuel: newFuelMass
         });
+
+        // Recalculate CoM and Inertia
+        this.calculateMassProperties();
     }
 
     /**

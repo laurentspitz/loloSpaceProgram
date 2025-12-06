@@ -37,12 +37,20 @@ export class RocketRenderer {
         // If rocket has a part stack (from Hangar), render it
         if (rocket.partStack && rocket.partStack.length > 0) {
             // Find min/max Y to center the rocket
-            const positions = rocket.partStack.map(p => p.position.y);
-            const minY = Math.min(...positions.map((y, i) => y - rocket.partStack![i].definition.height / 2));
-            const maxY = Math.max(...positions.map((y, i) => y + rocket.partStack![i].definition.height / 2));
-            const centerOffset = (maxY + minY) / 2;
+            // If rocket has calculated CoM, align mesh so CoM is at (0,0) (Visual Pivot)
+            let centerOffsetY = 0;
+            let centerOffsetX = 0;
 
-            // Render each part
+            if (rocket.centerOfMass) {
+                centerOffsetY = rocket.centerOfMass.y;
+                centerOffsetX = rocket.centerOfMass.x;
+            } else {
+                const positions = rocket.partStack.map(p => p.position.y);
+                const minY = Math.min(...positions.map((y, i) => y - rocket.partStack![i].definition.height / 2));
+                const maxY = Math.max(...positions.map((y, i) => y + rocket.partStack![i].definition.height / 2));
+                centerOffsetY = (maxY + minY) / 2;
+            }
+
             // Render each part
             rocket.partStack.forEach(part => {
                 const def = part.definition;
@@ -55,9 +63,9 @@ export class RocketRenderer {
                 });
                 const mesh = new THREE.Mesh(geometry, material);
 
-                // Position relative to center
-                mesh.position.x = part.position.x || 0;
-                mesh.position.y = part.position.y - centerOffset;
+                // Position relative to Center of Mass
+                mesh.position.x = (part.position.x || 0) - centerOffsetX;
+                mesh.position.y = (part.position.y || 0) - centerOffsetY;
 
                 // Rotation
                 mesh.rotation.z = part.rotation || 0;
