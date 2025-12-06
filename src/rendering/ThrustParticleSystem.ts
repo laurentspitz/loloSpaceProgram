@@ -6,7 +6,7 @@ import { TextureGenerator } from './TextureGenerator';
  */
 export class ThrustParticleSystem {
     private particles: THREE.Points;
-    private particleCount: number = 20000; // Increased from 10000 for denser effect
+    private particleCount: number = 10000; // Balanced for performance vs visual quality
     private physicsPositions: Float64Array;
     private velocities: Float32Array;
     private lifetimes: Float32Array;
@@ -14,7 +14,7 @@ export class ThrustParticleSystem {
     private colors: Float32Array;
     private types: Int8Array; // 0=Standard, 1=Blue, 2=RCS
     private maxLifetime: number = 3.5; // Increased for longer visible trail
-    private emissionRate: number = 20000; // Increased from 8000 for much denser flame
+    private emissionRate: number = 10000; // Balanced for performance - adaptive scaling handles zoom
     private activeParticles: number = 0;
     private nextParticleIndex: number = 0; // Ring buffer index
 

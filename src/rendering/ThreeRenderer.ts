@@ -104,7 +104,8 @@ export class ThreeRenderer {
             alpha: false
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        // Cap pixel ratio at 1.5 for performance (prevents 2x or 3x rendering on retina displays)
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 
         // Camera setup (orthographic for 2D view)
         const aspect = window.innerWidth / window.innerHeight;
