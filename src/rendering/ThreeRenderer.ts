@@ -246,58 +246,77 @@ export class ThreeRenderer {
                 }
 
                 parts.forEach(part => {
-                    if (part.definition.type === 'engine') {
+                    const isEngine = part.definition.type === 'engine';
+                    const isRCS = part.definition.type === 'rcs';
+
+                    if (isEngine || (isRCS && part.active)) {
                         const h = part.definition.height;
 
                         // Part center relative to rocket center (CoM)
                         const px = (part.position?.x || 0) - centerOffsetX;
                         const py = (part.position?.y || 0) - centerOffsetY;
 
-                        // Nozzle relative to part center (bottom)
-                        // If type is 'engine', nozzle is usually at bottom
-                        const nx = 0;
-                        const ny = -h / 2;
-
-                        // Rotate nozzle offset by part rotation
+                        // Part Rotation
                         const pr = part.rotation || 0;
-                        const rnx = nx * Math.cos(pr) - ny * Math.sin(pr);
-                        const rny = nx * Math.sin(pr) + ny * Math.cos(pr);
 
-                        // Total local pos (Rocket Visual Frame)
-                        const tx = px + rnx;
-                        const ty = py + rny;
+                        // Nozzle Offset (Local to Part) - Bottom of part, or Center for RCS
+                        const curNozzleX = 0;
+                        const curNozzleY = isRCS ? 0 : -h / 2;
 
-                        // Scale by Visual Scale
-                        const sx = tx * this.visualScale;
-                        const sy = ty * this.visualScale;
+                        // Rotate Nozzle Offset by Part Rotation
+                        const sinPr = Math.sin(pr);
+                        const cosPr = Math.cos(pr);
+                        const nozzleRotX = curNozzleX * cosPr - curNozzleY * sinPr;
+                        const nozzleRotY = curNozzleX * sinPr + curNozzleY * cosPr;
 
-                        // Rotate by Rocket Global Rotation to get World Offset
-                        // Rocket physics Angle is `r`. Visual "Up" is `r - PI/2`.
-                        const gr = r - Math.PI / 2;
-                        const wx = sx * Math.cos(gr) - sy * Math.sin(gr);
-                        const wy = sx * Math.sin(gr) + sy * Math.cos(gr);
+                        // Total Local Position (Part Center + Nozzle Offset) (Rocket Local Frame, unrotated)
+                        const localX = px + nozzleRotX;
+                        const localY = py + nozzleRotY;
 
-                        const nozzlePos = new THREE.Vector3(
-                            this.currentRocket!.body.position.x + wx,
-                            this.currentRocket!.body.position.y + wy,
+                        // Rotate by Rocket Rotation to get World Offset
+                        // Rocket Body Angle (Up) is PI/2 in physics, but Sprite Up is Y+.
+                        // The mesh rotation applied is `rotation - PI/2`.
+                        const rocketRot = this.currentRocket!.rotation - Math.PI / 2;
+                        const sinRr = Math.sin(rocketRot);
+                        const cosRr = Math.cos(rocketRot);
+
+                        const worldOffsetX = localX * cosRr - localY * sinRr;
+                        const worldOffsetY = localX * sinRr + localY * cosRr;
+
+                        const worldPos = new THREE.Vector3(
+                            this.currentRocket!.body.position.x + worldOffsetX,
+                            this.currentRocket!.body.position.y + worldOffsetY,
                             0
                         );
 
-                        // Emission Direction
-                        // Vector (0, -1) (Down) relative to part
-                        // Rotated by (RocketGlobal + PartLocal)
-                        const totalRot = gr + pr;
-                        // Rotate (0, -1) by totalRot
-                        // x = 0*c - (-1)*s = s
-                        // y = 0*s + (-1)*c = -c
-                        const dir = new THREE.Vector3(Math.sin(totalRot), -Math.cos(totalRot), 0);
+                        // Particle Direction: Down (0, -1) in Part Frame
+                        // Rotate by Part Rotation
+                        const dirX = 0 * cosPr - (-1) * sinPr; // 0 - (-1)*sin = sin
+                        const dirY = 0 * sinPr + (-1) * cosPr; // -cos
 
-                        emitters.push({
-                            pos: nozzlePos,
-                            dir: dir,
-                            throttle: throttle,
-                            type: part.definition.effect
-                        });
+                        // Rotate by Rocket Rotation
+                        const worldDirX = dirX * cosRr - dirY * sinRr;
+                        const worldDirY = dirX * sinRr + dirY * cosRr;
+
+                        let currentPartThrottle = 0;
+                        let type = 'standard';
+
+                        if (isEngine) {
+                            currentPartThrottle = throttle; // Use the throttle from the rocket controls
+                            type = part.definition.effect || 'standard';
+                        } else { // isRCS
+                            currentPartThrottle = 1.0; // RCS is binary
+                            type = 'rcs';
+                        }
+
+                        if (currentPartThrottle > 0) {
+                            emitters.push({
+                                pos: worldPos,
+                                dir: new THREE.Vector3(worldDirX, worldDirY, 0),
+                                throttle: currentPartThrottle,
+                                type: type
+                            });
+                        }
                     }
                 });
             } else {

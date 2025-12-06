@@ -105,6 +105,28 @@ export class PartRegistry {
             effect: 'blue_flame'
         });
 
+        // 3.6 RCS Thruster
+        const rcsHeight = 0.6;
+        this.register({
+            id: 'rcs_block',
+            name: 'RV-105 RCS',
+            type: 'rcs',
+            description: 'Small thruster for attitude control.',
+            texture: '/textures/rcs_thruster.png',
+            width: 0.6,
+            height: rcsHeight,
+            stats: {
+                mass: 50,
+                cost: 600,
+                thrust: 50000, // 50kN - boost for playability
+                isp: 250
+            },
+            nodes: [
+                { id: 'top', position: new Vector2(0, rcsHeight / 2), direction: new Vector2(0, 1), type: 'top' }
+            ],
+            effect: 'rcs'
+        });
+
         // 4. Decoupler (90px × 9px)
         const decouplerHeight = 9 * SCALE;
         this.register({

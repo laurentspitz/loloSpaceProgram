@@ -31,10 +31,10 @@ export class Rocket {
     readonly engineHeight: number = 1.8;   // Smaller engine
 
     // Part stack from assembly (if built in Hangar)
-    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }>;
+    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean }>;
 
     // Stages (arrays of parts, from top to bottom)
-    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean }>> = [];
+    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean }>> = [];
     currentStageIndex: number = 0;
 
     // Callback for stage separation (to spawn debris)
@@ -99,13 +99,18 @@ export class Rocket {
         let totalForce = new Vector2(0, 0); // Local Frame force
         let totalTorque = 0;
 
-        // Engines
-        if (input.throttle > 0 && this.partStack) {
+        // Engines & RCS
+        if (this.partStack) {
             let activeThrust = 0;
+            let totalRCSThrust = 0; // Track RCS usage for fuel
 
             this.partStack.forEach(part => {
+                // Reset active state
+                part.active = false;
+
+                // Main Engines
                 if (part.definition.type === 'engine' && part.definition.stats.thrust) {
-                    if (this.engine.hasFuel()) {
+                    if (input.throttle > 0 && this.engine.hasFuel()) {
                         const maxThrust = part.definition.stats.thrust;
                         const thrustMag = maxThrust * input.throttle;
                         activeThrust += thrustMag;
@@ -120,22 +125,58 @@ export class Rocket {
                         totalForce = totalForce.add(force);
 
                         // Torque = r x F
-                        // Lever arm r = PartPos - CoM
                         const px = part.position.x || 0;
                         const py = part.position.y || 0;
-                        // Handle incomplete position objects if necessary, but Hangar provides them.
                         const pos = new Vector2(px, py);
                         const arm = pos.sub(this.centerOfMass);
 
                         // Cross product in 2D: x*y - y*x
                         const torque = arm.x * force.y - arm.y * force.x;
                         totalTorque += torque;
+
+                        part.active = true;
+                    } else {
+                        part.active = false;
+                    }
+                }
+
+                // RCS Thrusters
+                if (part.definition.type === 'rcs' && part.definition.stats.thrust) {
+                    part.active = false;
+
+                    if (input.rcsEnabled && input.rotation !== 0 && this.engine.hasFuel()) {
+                        const thrustMag = part.definition.stats.thrust;
+
+                        // Force Vector
+                        const pr = part.rotation || 0;
+                        const tx = 0 * Math.cos(pr) - 1 * Math.sin(pr);
+                        const ty = 0 * Math.sin(pr) + 1 * Math.cos(pr);
+                        const forceDir = new Vector2(tx, ty);
+
+                        // Potential Torque
+                        const px = part.position.x || 0;
+                        const py = part.position.y || 0;
+                        const pos = new Vector2(px, py);
+                        const arm = pos.sub(this.centerOfMass);
+
+                        const unitTorque = arm.x * forceDir.y - arm.y * forceDir.x;
+
+                        // Check alignment with desired rotation
+                        // input.rotation > 0 (Left/CCW) -> matches +Torque
+                        if (unitTorque * input.rotation > 0.1) {
+                            // Activate
+                            part.active = true;
+                            const force = forceDir.scale(thrustMag);
+                            totalForce = totalForce.add(force);
+                            totalTorque += unitTorque * thrustMag;
+                            totalRCSThrust += thrustMag;
+                        }
                     }
                 }
             });
 
             // If no explicit engines in stack (fallback or simplified mode), use default
-            if (activeThrust === 0 && (!this.partStack || this.partStack.length === 0)) {
+            if (activeThrust === 0 && totalRCSThrust === 0 && (!this.partStack || this.partStack.length === 0) && input.throttle > 0) {
                 // Fallback logic for simple rocket
                 const thrust = this.engine.getThrust(input.throttle);
                 totalForce = new Vector2(0, 1).scale(thrust);
@@ -143,30 +184,47 @@ export class Rocket {
             }
 
             // Consume fuel
-            // Note: We use the activeThrust sum to consume fuel proportionally?
-            // Currently RocketEngine manages fuel globally. 
-            // Better to let RocketEngine consume based on total Request.
-            // But we already summed thrust.
-            // Let's just use existing consumeFuel which subtracts mass uniformly.
-            const fuelConsumed = this.engine.consumeFuel(input.throttle, physicsDeltaTime);
-            this.body.mass = Math.max(this.dryMass, this.body.mass - fuelConsumed);
+            // 1. Engines
+            if (activeThrust > 0) {
+                const fuelData = this.engine.consumeFuel(input.throttle, physicsDeltaTime);
+                this.body.mass = Math.max(this.dryMass, this.body.mass - fuelData);
+            }
+            // 2. RCS (Simplified consumption)
+            if (totalRCSThrust > 0) {
+                // Approximate consumption relative to main engine efficiency
+                // Or just arbitrary small amount. 
+                const rcsFuel = totalRCSThrust * 0.0000005 * physicsDeltaTime; // Very efficient?
+                // Just subtract from body mass directly for now
+                if (this.body.mass > this.dryMass) {
+                    this.body.mass -= rcsFuel;
+                    // Todo: update engine.fuelMass but it's private/protected possibly or specific logic.
+                    // This is a visual/physics mass update only.
+                }
+            }
         }
 
-        // Reaction Wheels / RCS (Control Torque)
-        const controlPower = this.body.mass * 800; // Scale with mass for consistent handling
-        const controlTorque = input.rotation * controlPower;
-        totalTorque += controlTorque;
-
-        // Active Stability Assist (SAS) - Damping
-        // Stronger damping when no input
-        if (input.rotation === 0) {
-            const dampingTorque = -this.angularVelocity * this.momentOfInertia * 2.0;
-            totalTorque += dampingTorque;
-        } else {
-            // Lighter damping during maneuver to prevent overshoot
-            const dampingTorque = -this.angularVelocity * this.momentOfInertia * 0.5;
-            totalTorque += dampingTorque;
+        // Reaction Wheels / SAS (Linked to Pods)
+        let hasReactionWheels = false;
+        if (this.partStack) {
+            // Check for Pods (Capsules) which have built-in reaction wheels
+            hasReactionWheels = this.partStack.some(p => p.definition.type === 'capsule');
         }
+
+        // Only apply reaction wheel torque and damping if SAS is enabled and wheels exist
+        if (hasReactionWheels && input.sasEnabled) {
+            // Reduced control power (User request: "reduce rotation effect")
+            // Was 20 * mass, now 2 * mass
+            const controlPower = this.body.mass * 2.0;
+            const controlTorque = input.rotation * controlPower;
+            totalTorque += controlTorque;
+
+            // Angular Damping (Stability Assist)
+            // Reduced damping to match lower torque
+            const damping = this.angularDamping * (this.body.mass * 2.0);
+            totalTorque -= this.angularVelocity * damping;
+        }
+
+
 
         // 2. Integrate Physics
 

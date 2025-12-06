@@ -12,6 +12,7 @@ export class ThrustParticleSystem {
     private lifetimes: Float32Array;
     private sizes: Float32Array;
     private colors: Float32Array;
+    private types: Int8Array; // 0=Standard, 1=Blue, 2=RCS
     private maxLifetime: number = 2.5; // Longer for smoke trail
     private emissionRate: number = 8000; // Very high density for continuous flame
     private activeParticles: number = 0;
@@ -25,6 +26,7 @@ export class ThrustParticleSystem {
         this.lifetimes = new Float32Array(this.particleCount);
         this.sizes = new Float32Array(this.particleCount);
         this.colors = new Float32Array(this.particleCount * 3);
+        this.types = new Int8Array(this.particleCount);
 
         // Initialize all particles as dead
         for (let i = 0; i < this.particleCount; i++) {
@@ -142,48 +144,50 @@ export class ThrustParticleSystem {
                 // Actually, let's look at initial color to determine evolution?
                 // Or just use a simple general evolution.
 
-                // Hack: If initial Green component is high relative to Red, it's blue flame?
-                // Standard: R=1, G=1, B=0.9
-                // Blue: R=0.2, G=0.8, B=1.0
+                // Retrieve Type
+                const type = this.types[i]; // 0=Std, 1=Blue, 2=RCS
 
-                const r = this.colors[i3];
-                const b = this.colors[i3 + 2];
-
-                const isBlue = b > r; // Simple heuristic
-
-                const flameDuration = 0.4;
-
-                if (age < flameDuration) {
-                    const t = age / flameDuration;
-
-                    if (isBlue) {
-                        // Blue Flame: Cyan -> Blue -> Dark Blue
+                // RCS Logic: Simple white puff fading out
+                if (type === 2) {
+                    const t = 1 - (this.lifetimes[i] / (this.maxLifetime * 0.2)); // Short life normalized
+                    // White Fade
+                    const alpha = Math.max(0, 1 - t * 2); // Fade fast
+                    this.colors[i3] = alpha;
+                    this.colors[i3 + 1] = alpha;
+                    this.colors[i3 + 2] = alpha;
+                    this.sizes[i] = 30 + t * 20; // Slight expansion
+                }
+                // Blue Flame Logic
+                else if (type === 1) { // Blue
+                    const flameDuration = 0.4;
+                    if (age < flameDuration) {
+                        const t = age / flameDuration;
                         this.colors[i3] = 0.2 + t * 0.1; // R
                         this.colors[i3 + 1] = 0.8 - t * 0.4; // G
                         this.colors[i3 + 2] = 1.0; // B
-
                         this.sizes[i] = 100 + t * 60;
                     } else {
-                        // Standard: White -> Yellow -> Orange
-                        this.colors[i3] = 1.0;
-                        this.colors[i3 + 1] = 1.0 - t * 0.5;
-                        this.colors[i3 + 2] = 0.9 - t * 0.9;
-
-                        this.sizes[i] = 80 + t * 40;
-                    }
-                } else {
-                    // Smoke Phase
-                    const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
-                    const intensity = 0.5 * (1 - t);
-
-                    if (isBlue) {
-                        // Blue smoke (lighter)
+                        // Smoke Phase
+                        const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
+                        const intensity = 0.5 * (1 - t);
                         this.colors[i3] = 0.3 * intensity;
                         this.colors[i3 + 1] = 0.4 * intensity;
                         this.colors[i3 + 2] = 0.8 * intensity;
                         this.sizes[i] = 150 + t * 250;
+                    }
+                }
+                // Standard Logic
+                else {
+                    const flameDuration = 0.4;
+                    if (age < flameDuration) {
+                        const t = age / flameDuration;
+                        this.colors[i3] = 1.0;
+                        this.colors[i3 + 1] = 1.0 - t * 0.5;
+                        this.colors[i3 + 2] = 0.9 - t * 0.9;
+                        this.sizes[i] = 80 + t * 40;
                     } else {
-                        // Standard smoke
+                        const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
+                        const intensity = 0.5 * (1 - t);
                         this.colors[i3] = 1.0 * intensity;
                         this.colors[i3 + 1] = 0.5 * intensity;
                         this.colors[i3 + 2] = 0.5 * intensity;
@@ -240,17 +244,23 @@ export class ThrustParticleSystem {
 
         const i3 = i * 3;
         const isBlue = config.type === 'blue_flame';
+        const isRCS = config.type === 'rcs';
+
+        // Set Type
+        let typeVal = 0;
+        if (isBlue) typeVal = 1;
+        if (isRCS) typeVal = 2;
+        this.types[i] = typeVal;
 
         // Position with randomness
-        const nozzleRadius = isBlue ? 2.5 : 1.5;
+        const nozzleRadius = isRCS ? 0.5 : (isBlue ? 2.5 : 1.5);
         this.physicsPositions[i3] = config.pos.x + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 1] = config.pos.y + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 2] = config.pos.z;
 
         // Velocity
-        const spread = isBlue ? 0.2 : 0.3; // Blue is more focused
-        // Blue flame is faster
-        const speedMult = isBlue ? 1.5 : 1.0;
+        const spread = isRCS ? 0.05 : (isBlue ? 0.2 : 0.3); // RCS is very focused
+        const speedMult = isRCS ? 3.0 : (isBlue ? 1.5 : 1.0); // RCS is fast puff
 
         const minSpeed = 50 * speedMult;
         const maxSpeed = (50 + config.throttle * 250) * speedMult;
@@ -261,10 +271,19 @@ export class ThrustParticleSystem {
         this.velocities[i3 + 2] = config.dir.z * speed + (Math.random() - 0.5) * spread * speed;
 
         // Lifetime
-        this.lifetimes[i] = this.maxLifetime * (0.8 + Math.random() * 0.4);
+        if (isRCS) {
+            this.lifetimes[i] = 0.3 + Math.random() * 0.2; // Short life
+        } else {
+            this.lifetimes[i] = this.maxLifetime * (0.8 + Math.random() * 0.4);
+        }
 
         // Initial Color
-        if (isBlue) {
+        if (isRCS) {
+            this.colors[i3] = 1.0;
+            this.colors[i3 + 1] = 1.0;
+            this.colors[i3 + 2] = 1.0;
+            this.sizes[i] = 20 + Math.random() * 10;
+        } else if (isBlue) {
             this.colors[i3] = 0.2; // R
             this.colors[i3 + 1] = 0.8; // G
             this.colors[i3 + 2] = 1.0; // B

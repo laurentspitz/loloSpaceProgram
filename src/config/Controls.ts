@@ -26,6 +26,10 @@ export interface ControlConfig {
     zoomIn: string;
     zoomOut: string;
 
+    // Systems
+    toggleSAS: string;
+    toggleRCS: string;
+
     // Autopilot
     togglePrograde: string;
     toggleRetrograde: string;
@@ -53,9 +57,13 @@ export const DEFAULT_CONTROLS: ControlConfig = {
     deleteManeuverNode: 'Delete',
 
     // View controls
-    toggleTrajectory: 't',
+    toggleTrajectory: 'o',
     zoomIn: '=',
     zoomOut: '-',
+
+    // Systems
+    toggleSAS: 't',
+    toggleRCS: 'r', // Explicit naming for clarity, though hardcoded in RocketControls currently
 
     // Autopilot
     togglePrograde: 'p',

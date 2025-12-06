@@ -1,6 +1,6 @@
 import { Vector2 } from '../core/Vector2';
 
-export type PartType = 'capsule' | 'tank' | 'engine' | 'decoupler' | 'structure';
+export type PartType = 'capsule' | 'tank' | 'engine' | 'decoupler' | 'structure' | 'rcs';
 
 export interface PartStats {
     mass: number;       // kg
@@ -27,5 +27,5 @@ export interface PartDefinition {
     height: number;     // meters
     stats: PartStats;
     nodes: ConnectionNode[];
-    effect?: 'standard' | 'blue_flame';
+    effect?: 'standard' | 'blue_flame' | 'rcs';
 }

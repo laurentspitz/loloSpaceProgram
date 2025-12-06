@@ -8,13 +8,19 @@ export interface RocketInput {
     throttle: number;   // 0 to 1
     rotation: number;   // -1 (left) to 1 (right)
     stage: boolean;     // True if spacebar is pressed
+    rcsEnabled: boolean; // True if RCS is active
+    sasEnabled: boolean; // True if Stability Assist is active
 }
 
 export class RocketControls {
     private keys: Set<string> = new Set();
     public throttle: number = 0;
+    public rcsEnabled: boolean = true; // RCS Toggle state
+    public sasEnabled: boolean = true; // SAS Toggle state
     private rotationSpeed: number = 1.5; // radians per second
     private stagePressed: boolean = false; // Track previous state to trigger once per press
+    private rcsPressed: boolean = false; // Latch for RCS toggle
+    private sasPressed: boolean = false; // Latch for SAS toggle
 
     constructor() {
         this.setupEventListeners();
@@ -53,7 +59,7 @@ export class RocketControls {
             this.throttle = 1.0;
         } else if (this.keys.has(controls.getControl('cutEngines').toLowerCase())) {
             // Cut engines
-            this.throttle = 0;
+            this.throttle = 0.0;
         } else if (this.keys.has(controls.getControl('increaseThrottle').toLowerCase())) {
             // Increase throttle gradually
             this.throttle = Math.min(1.0, this.throttle + 0.02);
@@ -72,10 +78,35 @@ export class RocketControls {
             }
         }
 
+        // RCS Toggle (R key)
+        if (this.keys.has(controls.getControl('toggleRCS').toLowerCase())) {
+            if (!this.rcsPressed) {
+                this.rcsEnabled = !this.rcsEnabled;
+                this.rcsPressed = true;
+                // UI feedback via console for now
+                console.log(`RCS: ${this.rcsEnabled ? 'ON' : 'OFF'}`);
+            }
+        } else {
+            this.rcsPressed = false;
+        }
+
+        // SAS Toggle (T key)
+        if (this.keys.has(controls.getControl('toggleSAS').toLowerCase())) {
+            if (!this.sasPressed) {
+                this.sasEnabled = !this.sasEnabled;
+                this.sasPressed = true;
+                console.log(`SAS: ${this.sasEnabled ? 'ON' : 'OFF'}`);
+            }
+        } else {
+            this.sasPressed = false;
+        }
+
         return {
             throttle: this.throttle,
             rotation: rotation * this.rotationSpeed,
-            stage: stage
+            stage: stage,
+            rcsEnabled: this.rcsEnabled,
+            sasEnabled: this.sasEnabled
         };
     }
 

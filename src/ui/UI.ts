@@ -38,6 +38,8 @@ export class UI {
 
     // Autopilot state
     autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver' = 'off';
+    rcsBtn: HTMLButtonElement | null = null;
+    sasBtn: HTMLButtonElement | null = null;
 
     // Navball
     navballRenderer: NavballRenderer | null = null;
@@ -856,10 +858,34 @@ export class UI {
                         this.soiDisplay.style.color = '#4CAF50';
                     }
                 }
+            } else {
+                this.altitudeDisplay.innerText = 'N/A';
+                if (this.gravityDisplay) this.gravityDisplay.innerText = '0 m/s²';
             }
-        } else {
-            this.altitudeDisplay.innerText = 'N/A';
-            if (this.gravityDisplay) this.gravityDisplay.innerText = '0 m/s²';
+        }
+
+        // Update RCS Button Logic
+        if (this.rcsBtn && rocket.controls) {
+            const rcsEnabled = rocket.controls.rcsEnabled;
+            if (rcsEnabled) {
+                this.rcsBtn.style.color = '#00C851';
+                this.rcsBtn.style.boxShadow = '0 0 5px rgba(0, 200, 81, 0.5)';
+            } else {
+                this.rcsBtn.style.color = '#ccc';
+                this.rcsBtn.style.boxShadow = 'none';
+            }
+        }
+
+        // Update SAS Button Logic
+        if (this.sasBtn && rocket.controls) {
+            const sasEnabled = rocket.controls.sasEnabled;
+            if (sasEnabled) {
+                this.sasBtn.style.color = '#00C851'; // Green
+                this.sasBtn.style.boxShadow = '0 0 5px rgba(0, 200, 81, 0.5)';
+            } else {
+                this.sasBtn.style.color = '#ccc';
+                this.sasBtn.style.boxShadow = 'none';
+            }
         }
 
         // Autopilot: Auto-orient to prograde or retrograde
@@ -1098,6 +1124,41 @@ export class UI {
         container.appendChild(targetBtn);
         container.appendChild(antiTargetBtn);
         container.appendChild(maneuverBtn);
+
+        // RCS Toggle Button
+        const rcsBtn = createAutopilotButton('maneuver', 'Toggle RCS System (R)');
+        rcsBtn.innerHTML = '';
+        rcsBtn.textContent = 'RCS';
+        rcsBtn.style.fontFamily = 'monospace';
+        rcsBtn.style.fontSize = '10px';
+        rcsBtn.style.fontWeight = 'bold';
+        rcsBtn.style.color = '#ccc'; // Default off color
+
+        rcsBtn.onclick = () => {
+            if (this.currentRocket && this.currentRocket.controls) {
+                this.currentRocket.controls.rcsEnabled = !this.currentRocket.controls.rcsEnabled;
+            }
+        };
+        this.rcsBtn = rcsBtn;
+        container.appendChild(rcsBtn);
+
+        // SAS Toggle Button
+        const sasBtn = createAutopilotButton('maneuver', 'Toggle Stability Assist (T)');
+        sasBtn.innerHTML = '';
+        sasBtn.textContent = 'SAS';
+        sasBtn.style.fontFamily = 'monospace';
+        sasBtn.style.fontSize = '10px';
+        sasBtn.style.fontWeight = 'bold';
+        sasBtn.style.color = '#ccc'; // Default off color
+
+        sasBtn.onclick = () => {
+            if (this.currentRocket && this.currentRocket.controls) {
+                this.currentRocket.controls.sasEnabled = !this.currentRocket.controls.sasEnabled;
+            }
+        };
+        this.sasBtn = sasBtn;
+        container.appendChild(sasBtn);
+
         document.body.appendChild(container);
 
         // Add keyboard listener to disable autopilot on manual rotation
