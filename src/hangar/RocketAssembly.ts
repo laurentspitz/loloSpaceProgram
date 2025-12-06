@@ -13,6 +13,7 @@ export interface PlacedPart {
 export class RocketAssembly {
     parts: PlacedPart[] = [];
     rootPartId: string | null = null;
+    public name: string = "Untitled Rocket";
 
     constructor() {
         PartRegistry.init();

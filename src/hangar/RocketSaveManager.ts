@@ -81,6 +81,7 @@ export class RocketSaveManager {
             }));
 
             assembly.rootPartId = serialized.rootPartId;
+            assembly.name = name; // Restore name
 
             return assembly;
         } catch (error) {

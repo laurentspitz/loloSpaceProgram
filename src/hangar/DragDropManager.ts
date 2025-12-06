@@ -4,12 +4,23 @@ import { RocketAssembly } from './RocketAssembly';
 import { PartRegistry } from './PartRegistry';
 import { Vector2 } from '../core/Vector2';
 
+interface DraggedItem {
+    partId: string;
+    offsetX: number;
+    offsetY: number;
+    rotation: number; // Relative rotation
+}
+
 export class DragDropManager {
     scene: HangarScene;
     assembly: RocketAssembly;
 
-    draggedPartId: string | null = null; // ID of part being dragged (from palette)
-    draggedInstanceId: string | null = null; // Instance ID if dragging existing part
+    private mouseDownPos: Vector2 | null = null;
+    private pendingClickInstanceId: string | null = null;
+    private isDragging: boolean = false;
+
+    draggedPartId: string | null = null; // Anchor part ID
+    draggedGroup: DraggedItem[] = []; // Items being dragged (including anchor)
 
     dragGhost: THREE.Group | null = null;
 
@@ -35,7 +46,8 @@ export class DragDropManager {
 
     startDraggingNewPart(partId: string) {
         this.draggedPartId = partId;
-        this.createGhost(partId);
+        this.draggedGroup = [{ partId, offsetX: 0, offsetY: 0, rotation: 0 }];
+        this.createGhost();
 
         // Immediately set position to mouse
         if (this.dragGhost) {
@@ -45,43 +57,103 @@ export class DragDropManager {
             this.raycaster.ray.intersectPlane(this.plane, target);
             this.dragGhost.position.copy(target);
         }
+
+        this.isDragging = true;
     }
 
-    private createGhost(partId: string) {
+    private startDraggingSelection(anchorInstanceId: string) {
+        const anchorPart = this.assembly.parts.find(p => p.instanceId === anchorInstanceId);
+        if (!anchorPart) return;
+
+        this.draggedPartId = anchorPart.partId;
+
+        // Correctly handle selection: If the dragged part wasn't selected, select ONLY it
+        if (!this.scene.selectedInstanceIds.has(anchorInstanceId)) {
+            this.scene.selectedInstanceIds.clear();
+            this.scene.selectedInstanceIds.add(anchorInstanceId);
+        }
+
+        this.draggedGroup = [];
+        const anchorPos = anchorPart.position;
+        const anchorRot = anchorPart.rotation;
+
+        this.scene.selectedInstanceIds.forEach(id => {
+            const p = this.assembly.parts.find(part => part.instanceId === id);
+            if (p) {
+                const v = p.position.clone().sub(anchorPos);
+                v.rotateAround(new Vector2(0, 0), -anchorRot);
+
+                this.draggedGroup.push({
+                    partId: p.partId,
+                    offsetX: v.x,
+                    offsetY: v.y,
+                    rotation: p.rotation - anchorRot
+                });
+            }
+        });
+
+        this.scene.selectedInstanceIds.forEach(id => {
+            this.assembly.removePart(id);
+        });
+
+        this.createGhost();
+
+        // CRITICAL FIX: Initialize Ghost at EXACLTY the anchor's position to prevent jumping
+        if (this.dragGhost) {
+            this.dragGhost.position.set(anchorPos.x, anchorPos.y, 0);
+            this.dragGhost.rotation.z = anchorRot;
+        }
+
+        this.isDragging = true;
+    }
+
+    private createGhost() {
         if (this.dragGhost) {
             this.scene.scene.remove(this.dragGhost);
         }
 
-        const def = PartRegistry.get(partId);
-        if (!def) return;
-
-        const texture = new THREE.TextureLoader().load(def.texture);
-        const geometry = new THREE.PlaneGeometry(def.width, def.height);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            opacity: 0.8, // Increased for visibility
-            side: THREE.DoubleSide
-        });
-
         this.dragGhost = new THREE.Group();
-        this.dragGhost.add(new THREE.Mesh(geometry, material));
 
-        // Add Connection Nodes to Ghost
-        // Add Connection Nodes to Ghost (Skip for Radial Node)
-        if (partId !== 'radial_node') {
-            def.nodes.forEach(node => {
-                const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
-                const nodeMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x00ff00,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
-                nodeMesh.position.set(node.position.x, node.position.y, 0.1); // Slightly in front
-                this.dragGhost!.add(nodeMesh);
+        this.draggedGroup.forEach(item => {
+            const def = PartRegistry.get(item.partId);
+            if (!def) return;
+
+            const texture = new THREE.TextureLoader().load(def.texture);
+            const geometry = new THREE.PlaneGeometry(def.width, def.height);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.8, // Increased for visibility
+                side: THREE.DoubleSide
             });
-        }
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(item.offsetX, item.offsetY, 0);
+            mesh.rotation.z = item.rotation;
+
+            // Add Z offset for radial node inside group
+            if (item.partId === 'radial_node') mesh.position.z += 0.1;
+
+            this.dragGhost!.add(mesh);
+
+            // Add Connection Nodes (Skip visuals for Radial Node)
+            if (item.partId !== 'radial_node') {
+                def.nodes.forEach(node => {
+                    const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
+                    const nodeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8 });
+                    const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+                    nodeMesh.position.set(node.position.x, node.position.y, 0.1);
+                    // Add Direction Line
+                    const dir = new THREE.Vector3(node.direction.x, node.direction.y, 0).normalize().multiplyScalar(0.4);
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), dir]);
+                    const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                    const line = new THREE.Line(lineGeo, lineMat);
+                    line.position.z = 0.01;
+                    nodeMesh.add(line);
+                    mesh.add(nodeMesh);
+                });
+            }
+        });
 
         this.scene.scene.add(this.dragGhost);
     }
@@ -94,97 +166,178 @@ export class DragDropManager {
         );
     }
 
+    private isBoxSelecting: boolean = false;
+    // ...
+
     private onMouseMove = (event: MouseEvent) => {
-        // Update mouse position regardless of dragging
         this.mouse.copy(this.getMousePosition(event));
+
+        // Drag Threshold Logic
+        const currentPixelPos = new THREE.Vector2(event.clientX, event.clientY);
+
+        // 1. Box Selection Logic
+        if (this.mouseDownPos && !this.pendingClickInstanceId && !this.draggedPartId) {
+            const dist = currentPixelPos.distanceTo(new THREE.Vector2(this.mouseDownPos.x, this.mouseDownPos.y));
+            if (dist > 5) {
+                this.isBoxSelecting = true;
+
+                // Update Box Visuals
+                const startX = this.mouseDownPos.x;
+                const startY = this.mouseDownPos.y;
+                const currentX = event.clientX;
+                const currentY = event.clientY;
+
+                const minX = Math.min(startX, currentX);
+                const minY = Math.min(startY, currentY);
+                const w = Math.abs(currentX - startX);
+                const h = Math.abs(currentY - startY);
+
+                // Adjust for canvas offset if needed? MouseEvent clientX includes page. 
+                // But HangarScene container is relative? The Box is inside container.
+                const rect = this.scene.renderer.domElement.getBoundingClientRect();
+                // Pass coordinates relative to the canvas/container
+                this.scene.updateSelectionBox({
+                    x: minX - rect.left,
+                    y: minY - rect.top,
+                    w: w,
+                    h: h
+                });
+            }
+        }
+
+        // 2. Part Drag Logic
+        if (this.pendingClickInstanceId && this.mouseDownPos && !this.isDragging) {
+            const dist = currentPixelPos.distanceTo(new THREE.Vector2(this.mouseDownPos.x, this.mouseDownPos.y));
+
+            if (dist > 5) { // 5 pixel threshold
+                this.startDraggingSelection(this.pendingClickInstanceId);
+                this.pendingClickInstanceId = null;
+            }
+        }
 
         if (!this.dragGhost) return;
 
-        // Raycast to Z=0 plane
         this.raycaster.setFromCamera(this.mouse, this.scene.camera);
         const target = new THREE.Vector3();
         this.raycaster.ray.intersectPlane(this.plane, target);
 
-        // Update ghost position
         this.dragGhost.position.copy(target);
 
-        // Check for snapping
         const snap = this.findSnapPosition(target);
         if (snap) {
-            this.dragGhost.position.set(snap.pos.x, snap.pos.y, 1); // Z=1 to float above
+            this.dragGhost.position.set(snap.pos.x, snap.pos.y, 1);
             this.dragGhost.rotation.z = snap.rot;
         } else {
-            this.dragGhost.rotation.z = 0;
-            this.dragGhost.position.z = 1; // Z=1 to float above
+            this.dragGhost.rotation.z = 0; // Or keep original rotation?
+            // If dragging existing parts, we usually want to keep their rotation unless snapped?
+            // For now, reset to 0 implies "align to grid".
+            this.dragGhost.position.z = 1;
         }
     }
 
     private onMouseUp = (event: MouseEvent) => {
-        if (this.dragGhost && this.draggedPartId) {
-            // Check if dropped on trash OR on any other UI element
-            // If we drop on the palette or a dialog, we cancel/delete
-            const isOverUI = event.target !== this.scene.renderer.domElement;
+        // 0. Handle Box Selection Finish
+        if (this.isBoxSelecting && this.mouseDownPos) {
+            const rect = this.scene.renderer.domElement.getBoundingClientRect();
 
-            if (this.isOverTrash(event.clientX, event.clientY) || isOverUI) {
-                // Delete (just remove ghost)
-                this.scene.scene.remove(this.dragGhost);
-                this.dragGhost = null;
-                this.draggedPartId = null;
-                this.onPartPlaced(); // Update stats
-                return;
-            }
+            const startX = this.mouseDownPos.x - rect.left;
+            const startY = this.mouseDownPos.y - rect.top;
+            const currentX = event.clientX - rect.left;
+            const currentY = event.clientY - rect.top;
 
-            // Place the part
-            const position = new Vector2(this.dragGhost.position.x, this.dragGhost.position.y);
-            this.assembly.addPart(this.draggedPartId, position, this.dragGhost.rotation.z);
+            const minX = Math.min(startX, currentX);
+            const minY = Math.min(startY, currentY);
+            const maxX = Math.max(startX, currentX);
+            const maxY = Math.max(startY, currentY);
 
-            // Cleanup
-            this.scene.scene.remove(this.dragGhost);
-            this.dragGhost = null;
-            this.draggedPartId = null;
+            this.scene.selectPartsInScreenRect(minX, minY, maxX, maxY, event.shiftKey);
+            this.scene.updateSelectionBox(null);
 
-            this.onPartPlaced();
-        }
-    }
-
-    private onMouseDown = (event: MouseEvent) => {
-        // Only allow picking up if not already dragging
-        if (this.draggedPartId) return;
-
-        // Update mouse for raycasting
-        this.mouse.copy(this.getMousePosition(event));
-        this.raycaster.setFromCamera(this.mouse, this.scene.camera);
-
-        // CRITICAL FIX: Ignore clicks on UI elements (only interact with canvas)
-        if (event.target !== this.scene.renderer.domElement) {
+            this.isBoxSelecting = false;
+            this.mouseDownPos = null;
             return;
         }
 
-        // Check if we clicked a part
+        // 1. Handle Click Selection (No Drag occurred)
+        if (this.pendingClickInstanceId && !this.isDragging) {
+            const clickedId = this.pendingClickInstanceId;
+
+            if (event.shiftKey) {
+                // Toggle Selection
+                if (this.scene.selectedInstanceIds.has(clickedId)) {
+                    this.scene.selectedInstanceIds.delete(clickedId);
+                } else {
+                    this.scene.selectedInstanceIds.add(clickedId);
+                }
+            } else {
+                // Exclusive Selection
+                this.scene.selectedInstanceIds.clear();
+                this.scene.selectedInstanceIds.add(clickedId);
+            }
+        }
+        // Clicked Empty Space (Single Click, no drag)
+        else if (!this.pendingClickInstanceId && !this.isDragging && !this.draggedPartId) {
+            // Only clear if not box selecting (chk above covers it) and not dragging part
+            this.scene.selectedInstanceIds.clear();
+        }
+
+
+        // 2. Handle Drop
+        if (this.dragGhost && this.draggedPartId) {
+            const isOverUI = event.target !== this.scene.renderer.domElement;
+            if (this.isOverTrash(event.clientX, event.clientY) || isOverUI) {
+                this.scene.scene.remove(this.dragGhost);
+            } else {
+                const anchorPos = new Vector2(this.dragGhost.position.x, this.dragGhost.position.y);
+                const anchorRot = this.dragGhost.rotation.z;
+
+                this.scene.selectedInstanceIds.clear();
+
+                this.draggedGroup.forEach(item => {
+                    const v = new Vector2(item.offsetX, item.offsetY);
+                    v.rotateAround(new Vector2(0, 0), anchorRot);
+
+                    const finalPos = anchorPos.clone().add(v);
+                    const finalRot = anchorRot + item.rotation;
+
+                    const newPart = this.assembly.addPart(item.partId, finalPos, finalRot);
+                    this.scene.selectedInstanceIds.add(newPart.instanceId);
+                });
+            }
+
+            // Cleanup
+            if (this.dragGhost) this.scene.scene.remove(this.dragGhost);
+            this.dragGhost = null;
+            this.draggedPartId = null;
+            this.draggedGroup = [];
+            this.onPartPlaced();
+        }
+
+        // Reset States
+        this.pendingClickInstanceId = null;
+        this.mouseDownPos = null;
+        this.isDragging = false;
+    }
+
+    private onMouseDown = (event: MouseEvent) => {
+        if (this.draggedPartId) return; // Already dragging something?
+
+        if (event.target !== this.scene.renderer.domElement) return;
+
+        this.mouse.copy(this.getMousePosition(event));
+        this.raycaster.setFromCamera(this.mouse, this.scene.camera);
+
         const clickedInstanceId = this.scene.getPartAt(this.raycaster);
 
+        // Always record start pos for drag (part or box)
+        this.mouseDownPos = new Vector2(event.clientX, event.clientY);
+
         if (clickedInstanceId) {
-            // Find the part definition
-            const part = this.assembly.parts.find(p => p.instanceId === clickedInstanceId);
-            if (part) {
-                // Remove from assembly
-                this.assembly.removePart(clickedInstanceId);
-
-                // Start dragging it again
-                this.startDraggingNewPart(part.partId);
-
-                // Fix visual glitch: immediately move ghost to current mouse position
-                if (this.dragGhost) {
-                    this.dragGhost.position.set(this.mouse.x * 10, this.mouse.y * 10, 0); // Approximate world pos
-                    // Better: reuse the raycast logic to set exact position
-                    const target = new THREE.Vector3();
-                    this.raycaster.ray.intersectPlane(this.plane, target);
-                    this.dragGhost.position.copy(target);
-                }
-
-                // Notify UI to update stats (since we removed a part)
-                this.onPartPlaced();
-            }
+            // Initiate Potential Drug / Click on Part
+            this.pendingClickInstanceId = clickedInstanceId;
+        } else {
+            // Clicked Empty Space -> Potentially Start Box Select (Wait for move)
+            // Do NOT Deselect Immediately (wait for MouseUp)
         }
     }
 
@@ -194,6 +347,7 @@ export class DragDropManager {
             this.scene.scene.remove(this.dragGhost);
             this.dragGhost = null;
             this.draggedPartId = null;
+            this.draggedGroup = [];
 
             // Stats are already updated because we removed the part from assembly when picking it up
         }
@@ -210,7 +364,6 @@ export class DragDropManager {
         // --- 1. Surface Snap (Magnetic Edges) ---
         // Available for ALL parts now
 
-        // Define interface for clarity
         interface SurfaceCandidate {
             object: THREE.Object3D;
             dist: number;
@@ -220,7 +373,6 @@ export class DragDropManager {
 
         let bestSurfaceSnap: SnapResult | null = null;
         let bestCandidate: SurfaceCandidate | null = null;
-
         const SURFACE_THRESHOLD = 0.5;
 
         // Use for...of loop to support TS Control Flow Analysis
@@ -229,7 +381,6 @@ export class DragDropManager {
             if (!placedPart) continue;
 
             // PREVENT snapping to the SURFACE of a radial node.
-            // Radial nodes are small connectors; you should only snap to their NODE (handled by bestNodeSnap).
             if (placedPart.partId === 'radial_node') continue;
 
             const def = PartRegistry.get(placedPart.partId);
@@ -300,7 +451,6 @@ export class DragDropManager {
             const draggedDef = this.draggedPartId ? PartRegistry.get(this.draggedPartId) : null;
             if (draggedDef && draggedDef.nodes.length > 0) {
                 // Prefer 'bottom' node for surface attachment, or 'in', else first one
-                // Cast to string to avoid TS error if 'in' is not in the union type yet
                 const attachNode = draggedDef.nodes.find(n => n.type === 'bottom' || (n.type as string) === 'in') || draggedDef.nodes[0];
 
                 // If attaching via TOP node (e.g. Engine), we need to FLIP rotation to point OUT
@@ -332,7 +482,6 @@ export class DragDropManager {
         // Ensure draggedPartId is not null before proceeding
         if (!this.draggedPartId) {
             // If no part is being dragged, no node snap is possible
-            // Proceed to decision with only surface snap (if any)
         }
 
         const draggedDef = this.draggedPartId ? PartRegistry.get(this.draggedPartId) : null;
@@ -371,7 +520,6 @@ export class DragDropManager {
 
         // --- 3. Decision ---
 
-        // PRIORITY: Node Snap always wins if valid.
         if (bestNodeSnap) {
             const node = bestNodeSnap as SnapResult;
             return { pos: node.pos, rot: node.rot };

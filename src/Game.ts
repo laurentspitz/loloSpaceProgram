@@ -82,7 +82,11 @@ export class Game {
         this.bodies = this.sceneSetup.initBodies(this.collisionManager);
 
         // Create rocket (with assembly if provided)
-        const rocketConfig = assembly?.getRocketConfig?.();
+        const rocketConfig = (assembly && typeof (assembly as any).getRocketConfig === 'function')
+            ? (assembly as any).getRocketConfig()
+            : assembly;
+
+        console.log('Game: Initializing rocket with config:', rocketConfig);
         this.rocket = this.sceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig);
 
         // Handle stage separation

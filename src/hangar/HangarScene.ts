@@ -9,12 +9,25 @@ export class HangarScene {
     assembly: RocketAssembly;
 
     public partMeshes: Map<string, THREE.Group> = new Map();
+    public selectedInstanceIds: Set<string> = new Set();
     private textureLoader = new THREE.TextureLoader();
+
+    private selectionBox: HTMLDivElement;
 
     constructor(container: HTMLElement, assembly: RocketAssembly) {
         this.assembly = assembly;
 
-        // Setup Scene
+        // Setup Selection Box (HTML Overlay)
+        this.selectionBox = document.createElement('div');
+        this.selectionBox.style.position = 'absolute';
+        this.selectionBox.style.border = '2px solid rgba(255, 255, 0, 0.8)';
+        this.selectionBox.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
+        this.selectionBox.style.pointerEvents = 'none'; // Click-through
+        this.selectionBox.style.display = 'none';
+        this.selectionBox.style.zIndex = '1000'; // On top of canvas
+        container.appendChild(this.selectionBox);
+
+        // ... rest of constructor ...
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x1a1a1a); // Dark grey background
 
@@ -62,6 +75,45 @@ export class HangarScene {
         this.animate();
     }
 
+    updateSelectionBox(rect: { x: number, y: number, w: number, h: number } | null) {
+        if (rect) {
+            this.selectionBox.style.display = 'block';
+            this.selectionBox.style.left = `${rect.x}px`;
+            this.selectionBox.style.top = `${rect.y}px`;
+            this.selectionBox.style.width = `${rect.w}px`;
+            this.selectionBox.style.height = `${rect.h}px`;
+        } else {
+            this.selectionBox.style.display = 'none';
+        }
+    }
+
+    selectPartsInScreenRect(minX: number, minY: number, maxX: number, maxY: number, additive: boolean) {
+        if (!additive) {
+            this.selectedInstanceIds.clear();
+        }
+
+        const widthHalf = this.renderer.domElement.width / 2;
+        const heightHalf = this.renderer.domElement.height / 2;
+
+        this.assembly.parts.forEach(part => {
+            const mesh = this.partMeshes.get(part.instanceId);
+            if (!mesh) return;
+
+            // Project World Pos to Screen Pos
+            const pos = new THREE.Vector3(part.position.x, part.position.y, 0);
+            pos.project(this.camera); // Now in [-1, 1] NDC
+
+            const screenX = (pos.x * widthHalf) + widthHalf;
+            const screenY = -(pos.y * heightHalf) + heightHalf;
+
+            // Simple point inclusion (center of part)
+            // Could improve by projecting AABB corners if needed.
+            if (screenX >= minX && screenX <= maxX && screenY >= minY && screenY <= maxY) {
+                this.selectedInstanceIds.add(part.instanceId);
+            }
+        });
+    }
+
     update() {
         // Sync meshes with assembly
         const currentIds = new Set(this.assembly.parts.map(p => p.instanceId));
@@ -87,6 +139,30 @@ export class HangarScene {
             const zOffset = part.partId === 'radial_node' ? 0.1 : 0;
             mesh.position.set(part.position.x, part.position.y, zOffset);
             mesh.rotation.z = part.rotation;
+
+            // Update Selection Highlight
+            const isSelected = this.selectedInstanceIds.has(part.instanceId);
+            let highlight = mesh.getObjectByName('selection_highlight');
+
+            if (isSelected) {
+                if (!highlight) {
+                    const def = PartRegistry.get(part.partId);
+                    if (def) {
+                        const w = def.width; // Add padding? maybe slightly larger
+                        const h = def.height;
+                        const geo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(w + 0.1, h + 0.1));
+                        const mat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                        highlight = new THREE.LineSegments(geo, mat);
+                        highlight.name = 'selection_highlight';
+                        highlight.position.z = 0.2; // Above everything
+                        mesh.add(highlight);
+                    }
+                }
+            } else {
+                if (highlight) {
+                    mesh.remove(highlight);
+                }
+            }
         });
     }
 
@@ -149,17 +225,30 @@ export class HangarScene {
         const intersects = raycaster.intersectObjects(meshes, true);
 
         if (intersects.length > 0) {
-            // Find which group this mesh belongs to
-            let hitObject = intersects[0].object;
-
-            // Traverse up until we find the group in our map
-            while (hitObject.parent) {
-                for (const [id, group] of this.partMeshes) {
-                    if (group === hitObject) {
-                        return id;
+            // Heuristic: Sort by object size (smallest first)
+            // This helps with "transparent click-through" issues where a large part's quad covers a small part.
+            intersects.sort((a, b) => {
+                const getArea = (obj: THREE.Object3D) => {
+                    if (obj instanceof THREE.Mesh && obj.geometry instanceof THREE.PlaneGeometry) {
+                        return obj.geometry.parameters.width * obj.geometry.parameters.height;
                     }
+                    return parseFloat('Infinity');
+                };
+                return getArea(a.object) - getArea(b.object);
+            });
+
+            // Iterate through sorted hits
+            for (const hit of intersects) {
+                let hitObject = hit.object;
+                // Traverse up until we find the group in our map
+                while (hitObject.parent) {
+                    for (const [id, group] of this.partMeshes) {
+                        if (group === hitObject) {
+                            return id;
+                        }
+                    }
+                    hitObject = hitObject.parent;
                 }
-                hitObject = hitObject.parent;
             }
         }
 

@@ -21,6 +21,8 @@ export class HangarUI {
     deltaVValue!: HTMLSpanElement;
     twrValue!: HTMLSpanElement;
 
+    rocketNameInput!: HTMLInputElement;
+
     constructor(
         assembly: RocketAssembly,
         onPartSelected: (partId: string) => void,
@@ -47,15 +49,43 @@ export class HangarUI {
 
         this.palette = this.createPalette();
         this.statsPanel = this.createStatsPanel();
+        this.rocketNameInput = this.createNameInput();
 
         this.container.appendChild(this.palette);
         this.container.appendChild(this.statsPanel);
+        this.container.appendChild(this.rocketNameInput);
         this.container.appendChild(this.createBackButton());
 
         document.body.appendChild(this.container);
 
         // Initial stats update
         this.updateStats();
+    }
+
+    private createNameInput(): HTMLInputElement {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = this.assembly.name;
+        input.placeholder = 'Untitled Rocket';
+        input.style.position = 'absolute';
+        input.style.top = '20px';
+        input.style.left = '50%';
+        input.style.transform = 'translateX(-50%)';
+        input.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+        input.style.border = '1px solid #444';
+        input.style.borderRadius = '4px';
+        input.style.color = '#fff';
+        input.style.padding = '8px 15px';
+        input.style.fontSize = '16px';
+        input.style.textAlign = 'center';
+        input.style.pointerEvents = 'auto';
+        input.style.width = '300px';
+
+        input.addEventListener('input', () => {
+            this.assembly.name = input.value;
+        });
+
+        return input;
     }
 
     private createBackButton(): HTMLButtonElement {
@@ -352,6 +382,7 @@ export class HangarUI {
 
         const input = document.createElement('input');
         input.type = 'text';
+        input.value = this.assembly.name;
         input.placeholder = 'Enter rocket name...';
         input.style.width = '100%';
         input.style.padding = '8px';
@@ -516,6 +547,7 @@ export class HangarUI {
                 item.onclick = () => {
                     const loaded = RocketSaveManager.load(rocket.name);
                     if (loaded) {
+                        this.rocketNameInput.value = loaded.name; // Update Input
                         this.onLoad(loaded);
                         overlay.remove();
                     } else {

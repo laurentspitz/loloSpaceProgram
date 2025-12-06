@@ -102,4 +102,17 @@ export class Vector2 {
         }
         return this;
     }
+
+    rotateAround(center: Vector2, angle: number): this {
+        const c = Math.cos(angle);
+        const s = Math.sin(angle);
+
+        const x = this.x - center.x;
+        const y = this.y - center.y;
+
+        this.x = x * c - y * s + center.x;
+        this.y = x * s + y * c + center.y;
+
+        return this;
+    }
 }

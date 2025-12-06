@@ -44,8 +44,13 @@ export class Hangar {
             (partId) => this.dragDropManager.startDraggingNewPart(partId),
             () => {
                 // Dispatch launch event with assembly data
+                const config = this.assembly.getRocketConfig();
+                // Attach name to config
+                (config as any).name = this.assembly.name;
+
+                console.log('Hangar: Dispatching launch-game with config:', config);
                 const event = new CustomEvent('launch-game', {
-                    detail: { assembly: this.assembly }
+                    detail: { assembly: config }
                 });
                 window.dispatchEvent(event);
             },
