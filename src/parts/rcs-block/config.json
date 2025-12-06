@@ -1,0 +1,33 @@
+{
+    "id": "rcs_block",
+    "name": "RV-105 RCS",
+    "type": "rcs",
+    "description": "Small thruster for attitude control.",
+    "dimensions": {
+        "width": 0.6,
+        "height": 0.6
+    },
+    "stats": {
+        "mass": 50,
+        "cost": 600,
+        "thrust": 50000,
+        "isp": 250
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 0.3
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        }
+    ],
+    "visual": {
+        "effect": "rcs"
+    }
+}

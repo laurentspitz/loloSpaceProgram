@@ -1,0 +1,28 @@
+{
+    "id": "mk1_pod",
+    "name": "Command Pod Mk1",
+    "type": "capsule",
+    "description": "A reliable capsule for a single Kerbal.",
+    "dimensions": {
+        "width": 2.5,
+        "height": 2.25
+    },
+    "stats": {
+        "mass": 800,
+        "cost": 25000000
+    },
+    "nodes": [
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -1.0
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}

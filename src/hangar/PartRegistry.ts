@@ -1,10 +1,14 @@
 import type { PartDefinition } from './PartDefinition';
 import { Vector2 } from '../core/Vector2';
+import { PartLoader } from '../parts/PartLoader';
+import type { BasePart } from '../parts/BasePart';
 
 export class PartRegistry {
     private static parts: Map<string, PartDefinition> = new Map();
+    private static moduleParts: Map<string, BasePart> | null = null;
+    private static initialized = false;
 
-    static register(part: PartDefinition) {
+    static async register(part: PartDefinition) {
         this.parts.set(part.id, part);
     }
 
@@ -16,7 +20,55 @@ export class PartRegistry {
         return Array.from(this.parts.values());
     }
 
-    static init() {
+    /**
+     * Initialize the part registry
+     * Now uses the new modular part system via PartLoader
+     */
+    static async init() {
+        if (this.initialized) {
+            console.warn('[PartRegistry] Already initialized');
+            return;
+        }
+
+        console.log('[PartRegistry] Initializing with modular part system...');
+
+        try {
+            // Load all parts from the modular system
+            this.moduleParts = await PartLoader.loadAllParts();
+
+            // Convert modular parts to PartDefinition format for backward compatibility
+            for (const [id, part] of this.moduleParts.entries()) {
+                try {
+                    // Await the conversion since it's now async
+                    const definition = await PartLoader.convertToDefinition(part);
+                    this.parts.set(id, definition);
+                    console.log(`[PartRegistry] Registered: ${part.config.name} (${id})`);
+                } catch (error) {
+                    console.error(`[PartRegistry] Failed to register part ${id}:`, error);
+                }
+            }
+
+            // Fallback: Load hardcoded parts if no modular parts found
+            if (this.parts.size === 0) {
+                console.warn('[PartRegistry] No modular parts found, loading hardcoded fallbacks...');
+                this.initFallbackParts();
+            }
+
+            console.log(`[PartRegistry] Initialization complete. ${this.parts.size} parts registered.`);
+            this.initialized = true;
+        } catch (error) {
+            console.error('[PartRegistry] Error during initialization:', error);
+            console.warn('[PartRegistry] Falling back to hardcoded parts...');
+            this.initFallbackParts();
+            this.initialized = true;
+        }
+    }
+
+    /**
+     * Fallback: Initialize with hardcoded parts (old system)
+     * Used if modular system fails to load
+     */
+    private static initFallbackParts() {
         // Base scale: 90px texture width = 2.5 meters (standard part width)
         const TEXTURE_WIDTH_PX = 90;
         const SCALE = 2.5 / TEXTURE_WIDTH_PX; // meters per pixel
@@ -148,7 +200,6 @@ export class PartRegistry {
         });
 
         // 5. Radial Node (Custom Attachment Point)
-        // Texture: 20x20 orange circle with blue border
         const nodeSize = 0.5; // meters
         this.register({
             id: 'radial_node',
@@ -163,8 +214,6 @@ export class PartRegistry {
                 cost: 1000
             },
             nodes: [
-                // One node facing "out" (relative to the surface it sits on)
-                // When placed, rotation will align this.
                 { id: 'out', position: new Vector2(0, 0), direction: new Vector2(0, 1), type: 'bottom' }
             ]
         });

@@ -17,7 +17,7 @@ export class RocketAssembly {
     public name: string = "Untitled Rocket";
 
     constructor() {
-        PartRegistry.init();
+        // PartRegistry.init() should be called at app startup
     }
 
     addPart(partId: string, position: Vector2, rotation: number = 0, flipped: boolean = false): PlacedPart {

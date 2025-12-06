@@ -345,7 +345,7 @@ export class ThreeRenderer {
                 });
             }
 
-            this.thrustParticleSystem.update(deltaTime, emitters);
+            this.thrustParticleSystem.update(deltaTime, emitters, this.scale);
         }
 
         // Update camera position

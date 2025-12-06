@@ -431,30 +431,40 @@ export class TextureGenerator {
         return 0xffffff;
     }
     /**
-     * Create a soft glow texture for particles
+     * Create a soft particle texture
      */
     static createParticleTexture(): THREE.CanvasTexture {
-        const size = 128; // Larger texture for better quality
+        const size = 128;
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
         const ctx = canvas.getContext('2d')!;
 
-        // Radial gradient for soft glow
-        const gradient = ctx.createRadialGradient(
-            size / 2, size / 2, 0,
-            size / 2, size / 2, size / 2
-        );
+        // Create smooth gaussian gradient for soft edges
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = size / 2;
 
-        // Very soft core
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-        gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.9)');
-        gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.4)');
-        gradient.addColorStop(0.6, 'rgba(255, 255, 255, 0.1)');
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        // Draw gradient pixel by pixel for perfect gaussian
+        const imageData = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const normalized = distance / radius;
 
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
+                // Gaussian falloff for very soft edges
+                const alpha = Math.exp(-normalized * normalized * 4); // Gaussian with sigma=0.5
+
+                const index = (y * size + x) * 4;
+                imageData.data[index] = 255;     // R
+                imageData.data[index + 1] = 255; // G
+                imageData.data[index + 2] = 255; // B
+                imageData.data[index + 3] = alpha * 255; // A
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;

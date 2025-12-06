@@ -1,0 +1,28 @@
+{
+    "id": "radial_node",
+    "name": "Radial Node",
+    "type": "structure",
+    "description": "A custom attachment point that can be placed anywhere.",
+    "dimensions": {
+        "width": 0.5,
+        "height": 0.5
+    },
+    "stats": {
+        "mass": 10,
+        "cost": 1000
+    },
+    "nodes": [
+        {
+            "id": "out",
+            "position": {
+                "x": 0,
+                "y": 0
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "bottom"
+        }
+    ]
+}

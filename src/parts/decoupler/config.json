@@ -1,0 +1,40 @@
+{
+    "id": "decoupler",
+    "name": "Decoupler",
+    "type": "decoupler",
+    "description": "A stage separation device.",
+    "dimensions": {
+        "width": 2.5,
+        "height": 0.25
+    },
+    "stats": {
+        "mass": 50,
+        "cost": 50000
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 0.125
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -0.125
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}

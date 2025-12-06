@@ -1,0 +1,33 @@
+{
+    "id": "engine_lvt30",
+    "name": "LV-T30 \"Reliant\"",
+    "type": "engine",
+    "description": "A powerful first-stage engine.",
+    "dimensions": {
+        "width": 2.5,
+        "height": 3.583
+    },
+    "stats": {
+        "mass": 1250,
+        "cost": 2000000,
+        "thrust": 600000,
+        "isp": 300
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 1.7915
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        }
+    ],
+    "visual": {
+        "effect": "standard"
+    }
+}

@@ -1,0 +1,41 @@
+{
+    "id": "fuel_tank_x200_32",
+    "name": "Fuel Tank X200-32",
+    "type": "tank",
+    "description": "A large fuel tank for heavy lifting.",
+    "dimensions": {
+        "width": 2.5,
+        "height": 2.222
+    },
+    "stats": {
+        "mass": 500,
+        "cost": 300000,
+        "fuel": 32000
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 1.111
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -1.111
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}

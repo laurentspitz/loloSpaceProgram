@@ -74,7 +74,7 @@ export class App {
         this.assembly = null; // Clear after use
     }
 
-    startHangar() {
+    async startHangar() {
         // Clean up current state
         if (this.menu) {
             this.menu.dispose();
@@ -84,6 +84,10 @@ export class App {
             // Game cleanup if needed
             this.game = null;
         }
+
+        // Ensure parts are loaded before showing Hangar
+        const { PartRegistry } = await import('./hangar/PartRegistry');
+        await PartRegistry.init();
 
         this.currentState = AppState.HANGAR;
         this.hangar = new Hangar();

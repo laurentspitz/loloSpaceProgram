@@ -6,15 +6,15 @@ import { TextureGenerator } from './TextureGenerator';
  */
 export class ThrustParticleSystem {
     private particles: THREE.Points;
-    private particleCount: number = 10000; // Increased for smoke trail
+    private particleCount: number = 20000; // Increased from 10000 for denser effect
     private physicsPositions: Float64Array;
     private velocities: Float32Array;
     private lifetimes: Float32Array;
     private sizes: Float32Array;
     private colors: Float32Array;
     private types: Int8Array; // 0=Standard, 1=Blue, 2=RCS
-    private maxLifetime: number = 2.5; // Longer for smoke trail
-    private emissionRate: number = 8000; // Very high density for continuous flame
+    private maxLifetime: number = 3.5; // Increased for longer visible trail
+    private emissionRate: number = 20000; // Increased from 8000 for much denser flame
     private activeParticles: number = 0;
     private nextParticleIndex: number = 0; // Ring buffer index
 
@@ -83,15 +83,24 @@ export class ThrustParticleSystem {
      * Update particle system
      */
     /**
-     * Update particle system
+     * Update particle system with adaptive emission based on zoom level
+     * @param deltaTime Time delta in seconds
+     * @param emitters Array of particle emitters
+     * @param scale Current render scale (higher = more zoomed in)
      */
-    update(deltaTime: number, emitters: Array<{ pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }>) {
+    update(deltaTime: number, emitters: Array<{ pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }>, scale: number = 1e-9) {
         if (emitters.length === 0) return;
+
+        // Adaptive emission rate based on zoom level - MORE GENTLE scaling
+        // At default scale (1e-9), use base rate
+        // When zoomed in 100x (scale = 1e-7), multiply by ~3x max
+        const zoomFactor = Math.pow(scale / 1e-9, 0.3); // Power 0.3 for very gentle scaling
+        const adaptiveEmissionRate = this.emissionRate * Math.max(1, Math.min(zoomFactor, 3)); // Cap at 3x instead of 10x
 
         // Process emissions for each emitter
         emitters.forEach(emitter => {
             if (emitter.throttle > 0) {
-                const effectiveRate = this.emissionRate * emitter.throttle;
+                const effectiveRate = adaptiveEmissionRate * emitter.throttle;
 
                 // Track time per emitter?
                 // Currently `timeSinceLastEmit` is global. This implies bursty emission if sharing.
@@ -103,8 +112,9 @@ export class ThrustParticleSystem {
                 const prob = count - intCount;
                 let particlesToEmit = intCount + (Math.random() < prob ? 1 : 0);
 
-                // Limit max particles per frame per emitter
-                particlesToEmit = Math.min(particlesToEmit, 100);
+                // Limit max particles per frame per emitter (scale with zoom)
+                const maxParticlesPerFrame = Math.floor(100 * Math.max(1, Math.min(zoomFactor, 5)));
+                particlesToEmit = Math.min(particlesToEmit, maxParticlesPerFrame);
 
                 for (let i = 0; i < particlesToEmit; i++) {
                     this.emitParticle(emitter);
@@ -176,22 +186,30 @@ export class ThrustParticleSystem {
                         this.sizes[i] = 150 + t * 250;
                     }
                 }
-                // Standard Logic
+                // Standard Logic - Clear visible gradient with LIGHT GRAY smoke
                 else {
-                    const flameDuration = 0.4;
+                    const flameDuration = 1.0; // Flame phase
                     if (age < flameDuration) {
                         const t = age / flameDuration;
-                        this.colors[i3] = 1.0;
-                        this.colors[i3 + 1] = 1.0 - t * 0.5;
-                        this.colors[i3 + 2] = 0.9 - t * 0.9;
-                        this.sizes[i] = 80 + t * 40;
+                        // Bright white/yellow core → orange → red progression
+                        this.colors[i3] = 1.0; // Always full red
+                        this.colors[i3 + 1] = 1.0 - t * 0.8; // Yellow fades to dark
+                        this.colors[i3 + 2] = (1.0 - t) * 0.5; // Blue component fades quickly
+                        // Grow during flame phase
+                        this.sizes[i] = 150 * (1 + t * 0.8);
                     } else {
-                        const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
-                        const intensity = 0.5 * (1 - t);
-                        this.colors[i3] = 1.0 * intensity;
-                        this.colors[i3 + 1] = 0.5 * intensity;
-                        this.colors[i3 + 2] = 0.5 * intensity;
-                        this.sizes[i] = 120 + t * 200;
+                        // Smoke Phase - LIGHT GRAY diffuse smoke cloud
+                        const smokeAge = age - flameDuration;
+                        const smokeDuration = this.maxLifetime - flameDuration;
+                        const t = smokeAge / smokeDuration;
+                        // Light gray smoke that fades to transparent
+                        const fade = Math.pow(1 - t, 1.5); // Gentler fade for longer visibility
+                        const grayness = 0.5 + (1 - t) * 0.3; // Light gray (0.5-0.8)
+                        this.colors[i3] = grayness * fade; // Light gray
+                        this.colors[i3 + 1] = grayness * fade;
+                        this.colors[i3 + 2] = grayness * fade;
+                        // Smoke expands VERY significantly to form diffuse cloud
+                        this.sizes[i] = 300 + t * 500; // MUCH larger: 300 → 800 pixels
                     }
                 }
             }
@@ -218,7 +236,8 @@ export class ThrustParticleSystem {
                 renderPositions[i3 + 2] = 2; // Z=2
 
                 const physicalSize = this.sizes[i];
-                const pixelSize = Math.max(8, physicalSize * scale * 2);
+                // Increased multiplier from 2 to 3 for larger visible particles
+                const pixelSize = Math.max(12, physicalSize * scale * 3); // Increased minimum from 8 to 12
                 sizes[i] = pixelSize;
             } else {
                 const i3 = i * 3;
@@ -252,14 +271,14 @@ export class ThrustParticleSystem {
         if (isRCS) typeVal = 2;
         this.types[i] = typeVal;
 
-        // Position with randomness
-        const nozzleRadius = isRCS ? 0.5 : (isBlue ? 2.5 : 1.5);
+        // Position with randomness - increased radius for better coverage
+        const nozzleRadius = isRCS ? 0.5 : (isBlue ? 3.5 : 2.5); // Increased from 1.5/2.5
         this.physicsPositions[i3] = config.pos.x + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 1] = config.pos.y + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 2] = config.pos.z;
 
-        // Velocity
-        const spread = isRCS ? 0.05 : (isBlue ? 0.2 : 0.3); // RCS is very focused
+        // Velocity - reduced spread for tighter flame
+        const spread = isRCS ? 0.05 : (isBlue ? 0.1 : 0.15); // Reduced from 0.2/0.3 for tighter flame
         const speedMult = isRCS ? 3.0 : (isBlue ? 1.5 : 1.0); // RCS is fast puff
 
         const minSpeed = 50 * speedMult;
@@ -277,22 +296,22 @@ export class ThrustParticleSystem {
             this.lifetimes[i] = this.maxLifetime * (0.8 + Math.random() * 0.4);
         }
 
-        // Initial Color
+        // Initial Color and Size - MUCH larger particles for dense flame effect
         if (isRCS) {
             this.colors[i3] = 1.0;
             this.colors[i3 + 1] = 1.0;
             this.colors[i3 + 2] = 1.0;
-            this.sizes[i] = 20 + Math.random() * 10;
+            this.sizes[i] = 40 + Math.random() * 20; // Was 20-30, now 40-60
         } else if (isBlue) {
             this.colors[i3] = 0.2; // R
             this.colors[i3 + 1] = 0.8; // G
             this.colors[i3 + 2] = 1.0; // B
-            this.sizes[i] = 100 + Math.random() * 50;
+            this.sizes[i] = 200 + Math.random() * 100; // Was 100-150, now 200-300
         } else {
             this.colors[i3] = 1.0;
             this.colors[i3 + 1] = 1.0;
             this.colors[i3 + 2] = 0.9;
-            this.sizes[i] = 80 + Math.random() * 40;
+            this.sizes[i] = 150 + Math.random() * 100; // Was 80-120, now 150-250 for MUCH denser flames
         }
     }
 
