@@ -60,7 +60,7 @@ export class DragDropManager {
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
-            opacity: 0.5,
+            opacity: 0.8, // Increased for visibility
             side: THREE.DoubleSide
         });
 
@@ -68,25 +68,35 @@ export class DragDropManager {
         this.dragGhost.add(new THREE.Mesh(geometry, material));
 
         // Add Connection Nodes to Ghost
-        def.nodes.forEach(node => {
-            const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
-            const nodeMaterial = new THREE.MeshBasicMaterial({
-                color: 0x00ff00,
-                transparent: true,
-                opacity: 0.8
+        // Add Connection Nodes to Ghost (Skip for Radial Node)
+        if (partId !== 'radial_node') {
+            def.nodes.forEach(node => {
+                const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
+                const nodeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+                nodeMesh.position.set(node.position.x, node.position.y, 0.1); // Slightly in front
+                this.dragGhost!.add(nodeMesh);
             });
-            const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
-            nodeMesh.position.set(node.position.x, node.position.y, 0.1); // Slightly in front
-            this.dragGhost!.add(nodeMesh);
-        });
+        }
 
         this.scene.scene.add(this.dragGhost);
     }
 
+    private getMousePosition(event: MouseEvent): THREE.Vector2 {
+        const rect = this.scene.renderer.domElement.getBoundingClientRect();
+        return new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+    }
+
     private onMouseMove = (event: MouseEvent) => {
         // Update mouse position regardless of dragging
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        this.mouse.copy(this.getMousePosition(event));
 
         if (!this.dragGhost) return;
 
@@ -99,9 +109,13 @@ export class DragDropManager {
         this.dragGhost.position.copy(target);
 
         // Check for snapping
-        const snapPos = this.findSnapPosition(target);
-        if (snapPos) {
-            this.dragGhost.position.set(snapPos.x, snapPos.y, 0);
+        const snap = this.findSnapPosition(target);
+        if (snap) {
+            this.dragGhost.position.set(snap.pos.x, snap.pos.y, 1); // Z=1 to float above
+            this.dragGhost.rotation.z = snap.rot;
+        } else {
+            this.dragGhost.rotation.z = 0;
+            this.dragGhost.position.z = 1; // Z=1 to float above
         }
     }
 
@@ -122,7 +136,7 @@ export class DragDropManager {
 
             // Place the part
             const position = new Vector2(this.dragGhost.position.x, this.dragGhost.position.y);
-            this.assembly.addPart(this.draggedPartId, position);
+            this.assembly.addPart(this.draggedPartId, position, this.dragGhost.rotation.z);
 
             // Cleanup
             this.scene.scene.remove(this.dragGhost);
@@ -138,8 +152,7 @@ export class DragDropManager {
         if (this.draggedPartId) return;
 
         // Update mouse for raycasting
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        this.mouse.copy(this.getMousePosition(event));
         this.raycaster.setFromCamera(this.mouse, this.scene.camera);
 
         // CRITICAL FIX: Ignore clicks on UI elements (only interact with canvas)
@@ -186,44 +199,190 @@ export class DragDropManager {
         }
     }
 
-    private findSnapPosition(currentPos: THREE.Vector3): Vector2 | null {
-        // Simple snapping logic: check distance to nodes of existing parts
-        const SNAP_DISTANCE = 0.5;
-        let bestDist = SNAP_DISTANCE;
-        let bestPos: Vector2 | null = null;
+    private findSnapPosition(currentPos: THREE.Vector3): { pos: Vector2, rot: number } | null {
+        // Shared interface for snap results
+        interface SnapResult {
+            pos: Vector2;
+            rot: number;
+            dist: number;
+        }
 
-        const draggedDef = PartRegistry.get(this.draggedPartId!);
-        if (!draggedDef) return null;
+        // --- 1. Surface Snap (Magnetic Edges) ---
+        // Available for ALL parts now
 
-        this.assembly.parts.forEach(placedPart => {
-            const placedDef = PartRegistry.get(placedPart.partId);
-            if (!placedDef) return;
+        // Define interface for clarity
+        interface SurfaceCandidate {
+            object: THREE.Object3D;
+            dist: number;
+            snapLocal: THREE.Vector3;
+            normalLocal: THREE.Vector3;
+        }
 
-            // Check all connections between placed part and dragged part
-            placedDef.nodes.forEach(placedNode => {
-                // World position of the node on the placed part
-                const placedNodePos = placedPart.position.add(placedNode.position);
+        let bestSurfaceSnap: SnapResult | null = null;
+        let bestCandidate: SurfaceCandidate | null = null;
 
-                draggedDef.nodes.forEach(draggedNode => {
-                    // Where the dragged part WOULD be if we snapped these nodes
-                    // draggedPartPos = placedNodePos - draggedNodePos
-                    const potentialPos = placedNodePos.sub(draggedNode.position);
+        const SURFACE_THRESHOLD = 0.5;
 
-                    // Check distance to cursor
-                    const dist = new Vector2(currentPos.x, currentPos.y).distanceTo(potentialPos);
+        // Use for...of loop to support TS Control Flow Analysis
+        for (const [partInstanceId, group] of this.scene.partMeshes) {
+            const placedPart = this.assembly.parts.find(p => p.instanceId === partInstanceId);
+            if (!placedPart) continue;
 
-                    if (dist < bestDist) {
-                        // Check compatibility (e.g. top connects to bottom)
-                        if (this.areNodesCompatible(placedNode.type, draggedNode.type)) {
-                            bestDist = dist;
-                            bestPos = potentialPos;
+            // PREVENT snapping to the SURFACE of a radial node.
+            // Radial nodes are small connectors; you should only snap to their NODE (handled by bestNodeSnap).
+            if (placedPart.partId === 'radial_node') continue;
+
+            const def = PartRegistry.get(placedPart.partId);
+            if (!def) continue;
+
+            const hitObject = group;
+            const localPos = hitObject.worldToLocal(currentPos.clone());
+
+            const w = def.width;
+            const h = def.height;
+
+            // AABB Clamping
+            const cx = Math.max(-w / 2, Math.min(w / 2, localPos.x));
+            const cy = Math.max(-h / 2, Math.min(h / 2, localPos.y));
+
+            // Distance from cursor to AABB
+            const dist = localPos.distanceTo(new THREE.Vector3(cx, cy, 0));
+
+            if (dist < SURFACE_THRESHOLD) {
+                // Find closest EDGE
+                const distLeft = Math.abs(-w / 2 - cx);
+                const distRight = Math.abs(w / 2 - cx);
+                const distBottom = Math.abs(-h / 2 - cy);
+                const distTop = Math.abs(h / 2 - cy);
+
+                const minEdgeDist = Math.min(distLeft, distRight, distBottom, distTop);
+
+                let snapLocal = new THREE.Vector3(cx, cy, 0);
+                let normalLocal = new THREE.Vector3(0, 1, 0);
+
+                if (minEdgeDist === distLeft) {
+                    snapLocal.x = -w / 2;
+                    normalLocal.set(-1, 0, 0);
+                } else if (minEdgeDist === distRight) {
+                    snapLocal.x = w / 2;
+                    normalLocal.set(1, 0, 0);
+                } else if (minEdgeDist === distBottom) {
+                    snapLocal.y = -h / 2;
+                    normalLocal.set(0, -1, 0);
+                } else {
+                    snapLocal.y = h / 2;
+                    normalLocal.set(0, 1, 0);
+                }
+
+                // Real distance to the specific edge point
+                const realDist = localPos.distanceTo(snapLocal);
+
+                if (!bestCandidate || realDist < bestCandidate.dist) {
+                    bestCandidate = {
+                        object: hitObject,
+                        dist: realDist,
+                        snapLocal,
+                        normalLocal
+                    };
+                }
+            }
+        }
+
+        if (bestCandidate) {
+            const c = bestCandidate;
+            const snapWorld = c.object.localToWorld(c.snapLocal.clone());
+            const normalWorld = c.normalLocal.applyQuaternion(c.object.quaternion);
+            let rotation = Math.atan2(normalWorld.y, normalWorld.x) - Math.PI / 2;
+
+            // Calculate aligned position based on the drag part's connection node
+            let partPos = new Vector2(snapWorld.x, snapWorld.y);
+
+            const draggedDef = this.draggedPartId ? PartRegistry.get(this.draggedPartId) : null;
+            if (draggedDef && draggedDef.nodes.length > 0) {
+                // Prefer 'bottom' node for surface attachment, or 'in', else first one
+                // Cast to string to avoid TS error if 'in' is not in the union type yet
+                const attachNode = draggedDef.nodes.find(n => n.type === 'bottom' || (n.type as string) === 'in') || draggedDef.nodes[0];
+
+                // If attaching via TOP node (e.g. Engine), we need to FLIP rotation to point OUT
+                if (attachNode.type === 'top') {
+                    rotation += Math.PI;
+                }
+
+                // Rotate the node's local position to match the new part rotation
+                const offset = new THREE.Vector2(attachNode.position.x, attachNode.position.y);
+                offset.rotateAround(new THREE.Vector2(0, 0), rotation);
+
+                // Apply offset: PartPosition = SnapPoint - RotatedNodeOffset
+                partPos = partPos.sub(new Vector2(offset.x, offset.y));
+            }
+
+            bestSurfaceSnap = {
+                pos: partPos,
+                rot: rotation,
+                dist: c.dist
+            };
+        }
+
+        // --- 2. Node Snap (Stacking) ---
+        // Standard node-to-node logic
+        const NODE_THRESHOLD = 0.5;
+        let bestNodeSnap: SnapResult | null = null;
+        let bestNodeDist = NODE_THRESHOLD;
+
+        // Ensure draggedPartId is not null before proceeding
+        if (!this.draggedPartId) {
+            // If no part is being dragged, no node snap is possible
+            // Proceed to decision with only surface snap (if any)
+        }
+
+        const draggedDef = this.draggedPartId ? PartRegistry.get(this.draggedPartId) : null;
+
+        if (draggedDef) {
+            // Use for...of loop here as well
+            for (const placedPart of this.assembly.parts) {
+                const placedDef = PartRegistry.get(placedPart.partId);
+                if (!placedDef) continue;
+
+                placedDef.nodes.forEach(placedNode => {
+                    const nodeOffset = new THREE.Vector2(placedNode.position.x, placedNode.position.y);
+                    // Rotate the node offset to match the placed part's rotation
+                    nodeOffset.rotateAround(new THREE.Vector2(0, 0), placedPart.rotation);
+
+                    const placedNodePos = placedPart.position.clone().add(new Vector2(nodeOffset.x, nodeOffset.y));
+
+                    draggedDef.nodes.forEach(draggedNode => {
+                        const potentialPos = placedNodePos.sub(draggedNode.position);
+                        const dist = new Vector2(currentPos.x, currentPos.y).distanceTo(potentialPos);
+
+                        if (dist < bestNodeDist) {
+                            if (this.areNodesCompatible(placedNode.type, draggedNode.type)) {
+                                bestNodeDist = dist;
+                                bestNodeSnap = {
+                                    pos: potentialPos,
+                                    rot: 0,
+                                    dist: dist
+                                };
+                            }
                         }
-                    }
+                    });
                 });
-            });
-        });
+            }
+        }
 
-        return bestPos;
+        // --- 3. Decision ---
+
+        // PRIORITY: Node Snap always wins if valid.
+        if (bestNodeSnap) {
+            const node = bestNodeSnap as SnapResult;
+            return { pos: node.pos, rot: node.rot };
+        }
+
+        if (bestSurfaceSnap) {
+            const surf = bestSurfaceSnap as SnapResult;
+            return { pos: surf.pos, rot: surf.rot };
+        }
+
+        return null;
     }
 
     private areNodesCompatible(typeA: string, typeB: string): boolean {
@@ -236,5 +395,6 @@ export class DragDropManager {
         window.removeEventListener('mousemove', this.onMouseMove);
         window.removeEventListener('mouseup', this.onMouseUp);
         window.removeEventListener('mousedown', this.onMouseDown);
+        window.removeEventListener('keydown', this.onKeyDown);
     }
 }

@@ -8,7 +8,7 @@ export class HangarScene {
     renderer: THREE.WebGLRenderer;
     assembly: RocketAssembly;
 
-    private partMeshes: Map<string, THREE.Group> = new Map();
+    public partMeshes: Map<string, THREE.Group> = new Map();
     private textureLoader = new THREE.TextureLoader();
 
     constructor(container: HTMLElement, assembly: RocketAssembly) {
@@ -84,7 +84,8 @@ export class HangarScene {
             }
 
             // Update position
-            mesh.position.set(part.position.x, part.position.y, 0);
+            const zOffset = part.partId === 'radial_node' ? 0.1 : 0;
+            mesh.position.set(part.position.x, part.position.y, zOffset);
             mesh.rotation.z = part.rotation;
         });
     }
@@ -108,18 +109,33 @@ export class HangarScene {
         const mesh = new THREE.Mesh(geometry, material);
         group.add(mesh);
 
-        // Add Connection Nodes
-        def.nodes.forEach(node => {
-            const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
-            const nodeMaterial = new THREE.MeshBasicMaterial({
-                color: 0x00ff00,
-                transparent: true,
-                opacity: 0.8
+        // Add Connection Nodes (Skip visuals for Radial Node as it has a custom texture)
+        if (def.id !== 'radial_node') {
+            def.nodes.forEach(node => {
+                const nodeGeometry = new THREE.CircleGeometry(0.15, 16);
+                const nodeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
+                nodeMesh.position.set(node.position.x, node.position.y, 0.1); // Slightly in front
+
+                // Add direction indicator (Yellow line)
+                const dir = new THREE.Vector3(node.direction.x, node.direction.y, 0).normalize().multiplyScalar(0.4);
+                const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, 0),
+                    dir
+                ]);
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                const line = new THREE.Line(lineGeo, lineMat);
+                // Lift line slightly above circle to avoid z-fighting
+                line.position.z = 0.01;
+                nodeMesh.add(line);
+
+                group.add(nodeMesh);
             });
-            const nodeMesh = new THREE.Mesh(nodeGeometry, nodeMaterial);
-            nodeMesh.position.set(node.position.x, node.position.y, 0.1); // Slightly in front
-            group.add(nodeMesh);
-        });
+        }
 
         return group;
     }

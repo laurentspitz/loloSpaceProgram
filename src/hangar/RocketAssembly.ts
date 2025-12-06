@@ -18,7 +18,7 @@ export class RocketAssembly {
         PartRegistry.init();
     }
 
-    addPart(partId: string, position: Vector2): PlacedPart {
+    addPart(partId: string, position: Vector2, rotation: number = 0): PlacedPart {
         const def = PartRegistry.get(partId);
         if (!def) throw new Error(`Part ${partId} not found`);
 
@@ -27,7 +27,7 @@ export class RocketAssembly {
             instanceId,
             partId,
             position,
-            rotation: 0
+            rotation
         };
 
         if (this.parts.length === 0) {

@@ -101,5 +101,57 @@ export class PartRegistry {
                 { id: 'bottom', position: new Vector2(0, -decouplerHeight / 2), direction: new Vector2(0, -1), type: 'bottom' }
             ]
         });
+
+        // 5. Radial Node (Custom Attachment Point)
+        // Texture: 20x20 orange circle with blue border
+        const nodeSize = 0.5; // meters
+        this.register({
+            id: 'radial_node',
+            name: 'Radial Node',
+            type: 'structure',
+            description: 'A custom attachment point that can be placed anywhere.',
+            texture: this.createNodeTexture(),
+            width: nodeSize,
+            height: nodeSize,
+            stats: {
+                mass: 10,
+                cost: 1000
+            },
+            nodes: [
+                // One node facing "out" (relative to the surface it sits on)
+                // When placed, rotation will align this.
+                { id: 'out', position: new Vector2(0, 0), direction: new Vector2(0, 1), type: 'bottom' }
+            ]
+        });
+    }
+
+    private static createNodeTexture(): string {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d')!;
+
+        // Orange center
+        ctx.fillStyle = '#ff9900';
+        ctx.beginPath();
+        ctx.arc(32, 32, 28, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Blue border (distinct from green nodes)
+        ctx.strokeStyle = '#00aaff';
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        // Inner detail (Orientation Arrow)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        // Triangle pointing UP
+        ctx.moveTo(32, 15); // Tip
+        ctx.lineTo(22, 40); // Bottom Left
+        ctx.lineTo(42, 40); // Bottom Right
+        ctx.closePath();
+        ctx.fill();
+
+        return canvas.toDataURL();
     }
 }
