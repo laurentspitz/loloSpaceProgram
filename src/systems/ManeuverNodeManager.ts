@@ -6,11 +6,29 @@ import { Physics } from '../physics/Physics';
 import { SphereOfInfluence } from '../physics/SphereOfInfluence';
 
 /**
+ * SOI encounter information for visualization
+ */
+export interface SOIEncounterInfo {
+    body: Body;           // The body whose SOI we'll enter
+    timeToEncounter: number;  // Time in seconds until encounter
+}
+
+/**
  * ManeuverNodeManager - Manages all maneuver nodes and trajectory predictions
  */
 export class ManeuverNodeManager {
     nodes: ManeuverNode[] = [];
     predictedTrajectory: Vector2[] = [];
+
+    // Track SOI encounter for visualization
+    private _pendingEncounter: SOIEncounterInfo | null = null;
+
+    /**
+     * Get the pending SOI encounter if any
+     */
+    get pendingEncounter(): SOIEncounterInfo | null {
+        return this._pendingEncounter;
+    }
 
     /**
      * Add a new maneuver node and sort by orbit time
@@ -72,6 +90,9 @@ export class ManeuverNodeManager {
         timeStep: number,
         numSteps: number
     ): { segments: Vector2[][], colors: string[] } {
+        // Clear any previous encounter info
+        this._pendingEncounter = null;
+
         if (this.nodes.length === 0) {
             // No maneuvers, return standard trajectory
             const points = this.predictSegment(
@@ -79,7 +100,8 @@ export class ManeuverNodeManager {
                 rocket.body.velocity,
                 bodies,
                 timeStep,
-                numSteps
+                numSteps,
+                bodies  // Pass all bodies for SOI entry detection
             );
             return { segments: [points], colors: ['#00ffff'] };
         }
@@ -128,7 +150,8 @@ export class ManeuverNodeManager {
                     simVel,
                     gravityBodies,
                     timeStep,
-                    stepsToNode
+                    stepsToNode,
+                    bodies  // Pass all bodies for SOI entry detection
                 );
                 segments.push(segmentPoints);
                 colors.push('#ff8800'); // Orange
@@ -157,7 +180,8 @@ export class ManeuverNodeManager {
                 simVel,
                 gravityBodies,
                 timeStep,
-                remainingSteps
+                remainingSteps,
+                bodies  // Pass all bodies for SOI entry detection
             );
             segments.push(finalSegment);
             colors.push('#ff8800'); // Orange after maneuver
@@ -229,84 +253,164 @@ export class ManeuverNodeManager {
     }
 
     /**
-     * Predict a single trajectory segment (no maneuvers)
-     * Works in the parent body's reference frame for stability
-     */
-    /**
      * Predict a single trajectory segment using Patched Conics approximation
-     * Handles SOI transitions (e.g. Moon -> Earth) by switching reference frames
+     * 
+     * Physics and rendering work in the reference body's frame (stable orbit).
+     * SOI detection uses TIME-AWARE positions: where will the Moon be when
+     * the rocket reaches that point in its orbit?
      */
     private predictSegment(
         startPos: Vector2,
         startVel: Vector2,
         bodies: Body[],
         timeStep: number,
-        numSteps: number
+        numSteps: number,
+        allBodies?: Body[]  // Optional: all bodies for SOI entry detection
     ): Vector2[] {
         const points: Vector2[] = [];
 
         // Determine initial reference body
-        // If bodies has 1 element, it's the parent. If multiple, it's N-body (fallback)
         let currentBody = bodies.length === 1 ? bodies[0] : null;
+
+        // Get children with SOI for entry detection
+        const getChildrenWithSOI = (body: Body): Body[] => {
+            if (!allBodies) return [];
+            return allBodies.filter(b => b.parent === body && b.type !== 'star');
+        };
+
+        /**
+         * Predict where a child body will be relative to its parent at a future time
+         * This is used for SOI detection - where will the Moon be when we get there?
+         */
+        const predictChildRelativePosition = (child: Body, parent: Body, deltaTime: number): Vector2 => {
+            if (!child.orbit) {
+                // No orbital data, use current relative position
+                return child.position.sub(parent.position);
+            }
+
+            const mu = Physics.G * (parent.mass + child.mass);
+            const a = child.orbit.a;
+            const e = child.orbit.e;
+
+            // Mean motion: n = sqrt(mu / a^3)
+            const n = Math.sqrt(mu / Math.pow(a, 3));
+
+            // Future mean anomaly
+            let M = child.meanAnomaly + n * deltaTime;
+            M = M % (Math.PI * 2);
+            if (M < 0) M += Math.PI * 2;
+
+            // Solve Kepler's equation using Newton-Raphson (matches OrbitUtils)
+            let E = M;
+            if (e > 0.8) E = Math.PI;
+            for (let iter = 0; iter < 10; iter++) {
+                const f = E - e * Math.sin(E) - M;
+                const df = 1 - e * Math.cos(E);
+                E = E - f / df;
+            }
+
+            // Position in orbital plane relative to parent
+            const xOrbit = a * (Math.cos(E) - e);
+            const yOrbit = child.orbit.b * Math.sin(E);
+
+            // Rotate by argument of periapsis
+            const cosW = Math.cos(child.orbit.omega);
+            const sinW = Math.sin(child.orbit.omega);
+            const xRot = xOrbit * cosW - yOrbit * sinW;
+            const yRot = xOrbit * sinW + yOrbit * cosW;
+
+            return new Vector2(xRot, yRot);
+        };
 
         if (currentBody) {
             // Patched Conics Simulation
+            // Physics and rendering stay in the reference body's frame
 
-            // Work in current body's reference frame
             let simPos = startPos.sub(currentBody.position);
             let simVel = startVel.sub(currentBody.velocity);
+            let elapsedTime = 0;
 
             for (let i = 0; i < numSteps; i++) {
-                // Store absolute position for rendering
+                elapsedTime += timeStep;
+
+                // Store absolute position for rendering (using CURRENT body position)
+                // This shows the stable orbit relative to the current body
                 const absPos = simPos.add(currentBody.position);
                 points.push(absPos);
 
-                // 1. Calculate Gravity from current body
+                // Calculate Gravity from current body
                 const dist = simPos.mag();
-                if (dist < 0.1) continue; // Avoid singularity
+                if (dist < 0.1) continue;
 
-                const forceMag = (Physics.G * currentBody.mass) / (dist * dist);
-                const dir = simPos.scale(-1).normalize(); // Direction toward center
-                const totalForce = dir.scale(forceMag);
+                const forceMag = (Physics.G * currentBody!.mass) / (dist * dist);
+                const dir = simPos.scale(-1).normalize();
+                const force = dir.scale(forceMag);
 
-                // 2. Integrate (Symplectic Euler)
-                simVel = simVel.add(totalForce.scale(timeStep));
+                // Integrate
+                simVel = simVel.add(force.scale(timeStep));
                 simPos = simPos.add(simVel.scale(timeStep));
 
-                // 3. Check for SOI Exit
-                // If we are far enough, check if we should switch to parent
-                // (Optimization: only check if dist > 0.8 * SOI)
+                // ===== SOI DETECTION WITH TIME-AWARENESS =====
+
+                // Check for SOI Entry into child bodies
+                // Use PREDICTED child positions based on elapsed time
+                const children = getChildrenWithSOI(currentBody!);
+                let enteredChild = false;
+
+                for (const child of children) {
+                    const childSOI = SphereOfInfluence.calculateSOI(child);
+
+                    // Where will the child be relative to parent at this future time?
+                    const childFutureRelPos = predictChildRelativePosition(child, currentBody!, elapsedTime);
+
+                    // Check if rocket's relative position is inside child's future SOI
+                    const distToChild = simPos.distanceTo(childFutureRelPos);
+
+                    if (distToChild < childSOI) {
+                        // SOI Entry detected! 
+                        // Store encounter info for visualization
+                        this._pendingEncounter = {
+                            body: child,
+                            timeToEncounter: elapsedTime
+                        };
+
+                        // Add the entry point to the trajectory and STOP
+                        const entryPoint = simPos.add(currentBody.position);
+                        points.push(entryPoint);
+
+                        // Stop prediction here - we've reached the target SOI
+                        return points;
+                    }
+                }
+
+                if (enteredChild) continue;
+
+                // SOI Exit to parent (using current positions, less time-sensitive)
                 if (currentBody && currentBody.parent) {
-                    // We need a temporary Rocket object or just use distance check
-                    // SphereOfInfluence.calculateSOI requires a Body, let's use that directly
                     const soiRadius = SphereOfInfluence.calculateSOI(currentBody);
 
                     if (dist > soiRadius) {
-                        // SOI Exit Detected! Switch to parent (e.g. Moon -> Earth)
                         const newBody: Body = currentBody.parent;
 
-                        // Transform Position: Pos_new = Pos_old + (Body_old - Body_new)
-                        // This is vector addition of relative positions
+                        // Transform using current body offset
                         const bodyOffset = currentBody.position.sub(newBody.position);
                         simPos = simPos.add(bodyOffset);
 
-                        // Transform Velocity: Vel_new = Vel_old + (Body_old - Body_new)
                         const velOffset = currentBody.velocity.sub(newBody.velocity);
                         simVel = simVel.add(velOffset);
 
-                        // Update current body reference
                         currentBody = newBody;
-
-                        // Continue simulation in new frame...
                     }
                 }
             }
         } else {
-            // Multi-body simulation (absolute frame) - Fallback for solar system scale
+            // Multi-body simulation (absolute frame)
             let simPos = startPos.clone();
             let simVel = startVel.clone();
+            let elapsedTime = 0;
 
             for (let i = 0; i < numSteps; i++) {
+                elapsedTime += timeStep;
                 points.push(simPos.clone());
 
                 let totalForce = new Vector2(0, 0);
@@ -354,3 +458,4 @@ export class ManeuverNodeManager {
         };
     }
 }
+

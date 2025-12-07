@@ -4,6 +4,7 @@ import { Vector2 } from '../core/Vector2';
 import { TextureGenerator } from './TextureGenerator';
 import { IconGenerator } from '../ui/IconGenerator';
 import { OrbitRenderer } from './OrbitRenderer';
+import { SOIRenderer } from './SOIRenderer';
 import { Rocket } from '../entities/Rocket';
 import { RocketRenderer } from './RocketRenderer';
 import { InputHandler } from './InputHandler';
@@ -86,8 +87,12 @@ export class ThreeRenderer {
 
     // Helpers
     private orbitRenderer: OrbitRenderer;
+    private soiRenderer: SOIRenderer;
     public inputHandler: InputHandler;
     private thrustParticleSystem: ThrustParticleSystem;
+
+    // SOI visualization - stores trajectory points for SOI rendering
+    private lastTrajectoryPoints: Vector2[] = [];
 
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
@@ -122,6 +127,9 @@ export class ThreeRenderer {
 
         // Initialize orbit renderer
         this.orbitRenderer = new OrbitRenderer(this.scene, this.scale, this.moonScale);
+
+        // Initialize SOI renderer
+        this.soiRenderer = new SOIRenderer(this.scene);
 
         // Initialize thrust particle system
         this.thrustParticleSystem = new ThrustParticleSystem();
@@ -987,6 +995,9 @@ export class ThreeRenderer {
      * Update the trajectory line
      */
     updateTrajectory(points: Vector2[], center: Vector2) {
+        // Store trajectory points for SOI rendering
+        this.lastTrajectoryPoints = points;
+
         if (!this.showTrajectory || points.length < 2) {
             if (this.trajectoryLine) {
                 this.scene.remove(this.trajectoryLine);
@@ -1029,6 +1040,9 @@ export class ThreeRenderer {
             this.trajectoryLine.computeLineDistances();
             (this.trajectoryLine.material as LineMaterial).resolution.set(this.width, this.height);
         }
+
+        // Render SOI spheres based on trajectory proximity
+        this.soiRenderer.renderSOIs(this.currentBodies, points, center, this.scale);
     }
 
     /**
@@ -1086,6 +1100,29 @@ export class ThreeRenderer {
             // Store in maneuverTrajectoryLines instead of trajectoryLine
             this.maneuverTrajectoryLines.push(line);
         });
+
+        // Render SOI spheres based on combined trajectory proximity
+        if (segments.length > 0) {
+            const allPoints = segments.flat();
+            const center = this.getCenter();
+            this.soiRenderer.renderSOIs(this.currentBodies, allPoints, center, this.scale);
+        }
+    }
+
+    /**
+     * Render the predicted future position of a celestial body with its SOI
+     * Shows where the body will be at a future time, with dashed circles and path
+     */
+    renderFutureBodyPosition(body: Body, futureTimeSeconds: number): void {
+        const center = this.getCenter();
+        this.soiRenderer.renderFutureSOI(body, futureTimeSeconds, center, this.scale);
+    }
+
+    /**
+     * Hide all future body position visualizations
+     */
+    hideFutureBodyPositions(): void {
+        this.soiRenderer.hideFutureSOIs();
     }
 
     /**
@@ -1476,6 +1513,11 @@ export class ThreeRenderer {
         // Dispose orbit renderer
         if (this.orbitRenderer && typeof (this.orbitRenderer as any).dispose === 'function') {
             (this.orbitRenderer as any).dispose();
+        }
+
+        // Dispose SOI renderer
+        if (this.soiRenderer && typeof (this.soiRenderer as any).dispose === 'function') {
+            (this.soiRenderer as any).dispose();
         }
 
         // Dispose input handler (removes event listeners)

@@ -40,6 +40,9 @@ export class Game {
     private isDisposed: boolean = false;
     private lastOrbitUpdateTime: number = 0;
 
+    // Track total elapsed game time for date display
+    elapsedGameTime: number = 0;
+
     constructor(assembly?: RocketConfig) {
         this.sceneSetup = SceneSetup;
 
@@ -123,6 +126,10 @@ export class Game {
 
         // Calculate total simulation time to pass this frame
         let totalDt = dt * this.timeScale * this.timeWarp;
+
+        // Accumulate elapsed game time for date display
+        this.elapsedGameTime += totalDt;
+        this.ui.updateDateTime(this.elapsedGameTime);
 
         // Update rocket controls
         if (this.rocket) {
@@ -279,9 +286,22 @@ export class Game {
                             20000 // Number of steps (2,000,000s = ~23 days)
                         );
                         this.renderer.updateManeuverTrajectory(prediction.segments, prediction.colors);
+
+                        // Render future body position if there's a pending SOI encounter
+                        if (this.renderer instanceof ThreeRenderer) {
+                            const encounter = this.maneuverNodeManager.pendingEncounter;
+                            if (encounter) {
+                                this.renderer.renderFutureBodyPosition(encounter.body, encounter.timeToEncounter);
+                            } else {
+                                this.renderer.hideFutureBodyPositions();
+                            }
+                        }
                     } else {
                         // Clear maneuver trajectory (keep current orbit visible)
                         this.renderer.updateManeuverTrajectory([], []);
+                        if (this.renderer instanceof ThreeRenderer) {
+                            this.renderer.hideFutureBodyPositions();
+                        }
                     }
 
                     // Update maneuver node visuals

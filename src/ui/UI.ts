@@ -139,16 +139,47 @@ export class UI {
         container.appendChild(trajectoryBtn);
         document.body.appendChild(container);
 
-        // Time Warp Controls
+        // Time Warp Controls with Date Display
         const timeContainer = document.createElement('div');
         timeContainer.style.position = 'absolute';
         timeContainer.style.top = '10px';
-        timeContainer.style.right = '10px'; // Top right
+        timeContainer.style.right = '10px';
         timeContainer.style.display = 'flex';
+        timeContainer.style.flexDirection = 'column';
+        timeContainer.style.alignItems = 'flex-end';
         timeContainer.style.gap = '5px';
-        timeContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        timeContainer.style.padding = '5px';
-        timeContainer.style.borderRadius = '5px';
+
+        // Date/Time Display
+        const dateDisplay = document.createElement('div');
+        dateDisplay.id = 'game-date-display';
+        dateDisplay.style.color = '#88ccff';
+        dateDisplay.style.fontFamily = 'monospace';
+        dateDisplay.style.fontSize = '14px';
+        dateDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        dateDisplay.style.padding = '5px 10px';
+        dateDisplay.style.borderRadius = '5px';
+        dateDisplay.innerText = '2025-12-07 00:00:00';
+        timeContainer.appendChild(dateDisplay);
+
+        // Elapsed time (more compact display)
+        const elapsedDisplay = document.createElement('div');
+        elapsedDisplay.id = 'game-elapsed-display';
+        elapsedDisplay.style.color = '#aaaaaa';
+        elapsedDisplay.style.fontFamily = 'monospace';
+        elapsedDisplay.style.fontSize = '11px';
+        elapsedDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        elapsedDisplay.style.padding = '3px 10px';
+        elapsedDisplay.style.borderRadius = '5px';
+        elapsedDisplay.innerText = 'MET: 0d 0h 0m 0s';
+        timeContainer.appendChild(elapsedDisplay);
+
+        // Time warp buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.display = 'flex';
+        buttonsContainer.style.gap = '5px';
+        buttonsContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        buttonsContainer.style.padding = '5px';
+        buttonsContainer.style.borderRadius = '5px';
 
         const speedDisplay = document.createElement('span');
         speedDisplay.style.color = 'white';
@@ -173,11 +204,13 @@ export class UI {
         increaseBtn.innerText = '>>';
         increaseBtn.onclick = () => this.changeTimeWarp(1, speedDisplay);
 
-        timeContainer.appendChild(decreaseBtn);
-        timeContainer.appendChild(pauseBtn);
-        timeContainer.appendChild(playBtn);
-        timeContainer.appendChild(increaseBtn);
-        timeContainer.appendChild(speedDisplay);
+        buttonsContainer.appendChild(decreaseBtn);
+        buttonsContainer.appendChild(pauseBtn);
+        buttonsContainer.appendChild(playBtn);
+        buttonsContainer.appendChild(increaseBtn);
+        buttonsContainer.appendChild(speedDisplay);
+
+        timeContainer.appendChild(buttonsContainer);
         document.body.appendChild(timeContainer);
     }
 
@@ -849,7 +882,7 @@ export class UI {
     createControlsHelp() {
         const panel = document.createElement('div');
         panel.style.position = 'absolute';
-        panel.style.top = '60px';
+        panel.style.top = '130px';
         panel.style.right = '10px';
         panel.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         panel.style.color = '#aaa';
@@ -1085,6 +1118,49 @@ export class UI {
             console.log(`Target set to ${body.name}`, rocket);
         } else {
             console.error('setTarget: No rocket found!');
+        }
+    }
+
+    /**
+     * Update the date/time display based on elapsed game time
+     * @param elapsedSeconds Total elapsed game time in seconds
+     */
+    updateDateTime(elapsedSeconds: number) {
+        // Start date: Today (December 7, 2025)
+        const baseDate = new Date('2025-12-07T00:00:00Z');
+
+        // Add elapsed seconds to base date
+        const currentDate = new Date(baseDate.getTime() + elapsedSeconds * 1000);
+
+        // Format date as YYYY-MM-DD HH:MM:SS
+        const year = currentDate.getUTCFullYear();
+        const month = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getUTCDate()).padStart(2, '0');
+        const hours = String(currentDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(currentDate.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(currentDate.getUTCSeconds()).padStart(2, '0');
+
+        const dateString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+        // Update date display
+        const dateDisplay = document.getElementById('game-date-display');
+        if (dateDisplay) {
+            dateDisplay.innerText = dateString;
+        }
+
+        // Calculate Mission Elapsed Time (MET)
+        const totalSeconds = Math.floor(elapsedSeconds);
+        const metSeconds = totalSeconds % 60;
+        const metMinutes = Math.floor(totalSeconds / 60) % 60;
+        const metHours = Math.floor(totalSeconds / 3600) % 24;
+        const metDays = Math.floor(totalSeconds / 86400);
+
+        const metString = `MET: ${metDays}d ${metHours}h ${metMinutes}m ${metSeconds}s`;
+
+        // Update MET display
+        const elapsedDisplay = document.getElementById('game-elapsed-display');
+        if (elapsedDisplay) {
+            elapsedDisplay.innerText = metString;
         }
     }
 
