@@ -2,19 +2,13 @@ import { Game } from './Game';
 import { MainMenu } from './ui/MainMenu';
 import { Hangar } from './Hangar';
 
-const AppState = {
-    MENU: 0,
-    GAME: 1,
-    HANGAR: 2
-} as const;
 
-type AppState = typeof AppState[keyof typeof AppState];
 
 /**
  * App - Main entry point and state manager
  */
 export class App {
-    private currentState: AppState = AppState.MENU;
+
     private menu: MainMenu | null = null;
     private game: Game | null = null;
     private hangar: Hangar | null = null;
@@ -46,7 +40,7 @@ export class App {
             this.hangar = null;
         }
 
-        this.currentState = AppState.MENU;
+
         this.menu = new MainMenu(
             () => this.startGame(),
             () => this.startHangar()
@@ -64,7 +58,7 @@ export class App {
             this.hangar = null;
         }
 
-        this.currentState = AppState.GAME;
+
         console.log('Starting game...');
         this.game = new Game(this.assembly);
 
@@ -89,7 +83,7 @@ export class App {
         const { PartRegistry } = await import('./hangar/PartRegistry');
         await PartRegistry.init();
 
-        this.currentState = AppState.HANGAR;
+
         this.hangar = new Hangar();
     }
 }

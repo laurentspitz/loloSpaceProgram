@@ -31,6 +31,11 @@ export class Body {
     // Matter.js integration
     matterBody: any = null; // Matter.Body reference
 
+    // Hierarchy and UI
+    description?: string;
+    children: Body[] = [];
+
+
     constructor(name: string, mass: number, radius: number, color: string, position: Vector2, velocity: Vector2) {
         this.name = name;
         this.mass = mass;

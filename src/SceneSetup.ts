@@ -1,6 +1,8 @@
 import { Body } from './core/Body';
 import { Rocket } from './entities/Rocket';
-import { SolarSystem } from './systems/SolarSystem';
+import { SystemGenerator } from './systems/SystemGenerator';
+import { SolarSystemData } from './systems/data/SolarSystemData';
+import { AlphaCentauriData } from './systems/data/AlphaCentauriData';
 import { Vector2 } from './core/Vector2';
 import { CollisionManager } from './physics/CollisionManager';
 
@@ -9,7 +11,13 @@ import { CollisionManager } from './physics/CollisionManager';
  */
 export class SceneSetup {
     static initBodies(collisionManager: CollisionManager): Body[] {
-        const bodies = SolarSystem.generate();
+        let bodies: Body[] = [];
+
+        // Load Solar System
+        bodies = bodies.concat(SystemGenerator.generate(SolarSystemData));
+
+        // Load Alpha Centauri
+        bodies = bodies.concat(SystemGenerator.generate(AlphaCentauriData));
 
         // Create Matter.js bodies for all celestial bodies
         bodies.forEach(body => {

@@ -222,9 +222,9 @@ export class UI {
         container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
         container.style.padding = '10px';
         container.style.borderRadius = '5px';
-        container.style.maxHeight = '400px';
+        container.style.maxHeight = '500px'; // Increased height
         container.style.overflowY = 'auto';
-        container.style.minWidth = '250px';
+        container.style.minWidth = '280px'; // Slightly wider for hierarchy
 
         // Title bar with collapse button
         const titleBar = document.createElement('div');
@@ -248,7 +248,7 @@ export class UI {
         toggleBtn.style.cursor = 'pointer';
 
         const contentDiv = document.createElement('div');
-        contentDiv.style.display = 'none'; // Collapsed by default
+        contentDiv.style.display = 'block'; // Expanded by default? Or keep hidden? Original was hidden.
 
         toggleBtn.onclick = () => {
             if (contentDiv.style.display === 'none') {
@@ -268,26 +268,25 @@ export class UI {
         const bodyList = document.createElement('div');
         bodyList.id = 'body-list';
 
-        // Group bodies by system
-        const roots = this.bodies.filter(b => !b.parent);
-
-        roots.forEach(root => {
-            // Add root body (Sun) with buttons
-            // Ensure we pass indentLevel 0
-            this.addBodyRow(bodyList, root, 0);
-
-            // Find children (Planets)
-            const planets = this.bodies.filter(b => b.parent === root);
-            planets.forEach(planet => {
-                this.addBodyRow(bodyList, planet, 1);
-
-                // Find moons
-                const moons = this.bodies.filter(b => b.parent === planet);
-                moons.forEach(moon => {
-                    this.addBodyRow(bodyList, moon, 2);
-                });
+        // Recursive function to build hierarchy
+        const buildHierarchy = (bodies: Body[], parentElement: HTMLElement, indent: number) => {
+            bodies.forEach(body => {
+                this.addBodyRow(parentElement, body, indent);
+                if (body.children && body.children.length > 0) {
+                    // Create a container for children
+                    const childrenContainer = document.createElement('div');
+                    // Ensure children are visible
+                    childrenContainer.style.display = 'block';
+                    parentElement.appendChild(childrenContainer);
+                    buildHierarchy(body.children, childrenContainer, indent + 1);
+                }
             });
-        });
+        };
+
+        // Find root bodies (those without parents)
+        // This handles multiple roots (like Twin stars if any, or separate systems)
+        const roots = this.bodies.filter(b => !b.parent);
+        buildHierarchy(roots, bodyList, 0);
 
         contentDiv.appendChild(bodyList);
         container.appendChild(contentDiv);
@@ -297,29 +296,54 @@ export class UI {
     /**
      * Add a row for a celestial body with Focus and Orbit buttons
      */
-    private addBodyRow(parent: HTMLElement, body: any, indentLevel: number) {
+    private addBodyRow(parent: HTMLElement, body: Body, indentLevel: number) {
         const row = document.createElement('div');
         row.style.display = 'flex';
         row.style.gap = '5px';
         row.style.marginBottom = '5px';
         row.style.marginLeft = `${indentLevel * 15}px`;
+        row.style.alignItems = 'center';
+        row.style.position = 'relative'; // For tooltip positioning
+
+        // Add tree line visual if nested? (Optional polish)
+        if (indentLevel > 0) {
+            row.style.borderLeft = '1px solid rgba(255,255,255,0.2)';
+            row.style.paddingLeft = '5px';
+        }
 
         // Body name label
         const label = document.createElement('span');
         label.innerText = body.name;
-        label.style.color = 'white';
+        label.style.color = body.color || 'white'; // Use body color for text
         label.style.fontFamily = 'monospace';
         label.style.fontSize = '12px';
         label.style.flex = '1';
-        label.style.alignSelf = 'center';
+        label.style.cursor = 'help'; // Indicate hoverable
+
+        // Tooltip logic
+        if (body.description) {
+            label.title = ""; // Disable default browser tooltip to use custom one
+
+            label.onmouseenter = (e) => {
+                this.showTooltip(e.clientX, e.clientY, body.name, body.description!);
+            };
+            label.onmouseleave = () => {
+                this.hideTooltip();
+            };
+        }
+
         row.appendChild(label);
 
         // Focus button
         const focusBtn = document.createElement('button');
         focusBtn.innerText = '👁️';
         focusBtn.title = `Focus on ${body.name}`;
-        focusBtn.style.padding = '2px 8px';
-        focusBtn.style.fontSize = '12px';
+        focusBtn.style.padding = '2px 6px';
+        focusBtn.style.fontSize = '10px';
+        focusBtn.style.backgroundColor = '#333';
+        focusBtn.style.border = '1px solid #555';
+        focusBtn.style.color = 'white';
+        focusBtn.style.cursor = 'pointer';
         focusBtn.onclick = () => {
             this.renderer.followedBody = body;
             if (this.renderer instanceof ThreeRenderer) {
@@ -328,29 +352,72 @@ export class UI {
         };
         row.appendChild(focusBtn);
 
-        // Orbit button (Allowed for Sun too now)
+        // Orbit button
         const orbitBtn = document.createElement('button');
         orbitBtn.innerText = '🛸';
         orbitBtn.title = `Orbit ${body.name}`;
-        orbitBtn.style.padding = '2px 8px';
-        orbitBtn.style.fontSize = '12px';
+        orbitBtn.style.padding = '2px 6px';
+        orbitBtn.style.fontSize = '10px';
+        orbitBtn.style.backgroundColor = '#333';
+        orbitBtn.style.border = '1px solid #555';
+        orbitBtn.style.color = 'white';
+        orbitBtn.style.cursor = 'pointer';
+        orbitBtn.style.display = (body.type === 'star') ? 'none' : 'inline-block'; // Hide orbit for star usually? Or keep it? kept in original update. Let's keep it but maybe hide for distant stars? For now kept.
         orbitBtn.onclick = () => {
             this.placeRocketInOrbit(body);
         };
         row.appendChild(orbitBtn);
 
-        // Target button (Allowed for Sun too now)
+        // Target button
         const targetBtn = document.createElement('button');
         targetBtn.innerText = '🎯';
         targetBtn.title = `Set ${body.name} as Target`;
-        targetBtn.style.padding = '2px 8px';
-        targetBtn.style.fontSize = '12px';
+        targetBtn.style.padding = '2px 6px';
+        targetBtn.style.fontSize = '10px';
+        targetBtn.style.backgroundColor = '#333';
+        targetBtn.style.border = '1px solid #555';
+        targetBtn.style.color = 'white';
+        targetBtn.style.cursor = 'pointer';
         targetBtn.onclick = () => {
             this.setTarget(body);
         };
         row.appendChild(targetBtn);
 
         parent.appendChild(row);
+    }
+
+    private tooltipElement: HTMLElement | null = null;
+
+    private showTooltip(x: number, y: number, title: string, description: string) {
+        if (!this.tooltipElement) {
+            this.tooltipElement = document.createElement('div');
+            this.tooltipElement.style.position = 'fixed'; // Fixed relative to viewport
+            this.tooltipElement.style.backgroundColor = 'rgba(20, 20, 30, 0.95)';
+            this.tooltipElement.style.border = '1px solid #444';
+            this.tooltipElement.style.padding = '8px';
+            this.tooltipElement.style.borderRadius = '4px';
+            this.tooltipElement.style.color = '#ddd';
+            this.tooltipElement.style.fontFamily = 'sans-serif'; // Cleaner font for description
+            this.tooltipElement.style.fontSize = '12px';
+            this.tooltipElement.style.maxWidth = '250px';
+            this.tooltipElement.style.zIndex = '1000';
+            this.tooltipElement.style.pointerEvents = 'none'; // Don't block mouse
+            this.tooltipElement.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+            document.body.appendChild(this.tooltipElement);
+        }
+
+        this.tooltipElement.innerHTML = `<strong style="color:white; display:block; margin-bottom:4px">${title}</strong>${description}`;
+        this.tooltipElement.style.display = 'block';
+
+        // Position to the right of the cursor
+        this.tooltipElement.style.left = (x + 15) + 'px';
+        this.tooltipElement.style.top = y + 'px';
+    }
+
+    private hideTooltip() {
+        if (this.tooltipElement) {
+            this.tooltipElement.style.display = 'none';
+        }
     }
 
     /**

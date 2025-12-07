@@ -52,7 +52,7 @@ export class ManeuverNode {
      * Calculate the world-space position of this maneuver node
      * Uses FIXED orbital coordinates to prevent drift
      */
-    getWorldPosition(rocket: Rocket, bodies: Body[]): Vector2 {
+    getWorldPosition(rocket: Rocket, _bodies?: Body[]): Vector2 {
         // Find the body we're orbiting
         const parentBody = rocket.body.parent;
         if (!parentBody || !rocket.body.orbit) {
@@ -114,7 +114,7 @@ export class ManeuverNode {
     /**
      * Calculate the velocity at the maneuver node position
      */
-    getVelocityAtNode(rocket: Rocket, bodies: Body[]): Vector2 {
+    getVelocityAtNode(rocket: Rocket, _bodies?: Body[]): Vector2 {
         const parentBody = rocket.body.parent;
         if (!parentBody || !rocket.body.orbit) {
             return rocket.body.velocity.clone();
@@ -128,10 +128,10 @@ export class ManeuverNode {
         const e = orbit.e;
 
         // Velocity magnitude at this point using vis-viva equation
-        const position = this.getWorldPosition(rocket, bodies);
-        const r = position.sub(parentBody.position);
-        const rMag = r.mag();
-        const vMag = Math.sqrt(mu * (2 / rMag - 1 / orbit.a));
+
+
+
+
 
         // Velocity direction in orbital frame
         // v_x = -a * n * sin(E) / (1 - e*cos(E))

@@ -276,14 +276,14 @@ export class ManeuverNodeManager {
                 // 3. Check for SOI Exit
                 // If we are far enough, check if we should switch to parent
                 // (Optimization: only check if dist > 0.8 * SOI)
-                if (currentBody.parent) {
+                if (currentBody && currentBody.parent) {
                     // We need a temporary Rocket object or just use distance check
                     // SphereOfInfluence.calculateSOI requires a Body, let's use that directly
                     const soiRadius = SphereOfInfluence.calculateSOI(currentBody);
 
                     if (dist > soiRadius) {
                         // SOI Exit Detected! Switch to parent (e.g. Moon -> Earth)
-                        const newBody = currentBody.parent;
+                        const newBody: Body = currentBody.parent;
 
                         // Transform Position: Pos_new = Pos_old + (Body_old - Body_new)
                         // This is vector addition of relative positions

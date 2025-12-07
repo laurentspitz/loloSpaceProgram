@@ -34,7 +34,7 @@ export class ManeuverNodeUI {
     /**
      * Initialize with rocket and bodies
      */
-    init(rocket: Rocket, bodies: Body[], renderer: any) {
+    init(rocket: Rocket, _bodies: Body[], renderer: any) {
         this.rocket = rocket;
         // this.bodies = bodies; // Removed
         this.renderer = renderer;
@@ -723,7 +723,7 @@ export class ManeuverNodeUI {
             if (isSelected || isHovered) {
                 ctx.fillStyle = 'white';
                 ctx.font = '12px monospace';
-                ctx.fillText(`T-${node.getTimeFromNow(this.rocket!, this.renderer.currentBodies).toFixed(0)}s`, screenPos.x + 15, screenPos.y);
+                ctx.fillText(`T-${node.getTimeFromNow(this.rocket!).toFixed(0)}s`, screenPos.x + 15, screenPos.y);
                 ctx.fillText(`Δv: ${node.getTotalΔv().toFixed(1)}`, screenPos.x + 15, screenPos.y + 15);
             }
 
