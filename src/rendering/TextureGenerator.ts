@@ -501,17 +501,31 @@ export class TextureGenerator {
         const centerG = parseInt(color.slice(3, 5), 16);
         const centerB = parseInt(color.slice(5, 7), 16);
 
-        // Draw multiple overlapping soft circles
-        for (let i = 0; i < 20; i++) {
-            const x = rng() * size;
-            const y = rng() * size;
-            const r = 50 + rng() * 150;
+        // 1. Draw overlapping soft circles
+        // Increased count and opacity for visibility
+        const numBlobs = 40; // Increased from 30
+
+        for (let i = 0; i < numBlobs; i++) {
+            // Distribute points using Gaussian-like distribution around center
+            const u = 1 - rng();
+            const v = rng();
+            const radius_dist = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            const x = (0.5 + radius_dist * 0.15) * size;
+
+            const u2 = 1 - rng();
+            const v2 = rng();
+            const radius_dist2 = Math.sqrt(-2.0 * Math.log(u2)) * Math.cos(2.0 * Math.PI * v2);
+            const y = (0.5 + radius_dist2 * 0.15) * size;
+
+            // Radius varies
+            const r = (0.15 + rng() * 0.25) * size; // Larger blobs (15-40%)
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
-            const alpha = 0.05 + rng() * 0.1;
+            // Reduced alpha to soften the effect (per user request)
+            const alpha = 0.04 + rng() * 0.06;
 
             gradient.addColorStop(0, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha})`);
-            gradient.addColorStop(0.6, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha * 0.5})`);
+            gradient.addColorStop(0.4, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha * 0.5})`);
             gradient.addColorStop(1, `rgba(${centerR}, ${centerG}, ${centerB}, 0)`);
 
             ctx.fillStyle = gradient;
@@ -519,6 +533,20 @@ export class TextureGenerator {
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        // 2. Global Vignette
+        // Relaxed vignette start point (0.3 -> 0.4) to keep more content visible
+        ctx.globalCompositeOperation = 'destination-in';
+        const vignette = ctx.createRadialGradient(
+            size * 0.5, size * 0.5, size * 0.4,
+            size * 0.5, size * 0.5, size * 0.5
+        );
+        vignette.addColorStop(0, 'rgba(0,0,0,1)');
+        vignette.addColorStop(1, 'rgba(0,0,0,0)');
+
+        ctx.fillStyle = vignette;
+        ctx.fillRect(0, 0, size, size);
+        ctx.globalCompositeOperation = 'source-over';
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
