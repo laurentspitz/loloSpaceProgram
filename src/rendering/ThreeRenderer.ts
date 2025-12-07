@@ -94,6 +94,12 @@ export class ThreeRenderer {
     // SOI visualization - stores trajectory points for SOI rendering
     private lastTrajectoryPoints: Vector2[] = [];
 
+    // Store maneuver trajectory segments for tooltip proximity detection
+    private storedManeuverSegments: Vector2[][] = [];
+
+    // Tooltip system for line identification
+    private lineTooltip: HTMLDivElement | null = null;
+
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.width = window.innerWidth;
@@ -144,6 +150,33 @@ export class ThreeRenderer {
         // Handle window resize
         window.addEventListener('resize', () => {
             this.resize(window.innerWidth, window.innerHeight);
+        });
+
+        // Create tooltip element for line hover
+        this.lineTooltip = document.createElement('div');
+        this.lineTooltip.style.position = 'fixed';
+        this.lineTooltip.style.backgroundColor = 'rgba(20, 20, 30, 0.95)';
+        this.lineTooltip.style.border = '1px solid #444';
+        this.lineTooltip.style.padding = '8px 12px';
+        this.lineTooltip.style.borderRadius = '4px';
+        this.lineTooltip.style.color = '#fff';
+        this.lineTooltip.style.fontFamily = 'monospace';
+        this.lineTooltip.style.fontSize = '12px';
+        this.lineTooltip.style.pointerEvents = 'none';
+        this.lineTooltip.style.zIndex = '1000';
+        this.lineTooltip.style.display = 'none';
+        this.lineTooltip.style.boxShadow = '0 4px 8px rgba(0,0,0,0.5)';
+        document.body.appendChild(this.lineTooltip);
+
+        // Track mouse position for trajectory hover detection
+        canvas.addEventListener('mousemove', (e) => {
+            this.updateLineTooltip(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            if (this.lineTooltip) {
+                this.lineTooltip.style.display = 'none';
+            }
         });
     }
 
@@ -207,6 +240,109 @@ export class ThreeRenderer {
             );
         }
         return body.position;
+    }
+
+    /**
+     * Update line tooltip based on mouse position
+     * Uses screen-space proximity detection (more reliable than raycasting with Line2)
+     */
+    private updateLineTooltip(mouseX: number, mouseY: number): void {
+        if (!this.lineTooltip) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = mouseX - rect.left;
+        const screenY = mouseY - rect.top;
+
+        type LineType = 'orbit' | 'trajectory' | 'preManeuver' | 'postManeuver' | 'soi' | 'futureSoi';
+        let closestHit: { type: LineType, name?: string, distance: number, color?: string } | null = null;
+
+        const HOVER_THRESHOLD = 20; // pixels - slightly larger for easier detection
+
+        // Helper: Check distance to a set of world points
+        const checkPointsProximity = (points: Vector2[], type: LineType, name?: string, color?: string) => {
+            for (const point of points) {
+                const screenPos = this.worldToScreen(point);
+                const dx = screenPos.x - screenX;
+                const dy = screenPos.y - screenY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < HOVER_THRESHOLD && (!closestHit || dist < closestHit.distance)) {
+                    closestHit = { type, name, distance: dist, color };
+                }
+            }
+        };
+
+        // Check current trajectory points (cyan analytical orbit)
+        if (this.lastTrajectoryPoints.length > 0 && this.trajectoryLine?.visible) {
+            checkPointsProximity(this.lastTrajectoryPoints, 'trajectory', 'Current Orbit', '#00ffff');
+        }
+
+        // Check maneuver trajectory segments - first is pre-burn (cyan), rest are post-burn (orange)
+        if (this.storedManeuverSegments && this.showTrajectory) {
+            this.storedManeuverSegments.forEach((segment, index) => {
+                if (index === 0) {
+                    // First segment is pre-maneuver trajectory (cyan)
+                    checkPointsProximity(segment, 'preManeuver', 'Pre-Maneuver Path', '#00ffff');
+                } else {
+                    // Subsequent segments are post-maneuver (orange)
+                    checkPointsProximity(segment, 'postManeuver', `Post-Burn Segment ${index}`, '#ff8800');
+                }
+            });
+        }
+
+        // Check SOI circles - get from soiRenderer
+        const soiInfo = this.soiRenderer.getVisibleSOIs();
+        for (const soi of soiInfo) {
+            // Check distance to SOI boundary
+            const soiCenter = this.worldToScreen(soi.bodyPosition);
+            // Convert world radius to screen radius
+            const frustumHeight = this.camera.top - this.camera.bottom;
+            const pixelsPerUnit = this.height / frustumHeight;
+            const soiRadiusScreen = soi.radius * this.scale * pixelsPerUnit;
+
+            // Distance from mouse to the circle boundary
+            const distToCenter = Math.sqrt(
+                (soiCenter.x - screenX) ** 2 + (soiCenter.y - screenY) ** 2
+            );
+            const distToBoundary = Math.abs(distToCenter - soiRadiusScreen);
+
+            if (distToBoundary < HOVER_THRESHOLD && (!closestHit || distToBoundary < closestHit.distance)) {
+                closestHit = { type: 'soi', name: `${soi.bodyName} Sphere of Influence`, distance: distToBoundary, color: '#888888' };
+            }
+        }
+
+        // Show or hide tooltip
+        if (closestHit) {
+            const color = closestHit.color || '#ffffff';
+            let content = `<div style="color:${color}; font-weight:bold">${closestHit.name || closestHit.type}</div>`;
+
+            // Add descriptive text based on type
+            let description = '';
+            switch (closestHit.type) {
+                case 'trajectory':
+                    description = 'Numerically predicted orbit path';
+                    break;
+                case 'preManeuver':
+                    description = 'Trajectory before delta-v burn';
+                    break;
+                case 'postManeuver':
+                    description = 'Trajectory after delta-v burn';
+                    break;
+                case 'soi':
+                    description = 'Gravitational influence boundary';
+                    break;
+            }
+            if (description) {
+                content += `<div style="color:#aaa; font-size:10px">${description}</div>`;
+            }
+
+            this.lineTooltip.innerHTML = content;
+            this.lineTooltip.style.display = 'block';
+            this.lineTooltip.style.left = (mouseX + 15) + 'px';
+            this.lineTooltip.style.top = (mouseY + 15) + 'px';
+        } else {
+            this.lineTooltip.style.display = 'none';
+        }
     }
 
     screenToWorld(screenPos: Vector2): Vector2 {
@@ -1049,6 +1185,9 @@ export class ThreeRenderer {
      * Update maneuver trajectory with multiple colored segments
      */
     updateManeuverTrajectory(segments: Vector2[][], colors: string[]) {
+        // Store segments for tooltip proximity detection
+        this.storedManeuverSegments = segments;
+
         // Clear old maneuver trajectory lines (but keep trajectoryLine which is the current orbit)
         this.maneuverTrajectoryLines.forEach(line => {
             this.scene.remove(line);

@@ -240,6 +240,25 @@ export class SOIRenderer {
         this.showAllSOI = show;
     }
 
+    /**
+     * Get info about currently visible SOI circles for tooltip detection
+     */
+    getVisibleSOIs(): { bodyName: string, bodyPosition: Vector2, radius: number }[] {
+        const result: { bodyName: string, bodyPosition: Vector2, radius: number }[] = [];
+
+        this.soiLines.forEach((line, body) => {
+            if (line.visible) {
+                result.push({
+                    bodyName: body.name,
+                    bodyPosition: body.position,
+                    radius: SphereOfInfluence.calculateSOI(body)
+                });
+            }
+        });
+
+        return result;
+    }
+
     // Storage for future position visualization
     private futureSOILines: Map<string, Line2> = new Map();
     private futureOrbitPaths: Map<string, Line2> = new Map();
