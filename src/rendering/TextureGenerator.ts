@@ -479,4 +479,49 @@ export class TextureGenerator {
         const canvas = IconGenerator.createManeuverIcon(size); // Uses default blue
         return new THREE.CanvasTexture(canvas);
     }
+
+    /**
+     * Create a nebula cloud texture
+     */
+    static createNebulaTexture(color: string): THREE.CanvasTexture {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        // Clear
+        ctx.fillStyle = '#00000000';
+        ctx.clearRect(0, 0, size, size);
+
+        // Draw random "clouds" - composition of radial gradients
+        const rng = () => Math.random();
+
+        const centerR = parseInt(color.slice(1, 3), 16);
+        const centerG = parseInt(color.slice(3, 5), 16);
+        const centerB = parseInt(color.slice(5, 7), 16);
+
+        // Draw multiple overlapping soft circles
+        for (let i = 0; i < 20; i++) {
+            const x = rng() * size;
+            const y = rng() * size;
+            const r = 50 + rng() * 150;
+
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
+            const alpha = 0.05 + rng() * 0.1;
+
+            gradient.addColorStop(0, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha})`);
+            gradient.addColorStop(0.6, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha * 0.5})`);
+            gradient.addColorStop(1, `rgba(${centerR}, ${centerG}, ${centerB}, 0)`);
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
 }

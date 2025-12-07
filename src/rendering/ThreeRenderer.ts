@@ -78,7 +78,7 @@ export class ThreeRenderer {
 
 
     // Background
-    stars: THREE.Points | null = null;
+    stars: THREE.Group | null = null;
 
     // Zoom Icons
     bodyIcons: Map<Body, THREE.Mesh> = new Map();
@@ -140,9 +140,9 @@ export class ThreeRenderer {
     }
 
     createBackground() {
-        this.stars = Background.createStarfield();
+        this.stars = Background.createBackground();
         this.scene.add(this.stars);
-        this.scene.background = new THREE.Color(0x000814);
+        this.scene.background = new THREE.Color(0x000508); // Slightly darker, more nebulous deep space
     }
 
     resize(width: number, height: number) {
@@ -635,6 +635,60 @@ export class ThreeRenderer {
 
         // Update Zoom Icons (Planets/Rocket)
         this.updateZoomIcons(center);
+
+        // Update background to stay static relative to camera (Skybox effect)
+        // We scale the background group inversely to the camera zoom so it appears fixed distance
+        if (this.stars) {
+            this.stars.position.set(0, 0, 0); // Always focused on camera
+
+            // Scale background to match frustum size approximately
+            // base scale 1.0 covers ~4000 units.
+            // When we zoom out (scale decreases), we need background to get larger defined by World Units.
+            // Camera frustum height = 1000 / scale * 1e-9.
+            // We want the 4000 unit spread to definitely cover the screen.
+            // Let's just scale it inversely to zoom.
+
+            // Heuristic: At scale 1e-9 (1 pixel = 1 Gm presumably? No wait meters to pixels)
+            // scale 1e-9 means 1 meter = 1e-9 pixels.
+            // If frustumSize calculation is correct: 1000 / scale * 1e-9?
+            // Wait, logic in updateZoom:
+            // frustumSize = 1000 / this.scale * 1e-9;
+            // if scale is 1e-9 (very zoomed out), frustum is 1000. 
+
+            // Let's use a simple inverse scale relative to a reference
+            // Reference: 1.0 scale factor when covering "normal" view
+
+            // Actually, we want the background to be INFINITE.
+            // Best way: Scale it such that it always covers the frustum with same density.
+            // If we just scale by 1/scale, it will zoom with the camera (bad for stars).
+            // We want it VISUALLY static.
+            // If camera frustum size doubles, we want the background quad to double in size physically 
+            // so it occupies the same screen space.
+
+            // Current Scale: this.scale (meters -> pixels)
+            // If scale decreases (zoom out), world objects get smaller.
+            // To make starfield NOT get smaller, we must scale it UP by 1/scale? No.
+
+            // If we want stars to act like they are at infinity (fixed screen position):
+            // We need to counteract the camera zoom.
+            // Camera projection scales everything by `scale`.
+            // So we scale stars by `1/scale`.
+
+            // However, this.scale is "meters to pixels". 
+            // To keep stars constant size/position on SCREEN:
+            // We need to apply a scaling factor to the Group.
+            // factor * this.scale = constant.
+            // factor = constant / this.scale.
+
+            // Let's try scaling by some factor of 1/scale.
+            // But we need to clamp it so it doesn't get ridiculous at extreme zooms.
+
+            const inverseScale = 1.0 / (this.scale * 1000000000); // Normalize around 1e-9
+            this.stars.scale.set(inverseScale, inverseScale, 1);
+
+            // Also rotate with camera if we had rotation (we don't yet, but good practice)
+            this.stars.rotation.z = this.camera.rotation.z;
+        }
 
         // Render the scene
         this.renderer.render(this.scene, this.camera);
@@ -1404,14 +1458,17 @@ export class ThreeRenderer {
 
         // Dispose background stars
         if (this.stars) {
-            if (this.stars.geometry) this.stars.geometry.dispose();
-            if (this.stars.material) {
-                if (Array.isArray(this.stars.material)) {
-                    this.stars.material.forEach(m => m.dispose());
-                } else {
-                    this.stars.material.dispose();
+            this.stars.traverse((child) => {
+                const mesh = child as THREE.Mesh; // Points and Sprite also have geometry/material compatible enough for this check
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) {
+                    if (Array.isArray(mesh.material)) {
+                        mesh.material.forEach(m => m.dispose());
+                    } else {
+                        mesh.material.dispose();
+                    }
                 }
-            }
+            });
             this.scene.remove(this.stars);
             this.stars = null;
         }
