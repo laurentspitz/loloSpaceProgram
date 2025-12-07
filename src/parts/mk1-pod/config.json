@@ -9,7 +9,9 @@
     },
     "stats": {
         "mass": 800,
-        "cost": 25000000
+        "cost": 25000000,
+        "electricity": 50,
+        "sasConsumption": 0.5
     },
     "nodes": [
         {

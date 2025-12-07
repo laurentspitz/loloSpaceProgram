@@ -84,7 +84,13 @@ export class PartLoader {
             texture: textureUrl,
             width: part.config.dimensions.width,
             height: part.config.dimensions.height,
-            stats: part.config.stats,
+            stats: {
+                ...part.config.stats,
+                // Explicitly map electricity stats if they exist in config
+                electricity: part.config.stats.electricity,
+                chargeRate: part.config.stats.chargeRate,
+                sasConsumption: part.config.stats.sasConsumption
+            },
             nodes: part.config.nodes.map(node => ({
                 id: node.id,
                 position: new Vector2(node.position.x, node.position.y),

@@ -35,6 +35,8 @@ export class UI {
     massDisplay: HTMLElement | null = null;
     currentRocket: Rocket | null = null; // Reference to rocket for throttle control
     fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
+    electricityDisplay: HTMLElement | null = null;
+    electricityGaugeBar: HTMLElement | null = null;
 
     // Autopilot state
     autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver' = 'off';
@@ -679,6 +681,33 @@ export class UI {
         panel.appendChild(fuelGaugeContainer);
         this.fuelGaugeBar = fuelBar;
 
+        // Electricity
+        const elecRow = document.createElement('div');
+        elecRow.style.display = 'flex';
+        elecRow.style.justifyContent = 'space-between';
+        elecRow.innerHTML = '<span>Electricity:</span> <span id="rocket-elec">100%</span>';
+        panel.appendChild(elecRow);
+        this.electricityDisplay = elecRow.querySelector('#rocket-elec');
+
+        // Electricity Gauge (Visual Bar)
+        const elecGaugeContainer = document.createElement('div');
+        elecGaugeContainer.style.marginBottom = '8px';
+        elecGaugeContainer.style.height = '10px';
+        elecGaugeContainer.style.backgroundColor = '#333';
+        elecGaugeContainer.style.borderRadius = '5px';
+        elecGaugeContainer.style.overflow = 'hidden';
+        elecGaugeContainer.style.border = '1px solid #555';
+
+        const elecBar = document.createElement('div');
+        elecBar.style.width = '100%';
+        elecBar.style.height = '100%';
+        elecBar.style.backgroundColor = '#FFEB3B'; // Yellow
+        elecBar.style.transition = 'width 0.2s, background-color 0.2s';
+
+        elecGaugeContainer.appendChild(elecBar);
+        panel.appendChild(elecGaugeContainer);
+        this.electricityGaugeBar = elecBar;
+
         // Delta V
         const dvRow = document.createElement('div');
         dvRow.style.display = 'flex';
@@ -743,6 +772,11 @@ export class UI {
 
         document.body.appendChild(panel);
         this.rocketInfoPanel = panel;
+
+        // Insert Electricity Gauge right after Fuel Gauge
+        // Find existing fuel gauge container (it's the child after fuelRow)
+        // Or simpler: Just append it after fuel usage code in createRocketInfoPanel
+        // Re-implementing parts of createRocketInfoPanel to insert correctly
     }
 
     createControlsHelp() {
@@ -792,6 +826,21 @@ export class UI {
             this.fuelGaugeBar.style.width = `${info.fuel}%`;
             // Color change based on level
             this.fuelGaugeBar.style.backgroundColor = info.fuel < 20 ? '#ff4444' : (info.fuel < 50 ? '#ffbb33' : '#00C851');
+        }
+
+        // Update Electricity Display
+        if (this.electricityDisplay && info.maxElectricity > 0) {
+            const elecPercent = (info.electricity / info.maxElectricity) * 100;
+            this.electricityDisplay.innerText = `${info.electricity.toFixed(1)} / ${info.maxElectricity.toFixed(0)}`;
+
+            if (this.electricityGaugeBar) {
+                this.electricityGaugeBar.style.width = `${elecPercent}%`;
+                // Yellow -> Red when low
+                this.electricityGaugeBar.style.backgroundColor = elecPercent < 20 ? '#ff4444' : '#FFEB3B';
+            }
+        } else if (this.electricityDisplay) {
+            this.electricityDisplay.innerText = "0 / 0";
+            if (this.electricityGaugeBar) this.electricityGaugeBar.style.width = "0%";
         }
 
         if (this.deltaVDisplay) {

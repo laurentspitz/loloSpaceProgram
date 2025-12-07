@@ -316,6 +316,15 @@ export class HangarUI {
         if (part.stats.cost !== undefined) {
             content += `Cost: $${part.stats.cost}<br>`;
         }
+        if (part.stats.electricity !== undefined) {
+            content += `Electricity: ${part.stats.electricity} EC<br>`;
+        }
+        if (part.stats.sasConsumption !== undefined) {
+            content += `SAS Consume: ${part.stats.sasConsumption} EC/s<br>`;
+        }
+        if (part.stats.chargeRate !== undefined) {
+            content += `Charge Rate: ${part.stats.chargeRate} EC/s<br>`;
+        }
 
         tooltip.innerHTML = content;
         return tooltip;

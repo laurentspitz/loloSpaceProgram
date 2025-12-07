@@ -24,6 +24,10 @@ export class Rocket {
     dryMass: number; // Mass without fuel
     isActive: boolean = true;
 
+    // Electricity
+    electricity: number = 0;
+    maxElectricity: number = 0;
+
     // Visual properties - adjusted for KSP X200-32 + Mk1 Pod + LV-T30
     readonly width: number = 3.0;          // Base width (Tank diameter)
     readonly tankHeight: number = 4.5;     // Ratio ~1.5 for X200-32
@@ -55,9 +59,11 @@ export class Rocket {
         this.partStack = assemblyConfig?.parts;
 
         // Initialize stages if parts are provided
+        // Initialize stages if parts are provided
         if (this.partStack && this.partStack.length > 0) {
             this.initializeStages(this.partStack);
-            this.calculateMassProperties();
+            // Derive all stats (mass, fuel, electricity, engine) from parts
+            // Moved to AFTER body creation below
         }
 
         // Create physics body
@@ -73,6 +79,13 @@ export class Rocket {
             position,
             velocity
         );
+
+        // Recalculate stats now that body exists
+        if (this.partStack && this.partStack.length > 0) {
+            this.recalculateStats();
+            // Force electricity to full on spawn
+            this.electricity = this.maxElectricity;
+        }
 
         // Create engine
         this.engine = new RocketEngine(thrust, fuelMass, isp);
@@ -211,17 +224,43 @@ export class Rocket {
         }
 
         // Only apply reaction wheel torque and damping if SAS is enabled and wheels exist
+        // AND we have electricity
         if (hasReactionWheels && input.sasEnabled) {
-            // Reduced control power (User request: "reduce rotation effect")
-            // Was 20 * mass, now 2 * mass
-            const controlPower = this.body.mass * 2.0;
-            const controlTorque = input.rotation * controlPower;
-            totalTorque += controlTorque;
+            // Check if SAS is actually doing work ( User Input OR Angular Velocity to damp)
+            const isWorking = Math.abs(input.rotation) > 0.01 || Math.abs(this.angularVelocity) > 0.01;
 
-            // Angular Damping (Stability Assist)
-            // Reduced damping to match lower torque
-            const damping = this.angularDamping * (this.body.mass * 2.0);
-            totalTorque -= this.angularVelocity * damping;
+            if (isWorking) {
+                // Calculate total SAS consumption
+                let sasConsumption = 0;
+                if (this.partStack) {
+                    this.partStack.forEach(p => {
+                        if (p.definition.type === 'capsule' && p.definition.stats.sasConsumption) {
+                            sasConsumption += p.definition.stats.sasConsumption;
+                        }
+                    });
+                }
+
+                // Consume electricity
+                const energyNeeded = sasConsumption * physicsDeltaTime;
+                if (this.electricity >= energyNeeded) {
+                    this.electricity -= energyNeeded;
+
+                    // Reduced control power (User request: "reduce rotation effect")
+                    // Was 20 * mass, now 2 * mass
+                    const controlPower = this.body.mass * 2.0;
+                    const controlTorque = input.rotation * controlPower;
+                    totalTorque += controlTorque;
+
+                    // Angular Damping (Stability Assist)
+                    // Reduced damping to match lower torque
+                    const damping = this.angularDamping * (this.body.mass * 2.0);
+                    totalTorque -= this.angularVelocity * damping;
+                } else {
+                    // Out of power!
+                    this.electricity = 0;
+                    // No SAS control
+                }
+            }
         }
 
 
@@ -501,6 +540,7 @@ export class Rocket {
         let newFuelMass = 0;
         let newThrust = 0;
         let totalIspWeighted = 0;
+        let newMaxElectricity = 0;
 
         // Iterate over remaining stages
         for (let i = this.currentStageIndex; i < this.stages.length; i++) {
@@ -513,6 +553,11 @@ export class Rocket {
                 if (def.type === 'engine' && def.stats.thrust) {
                     newThrust += def.stats.thrust;
                     totalIspWeighted += (def.stats.isp || 0) * def.stats.thrust;
+                }
+
+                // Sum up electricity capacity
+                if (def.stats.electricity) {
+                    newMaxElectricity += def.stats.electricity;
                 }
             });
         }
@@ -545,6 +590,13 @@ export class Rocket {
 
         // Recalculate CoM and Inertia
         this.calculateMassProperties();
+
+        // Update electricity capacity
+        // If max capacity dropped (e.g. stage separation), cap current charge
+        this.maxElectricity = newMaxElectricity;
+        if (this.electricity > this.maxElectricity) {
+            this.electricity = this.maxElectricity;
+        }
     }
 
     /**
@@ -571,7 +623,9 @@ export class Rocket {
             throttle: this.controls.getThrottle(),
             velocity: this.body.velocity.mag(),
             altitude: 0, // Will be calculated by game based on nearest body
-            infiniteFuel: this.engine.infiniteFuel
+            infiniteFuel: this.engine.infiniteFuel,
+            electricity: this.electricity,
+            maxElectricity: this.maxElectricity
         };
     }
 

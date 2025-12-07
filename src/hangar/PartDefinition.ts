@@ -8,6 +8,9 @@ export interface PartStats {
     fuel?: number;      // kg of fuel
     thrust?: number;    // Newtons
     isp?: number;       // seconds
+    electricity?: number;     // Battery capacity (EC)
+    chargeRate?: number;      // Generation/Consumption rate (EC/s)
+    sasConsumption?: number;  // SAS Consumption (EC/s)
 }
 
 export interface ConnectionNode {

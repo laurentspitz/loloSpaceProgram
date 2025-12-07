@@ -18,6 +18,9 @@ export interface PartConfig {
         fuel?: number;    // kg (for tanks)
         thrust?: number;  // N (for engines)
         isp?: number;     // seconds (for engines)
+        electricity?: number;     // Battery capacity (Electric Charge - EC)
+        chargeRate?: number;      // Generation/Consumption rate (per sec)
+        sasConsumption?: number;  // Consumption per second when SAS active
     };
     nodes: Array<{
         id: string;
