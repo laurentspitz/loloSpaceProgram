@@ -8,6 +8,14 @@ export class RocketEngine {
     isp: number; // Specific Impulse in seconds
     infiniteFuel: boolean = false;
 
+    get fuelMass(): number {
+        return this.currentFuel;
+    }
+
+    set fuelMass(value: number) {
+        this.currentFuel = value;
+    }
+
     constructor(maxThrust: number, fuelCapacity: number, isp: number) {
         this.maxThrust = maxThrust;
         this.fuelCapacity = fuelCapacity;

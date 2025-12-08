@@ -14,6 +14,7 @@ export class Body {
     parent: Body | null = null;
     orbit: OrbitalElements | null = null;
     isLocked: boolean = false; // If true, use Keplerian motion instead of N-body
+    isStatic: boolean = false; // For physics engine interaction check
     meanAnomaly: number = 0; // For Keplerian motion
 
     // Visual Properties

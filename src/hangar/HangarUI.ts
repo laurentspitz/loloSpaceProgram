@@ -497,15 +497,19 @@ export class HangarUI {
         saveBtn.style.borderRadius = '4px';
         saveBtn.style.cursor = 'pointer';
         saveBtn.style.fontWeight = 'bold';
-        saveBtn.onclick = () => {
+        saveBtn.onclick = async () => {
             const name = input.value.trim();
             if (!name) {
                 alert('Please enter a name for your rocket');
                 return;
             }
 
+            // Check authentication status
+            const { FirebaseService } = await import('../services/firebase');
+            const user = FirebaseService.auth.currentUser;
+
             // Check if rocket already exists
-            if (RocketSaveManager.exists(name)) {
+            if (await RocketSaveManager.exists(name, user?.uid)) {
                 this.showConfirmDialog(
                     `Override "${name}"?`,
                     () => {
@@ -543,13 +547,15 @@ export class HangarUI {
         });
     }
 
-    showLoadDialog() {
+    async showLoadDialog() {
         const existingDialog = document.getElementById('load-dialog');
         if (existingDialog && existingDialog.parentElement && existingDialog.parentElement.parentElement) {
             existingDialog.parentElement.parentElement.removeChild(existingDialog.parentElement);
         }
 
-        const savedRockets = RocketSaveManager.list();
+        const { FirebaseService } = await import('../services/firebase');
+        const user = FirebaseService.auth.currentUser;
+        const savedRockets = await RocketSaveManager.list(user?.uid);
 
         const overlay = this.createDialogOverlay();
         const dialog = document.createElement('div');
@@ -618,13 +624,15 @@ export class HangarUI {
                 deleteBtn.style.borderRadius = '4px';
                 deleteBtn.style.cursor = 'pointer';
                 deleteBtn.style.marginLeft = '10px';
-                deleteBtn.onclick = (e) => {
+                deleteBtn.onclick = async (e) => {
                     e.stopPropagation();
                     this.showConfirmDialog(
                         `Delete "${rocket.name}"?`,
-                        () => {
-                            RocketSaveManager.delete(rocket.name);
-                            this.showLoadDialog(); // Refresh list
+                        async () => {
+                            const { FirebaseService } = await import('../services/firebase');
+                            const user = FirebaseService.auth.currentUser;
+                            await RocketSaveManager.delete(rocket.name, user?.uid);
+                            await this.showLoadDialog(); // Refresh list
                         }
                     );
                 };
@@ -632,8 +640,10 @@ export class HangarUI {
 
                 item.onmouseover = () => item.style.backgroundColor = '#3a3a3a';
                 item.onmouseout = () => item.style.backgroundColor = '#1a1a1a';
-                item.onclick = () => {
-                    const loaded = RocketSaveManager.load(rocket.name);
+                item.onclick = async () => {
+                    const { FirebaseService } = await import('../services/firebase');
+                    const user = FirebaseService.auth.currentUser;
+                    const loaded = await RocketSaveManager.load(rocket.name, user?.uid);
                     if (loaded) {
                         this.rocketNameInput.value = loaded.name; // Update Input
                         this.onLoad(loaded);

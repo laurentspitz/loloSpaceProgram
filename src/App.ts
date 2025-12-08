@@ -1,14 +1,11 @@
 import { Game } from './Game';
 import { MainMenu } from './ui/MainMenu';
-import { Hangar } from './Hangar';
-
-
+import { Hangar, createHangar } from './Hangar';
 
 /**
  * App - Main entry point and state manager
  */
 export class App {
-
     private menu: MainMenu | null = null;
     private game: Game | null = null;
     private hangar: Hangar | null = null;
@@ -30,60 +27,51 @@ export class App {
     }
 
     showMenu() {
-        // Clean up current state
-        if (this.game) {
-            this.game.dispose();
-            this.game = null;
-        }
-        if (this.hangar) {
-            this.hangar.dispose();
-            this.hangar = null;
-        }
-
-
+        this.cleanup();
         this.menu = new MainMenu(
             () => this.startGame(),
-            () => this.startHangar()
+            () => this.showHangar()
         );
     }
 
-    startGame() {
-        // Clean up current state
-        if (this.menu) {
-            this.menu.dispose();
-            this.menu = null;
-        }
-        if (this.hangar) {
-            this.hangar.dispose();
-            this.hangar = null;
-        }
-
+    startGame(state?: any) {
+        this.cleanup();
 
         console.log('Starting game...');
         this.game = new Game(this.assembly);
 
-        // Expose game to window for debugging and orbit teleport feature
+        if (state) {
+            this.game.deserializeState(state);
+        }
+
+        // Expose game to window for debugging and UI access
         (window as any).game = this.game;
 
         this.assembly = null; // Clear after use
     }
 
-    async startHangar() {
-        // Clean up current state
+    cleanup() {
         if (this.menu) {
             this.menu.dispose();
             this.menu = null;
         }
         if (this.game) {
-            // Game cleanup if needed
             this.game = null;
         }
+        if (this.hangar) {
+            this.hangar.dispose();
+            this.hangar = null;
+        }
+    }
+
+    async showHangar() {
+        console.log('App: Showing Hangar...');
+        this.cleanup();
 
         // Ensure parts are loaded before showing Hangar
         const { PartRegistry } = await import('./hangar/PartRegistry');
         await PartRegistry.init();
 
-
-        this.hangar = new Hangar();
+        this.hangar = await createHangar();
     }
 }

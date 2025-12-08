@@ -545,7 +545,7 @@ export class Rocket {
     /**
      * Recalculate mass, thrust, etc. based on remaining stages
      */
-    private recalculateStats() {
+    public recalculateStats() {
         let newDryMass = 0;
         let newFuelMass = 0;
         let newThrust = 0;

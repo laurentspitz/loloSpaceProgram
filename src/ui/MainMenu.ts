@@ -1,15 +1,20 @@
-/**
- * MainMenu - Handles the start screen UI
- */
 import { SettingsPanel } from './SettingsPanel';
+import { AuthMenu } from './AuthMenu';
+import { FirebaseService } from '../services/firebase';
+import { NotificationManager } from './NotificationManager';
+
 export class MainMenu {
     container: HTMLDivElement;
-    onStartGame: () => void;
+    onStartGame: (state?: any) => void;
     onOpenHangar: () => void;
+    authMenu: AuthMenu;
 
-    constructor(onStartGame: () => void, onOpenHangar: () => void) {
+    constructor(onStartGame: (state?: any) => void, onOpenHangar: () => void) {
         this.onStartGame = onStartGame;
         this.onOpenHangar = onOpenHangar;
+
+        // Initialize Auth Menu (Top Right)
+        this.authMenu = new AuthMenu();
 
         this.container = document.createElement('div');
         this.container.id = 'main-menu';
@@ -52,12 +57,82 @@ export class MainMenu {
         hangarBtn.onclick = () => this.onOpenHangar();
         buttonContainer.appendChild(hangarBtn);
 
+        // --- Load Section ---
+        const saveLoadContainer = document.createElement('div');
+        saveLoadContainer.style.display = 'flex';
+        saveLoadContainer.style.gap = '10px';
+        saveLoadContainer.style.justifyContent = 'center';
+        saveLoadContainer.style.marginTop = '10px';
+
+        const loadBtn = this.createButton('📂 Load Game', '#FF9800');
+        loadBtn.style.minWidth = '300px';
+        loadBtn.style.fontSize = '18px';
+        loadBtn.onclick = () => this.handleLoadGame(loadBtn);
+        saveLoadContainer.appendChild(loadBtn);
+
+        buttonContainer.appendChild(saveLoadContainer);
+        // ---------------------------
+
         // Settings Button
         const settingsBtn = this.createButton('Settings', '#aaaaaa');
         settingsBtn.onclick = () => this.openSettings();
         buttonContainer.appendChild(settingsBtn);
 
         document.body.appendChild(this.container);
+    }
+
+    private async handleSaveGame() {
+        if (!this.authMenu.user) {
+            NotificationManager.show("Please login to save your game!", 'error');
+            return;
+        }
+
+        const game = (window as any).game;
+        if (!game || !game.rocket) {
+            NotificationManager.show("No active game to save!", 'error');
+            return;
+        }
+
+        try {
+            const state = game.serializeState();
+            if (state) {
+                await FirebaseService.saveGame(this.authMenu.user.uid, 'quicksave', state);
+                NotificationManager.show("Game Saved Successfully!", 'success');
+            }
+        } catch (e: any) {
+            console.error(e);
+            NotificationManager.show("Failed to save: " + e.message, 'error');
+        }
+    }
+
+    private async handleLoadGame(btn?: HTMLButtonElement) {
+        if (!this.authMenu.user) {
+            NotificationManager.show("Please login to load your game!", 'error');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "📂 Loading...";
+        }
+
+        try {
+            const state = await FirebaseService.loadGame(this.authMenu.user.uid, 'quicksave');
+            if (state) {
+                this.onStartGame(state);
+                NotificationManager.show("Game Loaded!", 'success');
+            } else {
+                NotificationManager.show("No save file found.", 'info');
+            }
+        } catch (e: any) {
+            console.error(e);
+            NotificationManager.show("Failed to load: " + e.message, 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "📂 Load Game";
+            }
+        }
     }
 
     private openSettings() {
@@ -97,6 +172,11 @@ export class MainMenu {
     dispose() {
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
+        }
+        // Don't dispose auth menu completely as we might want persistence across scenes?
+        // Or re-create it. Let's start fresh.
+        if (this.authMenu.container && this.authMenu.container.parentNode) {
+            this.authMenu.container.parentNode.removeChild(this.authMenu.container);
         }
     }
 }

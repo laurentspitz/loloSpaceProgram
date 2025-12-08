@@ -135,8 +135,55 @@ export class UI {
             }
         };
 
+
+        // Save Game Button
+        const saveBtn = document.createElement('button');
+        saveBtn.innerText = '💾 Save';
+        saveBtn.title = 'Save Game';
+        saveBtn.style.fontSize = '14px';
+        saveBtn.style.cursor = 'pointer';
+        saveBtn.style.backgroundColor = '#333';
+        saveBtn.style.color = '#fff';
+        saveBtn.style.border = '1px solid #555';
+        saveBtn.style.borderRadius = '3px';
+        saveBtn.style.marginBottom = '5px';
+        saveBtn.style.padding = '5px 10px';
+
+        saveBtn.onclick = async () => {
+            const { FirebaseService } = await import('../services/firebase');
+            const { NotificationManager } = await import('./NotificationManager');
+            const user = FirebaseService.auth.currentUser;
+
+            if (!user) {
+                NotificationManager.show("You need to be logged in to save!", 'error');
+                return;
+            }
+
+            saveBtn.disabled = true;
+            const originalText = saveBtn.innerText;
+            saveBtn.innerText = "⏳ Saving...";
+
+            if (this.currentRocket && (window as any).game) {
+                const state = (window as any).game.serializeState();
+                try {
+                    await FirebaseService.saveGame(user.uid, 'quicksave', state);
+                    NotificationManager.show("Game Saved!", 'success');
+                } catch (e: any) {
+                    console.error("Save failed", e);
+                    NotificationManager.show("Save failed: " + e.message, 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = originalText;
+                }
+            } else {
+                saveBtn.disabled = false;
+                saveBtn.innerText = originalText;
+            }
+        };
+
         container.appendChild(focusRocketBtn);
         container.appendChild(trajectoryBtn);
+        container.appendChild(saveBtn);
         document.body.appendChild(container);
 
         // Time Warp Controls with Date Display

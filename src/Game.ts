@@ -447,4 +447,118 @@ export class Game {
             // TODO: Implement game over or damage system
         }
     }
+    /**
+     * Serialize current game state to JSON object
+     */
+    serializeState(): any {
+        if (!this.rocket) return null;
+
+        // Serialize rocket data
+        const rocketData = {
+            position: { x: this.rocket.body.position.x, y: this.rocket.body.position.y },
+            velocity: { x: this.rocket.body.velocity.x, y: this.rocket.body.velocity.y },
+            rotation: this.rocket.rotation || 0,
+            angularVelocity: this.rocket.angularVelocity || 0,
+            fuel: this.rocket.engine.fuelMass || 0,
+            dryMass: this.rocket.dryMass || 0,
+            electricity: this.rocket.electricity || 0,
+            stages: this.rocket.stages.reduce((acc: any, stage: any[], index: number) => {
+                acc[index] = stage.map(p => ({
+                    partId: p.partId || "unknown",
+                    definitionId: p.definition?.id || "unknown",
+                    position: { x: p.position.x || 0, y: p.position.y || 0 },
+                    rotation: p.rotation || 0
+                }));
+                return acc;
+            }, {}),
+            currentStageIndex: this.rocket.currentStageIndex !== undefined ? this.rocket.currentStageIndex : 0,
+            // Reconstruct config if possible or store minimal data to rebuild
+            parts: this.rocket.partStack ? this.rocket.partStack.map(p => ({
+                partId: p.partId || "unknown",
+                definition: p.definition || null, // Store full definition for now or ID
+                position: p.position || { x: 0, y: 0 },
+                rotation: p.rotation || 0,
+                flipped: p.flipped || false
+            })) : null
+        };
+
+        const state = {
+            version: 1,
+            timestamp: Date.now(),
+            elapsedGameTime: this.elapsedGameTime,
+            rocket: rocketData,
+            camera: {
+                position: { x: this.renderer.camera.position.x, y: this.renderer.camera.position.y, z: this.renderer.camera.position.z },
+                zoom: this.renderer.scale,
+                targetId: this.renderer.followedBody ? this.renderer.followedBody.name : null
+            },
+            simulation: {
+                timeScale: this.timeScale,
+                timeWarp: this.timeWarp,
+                paused: this.timeScale === 0
+            }
+        };
+
+        return state;
+    }
+
+    /**
+     * Restore game state from JSON object
+     */
+    deserializeState(state: any) {
+        if (!state || state.version !== 1) {
+            console.error("Invalid save state version");
+            return;
+        }
+
+        console.log("Loading game state...", state);
+
+        // 1. Restore Simulation Time
+        this.elapsedGameTime = state.elapsedGameTime || 0;
+        this.timeWarp = state.simulation.timeWarp;
+        // Don't auto-pause or set timeScale yet, user might want to start paused
+
+        // 2. Restore Rocket
+        if (state.rocket && this.rocket) {
+            // Reposition existing rocket or create new one?
+            // For now, let's update the existing rocket if compatible
+            const r = state.rocket;
+
+            this.rocket.body.position = new Vector2(r.position.x, r.position.y);
+            this.rocket.body.velocity = new Vector2(r.velocity.x, r.velocity.y);
+            this.rocket.rotation = r.rotation;
+            this.rocket.angularVelocity = r.angularVelocity || 0;
+
+            // Restore resources
+            if (r.fuel !== undefined) this.rocket.engine.fuelMass = r.fuel;
+            if (r.electricity !== undefined) this.rocket.electricity = r.electricity;
+
+            // Restore Parts/Stages? 
+            // Complex: If parts broke off, we need to handle that.
+            // For MVP: Assuming same rocket structure.
+            if (r.currentStageIndex !== undefined) {
+                this.rocket.currentStageIndex = r.currentStageIndex;
+                this.rocket.recalculateStats(); // Update mass/thrust based on stage
+            }
+
+            // Force physics sync
+            this.rocket.body.isStatic = false; // Wake up
+        }
+
+        // 3. Restore Camera
+        if (state.camera) {
+            this.renderer.scale = state.camera.zoom;
+            // Target
+            if (state.camera.targetId) {
+                const target = this.bodies.find(b => b.name === state.camera.targetId);
+                if (target) {
+                    this.renderer.followedBody = target;
+                } else if (state.camera.targetId === 'Rocket' && this.rocket) {
+                    this.renderer.followedBody = this.rocket.body;
+                }
+            }
+        }
+
+        console.log("Game state loaded successfully!");
+    }
 }

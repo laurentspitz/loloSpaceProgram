@@ -54,24 +54,41 @@ export class Hangar {
                 });
                 window.dispatchEvent(event);
             },
-            (name) => {
+            async (name) => {
                 // Save callback
                 try {
-                    RocketSaveManager.save(this.assembly, name);
-                    alert(`Rocket "${name}" saved successfully!`);
+                    const { FirebaseService } = await import('./services/firebase');
+                    const { NotificationManager } = await import('./ui/NotificationManager');
+                    const user = FirebaseService.auth.currentUser;
+
+                    if (!user) {
+                        NotificationManager.show('⚠️ Not logged in - saving to local storage only. Login to save to cloud!', 'warning');
+                    }
+
+                    await RocketSaveManager.save(this.assembly, name, user?.uid);
+
+                    if (user) {
+                        NotificationManager.show(`✅ Rocket "${name}" saved to cloud!`, 'success');
+                    } else {
+                        NotificationManager.show(`💾 Rocket "${name}" saved locally`, 'info');
+                    }
                 } catch (error) {
+                    const { NotificationManager } = await import('./ui/NotificationManager');
                     if (error instanceof Error) {
-                        alert(`Failed to save rocket: ${error.message}`);
+                        NotificationManager.show(`Failed to save: ${error.message}`, 'error');
                     }
                 }
             },
-            (loadedAssembly) => {
+            async (loadedAssembly) => {
                 // Load callback
                 this.assembly.parts = loadedAssembly.parts;
                 this.assembly.rootPartId = loadedAssembly.rootPartId;
+                this.assembly.name = loadedAssembly.name;
                 this.scene.update();
                 this.ui.updateStats();
-                alert('Rocket loaded successfully!');
+
+                const { NotificationManager } = await import('./ui/NotificationManager');
+                NotificationManager.show('Rocket loaded successfully!', 'success');
             },
             () => {
                 // Back callback
@@ -87,11 +104,18 @@ export class Hangar {
             }
         );
 
-        // Auto-load the most recent rocket if one exists
-        const latestRocket = RocketSaveManager.getLatest();
+        // Auto-load initialization is done via init()
+    }
+
+    /**
+     * Initialize and auto-load the latest rocket if available
+     */
+    async init() {
+        const latestRocket = await RocketSaveManager.getLatest();
         if (latestRocket) {
             this.assembly.parts = latestRocket.parts;
             this.assembly.rootPartId = latestRocket.rootPartId;
+            this.assembly.name = latestRocket.name;
             this.scene.update();
             this.ui.updateStats();
         }
@@ -105,4 +129,13 @@ export class Hangar {
             this.container.parentNode.removeChild(this.container);
         }
     }
+}
+
+/**
+ * Factory function to create and initialize Hangar
+ */
+export async function createHangar(): Promise<Hangar> {
+    const hangar = new Hangar();
+    await hangar.init();
+    return hangar;
 }
