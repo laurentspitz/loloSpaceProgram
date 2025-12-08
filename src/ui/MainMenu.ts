@@ -106,33 +106,32 @@ export class MainMenu {
     }
 
     private async handleLoadGame(btn?: HTMLButtonElement) {
-        if (!this.authMenu.user) {
-            NotificationManager.show("Please login to load your game!", 'error');
-            return;
-        }
-
-        if (btn) {
-            btn.disabled = true;
-            btn.textContent = "📂 Loading...";
-        }
-
-        try {
-            const state = await FirebaseService.loadGame(this.authMenu.user.uid, 'quicksave');
-            if (state) {
-                this.onStartGame(state);
-                NotificationManager.show("Game Loaded!", 'success');
-            } else {
-                NotificationManager.show("No save file found.", 'info');
-            }
-        } catch (e: any) {
-            console.error(e);
-            NotificationManager.show("Failed to load: " + e.message, 'error');
-        } finally {
+        // Show save slot selector in load mode
+        const { SaveSlotSelector } = await import('./SaveSlotSelector');
+        const selector = new SaveSlotSelector('load', async (slotId, slotData) => {
             if (btn) {
-                btn.disabled = false;
-                btn.textContent = "📂 Load Game";
+                btn.disabled = true;
+                btn.textContent = "📂 Loading...";
             }
-        }
+
+            try {
+                console.log('🎮 MainMenu - Loading slot:', slotId, 'with data:', slotData);
+                this.onStartGame(slotData);
+                const { NotificationManager } = await import('./NotificationManager');
+                NotificationManager.show("Game Loaded!", 'success');
+            } catch (e: any) {
+                console.error(e);
+                const { NotificationManager } = await import('./NotificationManager');
+                NotificationManager.show("Failed to load: " + e.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "📂 Load Game";
+                }
+            }
+        });
+
+        await selector.show();
     }
 
     private openSettings() {

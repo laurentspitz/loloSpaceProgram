@@ -29,7 +29,7 @@ export class App {
     showMenu() {
         this.cleanup();
         this.menu = new MainMenu(
-            () => this.startGame(),
+            (state) => this.startGame(state),  // FIX: Accept and pass state parameter
             () => this.showHangar()
         );
     }
@@ -37,12 +37,18 @@ export class App {
     startGame(state?: any) {
         this.cleanup();
 
-        console.log('Starting game...');
+        console.log('🎮 App.startGame called with state:', state);
         this.game = new Game(this.assembly);
 
         if (state) {
+            console.log('✅ State exists, calling deserializeState...');
             this.game.deserializeState(state);
+        } else {
+            console.log('⚠️ No state provided, starting fresh game');
         }
+
+        // Start the game loop after state is restored
+        this.game.start();
 
         // Expose game to window for debugging and UI access
         (window as any).game = this.game;

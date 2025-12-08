@@ -108,6 +108,15 @@ export class Game {
         // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
         this.renderer.scale = Config.GAMEPLAY.ROCKET.INITIAL_ZOOM; // Much closer zoom (was 1e-9)
 
+        // Don't start the loop yet - wait for start() to be called
+        // This allows deserializeState to run before the simulation begins
+    }
+
+    /**
+     * Start the game loop
+     * Call this after deserializeState if loading a saved game
+     */
+    start() {
         this.animationFrameId = requestAnimationFrame((time) => {
             this.lastTime = time;
             this.loop(time);
@@ -455,6 +464,7 @@ export class Game {
 
         // Serialize rocket data
         const rocketData = {
+            name: 'Rocket', // Rockets don't have a name property, use generic name
             position: { x: this.rocket.body.position.x, y: this.rocket.body.position.y },
             velocity: { x: this.rocket.body.velocity.x, y: this.rocket.body.velocity.y },
             rotation: this.rocket.rotation || 0,
@@ -499,6 +509,7 @@ export class Game {
             }
         };
 
+        console.log('🚀 SAVING GAME STATE - Rocket position:', rocketData.position, 'velocity:', rocketData.velocity);
         return state;
     }
 
@@ -512,6 +523,7 @@ export class Game {
         }
 
         console.log("Loading game state...", state);
+        console.log('📍 LOADING - Target position:', state.rocket?.position, 'velocity:', state.rocket?.velocity);
 
         // 1. Restore Simulation Time
         this.elapsedGameTime = state.elapsedGameTime || 0;
@@ -524,10 +536,14 @@ export class Game {
             // For now, let's update the existing rocket if compatible
             const r = state.rocket;
 
+            console.log('🔧 BEFORE restore - Rocket at:', this.rocket.body.position.x, this.rocket.body.position.y);
+
             this.rocket.body.position = new Vector2(r.position.x, r.position.y);
             this.rocket.body.velocity = new Vector2(r.velocity.x, r.velocity.y);
             this.rocket.rotation = r.rotation;
             this.rocket.angularVelocity = r.angularVelocity || 0;
+
+            console.log('✅ AFTER restore - Rocket at:', this.rocket.body.position.x, this.rocket.body.position.y);
 
             // Restore resources
             if (r.fuel !== undefined) this.rocket.engine.fuelMass = r.fuel;
@@ -538,11 +554,14 @@ export class Game {
             // For MVP: Assuming same rocket structure.
             if (r.currentStageIndex !== undefined) {
                 this.rocket.currentStageIndex = r.currentStageIndex;
-                this.rocket.recalculateStats(); // Update mass/thrust based on stage
+                // DON'T call recalculateStats() here - it will overwrite the fuel we just restored!
+                // this.rocket.recalculateStats(); 
             }
 
             // Force physics sync
             this.rocket.body.isStatic = false; // Wake up
+        } else if (state.rocket && !this.rocket) {
+            console.warn('⚠️ Save has rocket data but no rocket exists in game!');
         }
 
         // 3. Restore Camera
@@ -558,6 +577,29 @@ export class Game {
                 }
             }
         }
+
+        // 4. CRITICAL: Update all celestial bodies to their correct positions at this game time
+        // Fast-forward ONLY the planets, NOT the rocket (to preserve saved state)
+        console.log('🌍 Fast-forwarding planetary physics to match game time:', this.elapsedGameTime);
+
+        // Temporarily remove rocket from bodies array
+        const rocketBodyIndex = this.bodies.indexOf(this.rocket.body);
+        const rocketBody = this.bodies.splice(rocketBodyIndex, 1)[0];
+
+        // Fast-forward the simulation to the saved time (planets only)
+        const timeStep = 0.1; // 0.1 second steps
+        let timeRemaining = this.elapsedGameTime;
+
+        while (timeRemaining > 0) {
+            const dt = Math.min(timeStep, timeRemaining);
+            Physics.step(this.bodies, dt);
+            timeRemaining -= dt;
+        }
+
+        // Restore rocket to bodies array at its original index
+        this.bodies.splice(rocketBodyIndex, 0, rocketBody);
+
+        console.log("🎯 Physics fast-forward complete!");
 
         console.log("Game state loaded successfully!");
     }

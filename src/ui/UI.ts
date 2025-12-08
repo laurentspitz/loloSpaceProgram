@@ -152,6 +152,8 @@ export class UI {
         saveBtn.onclick = async () => {
             const { FirebaseService } = await import('../services/firebase');
             const { NotificationManager } = await import('./NotificationManager');
+            const { SaveSlotSelector } = await import('./SaveSlotSelector');
+
             const user = FirebaseService.auth.currentUser;
 
             if (!user) {
@@ -159,14 +161,21 @@ export class UI {
                 return;
             }
 
-            saveBtn.disabled = true;
-            const originalText = saveBtn.innerText;
-            saveBtn.innerText = "⏳ Saving...";
+            if (!this.currentRocket || !(window as any).game) {
+                NotificationManager.show("No active game to save!", 'error');
+                return;
+            }
 
-            if (this.currentRocket && (window as any).game) {
-                const state = (window as any).game.serializeState();
+            // Show save slot selector
+            const selector = new SaveSlotSelector('save', async (slotId) => {
+                saveBtn.disabled = true;
+                const originalText = saveBtn.innerText;
+                saveBtn.innerText = "⏳ Saving...";
+
                 try {
-                    await FirebaseService.saveGame(user.uid, 'quicksave', state);
+                    const state = (window as any).game.serializeState();
+                    const { SaveSlotManager } = await import('../services/SaveSlotManager');
+                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
                     NotificationManager.show("Game Saved!", 'success');
                 } catch (e: any) {
                     console.error("Save failed", e);
@@ -175,12 +184,10 @@ export class UI {
                     saveBtn.disabled = false;
                     saveBtn.innerText = originalText;
                 }
-            } else {
-                saveBtn.disabled = false;
-                saveBtn.innerText = originalText;
-            }
-        };
+            });
 
+            await selector.show();
+        };
         container.appendChild(focusRocketBtn);
         container.appendChild(trajectoryBtn);
         container.appendChild(saveBtn);

@@ -9,13 +9,16 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import {
+    getFirestore,
     doc,
     setDoc,
     getDoc,
     collection,
     getDocs,
     deleteDoc,
-    Timestamp,
+    Timestamp
+} from 'firebase/firestore';
+import {
     initializeFirestore,
     persistentLocalCache,
     persistentMultipleTabManager
@@ -131,6 +134,17 @@ export const FirebaseService = {
         }
     },
 
+    deleteGame: async (userId: string, slotName: string) => {
+        try {
+            const gameRef = doc(db, 'users', userId, 'saves', slotName);
+            await deleteDoc(gameRef);
+            console.log(`Game slot "${slotName}" deleted successfully!`);
+        } catch (error) {
+            console.error("Error deleting game:", error);
+            throw error;
+        }
+    },
+
     checkConnection: async () => {
         console.log("Checking Firestore connection...");
         try {
@@ -191,29 +205,36 @@ export const FirebaseService = {
     },
 
     // --- User Settings ---
+    /**
+     * Save user settings (keyboard controls, preferences, etc.)
+     */
     saveUserSettings: async (userId: string, settings: any) => {
         try {
             const settingsRef = doc(db, 'users', userId, 'settings', 'preferences');
-            await setDoc(settingsRef, {
-                ...settings,
-                updatedAt: Timestamp.now()
-            });
+            await setDoc(settingsRef, settings, { merge: true });
+            console.log('✓ User settings saved');
         } catch (error) {
-            console.error("Error saving user settings:", error);
+            console.error('Error saving user settings:', error);
             throw error;
         }
     },
 
+    /**
+     * Load user settings
+     */
     loadUserSettings: async (userId: string) => {
         try {
             const settingsRef = doc(db, 'users', userId, 'settings', 'preferences');
             const docSnap = await getDoc(settingsRef);
+
             if (docSnap.exists()) {
                 return docSnap.data();
+            } else {
+                console.log('No saved settings found');
+                return null;
             }
-            return { autoSaveEnabled: false }; // Default settings
         } catch (error) {
-            console.error("Error loading user settings:", error);
+            console.error('Error loading user settings:', error);
             throw error;
         }
     }

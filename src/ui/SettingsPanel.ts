@@ -90,6 +90,11 @@ export class SettingsPanel {
         btnContainer.style.justifyContent = 'center';
         panel.appendChild(btnContainer);
 
+        // Save button
+        const saveBtn = this.createButton('Save Settings', '#4CAF50');
+        saveBtn.onclick = () => this.saveSettings();
+        btnContainer.appendChild(saveBtn);
+
         // Reset button
         const resetBtn = this.createButton('Reset to Defaults', '#ff8800');
         resetBtn.onclick = () => this.resetControls();
@@ -219,6 +224,131 @@ export class SettingsPanel {
                 (keySpan as HTMLElement).textContent = this.formatKey(controls.getControl(actions[index]));
             }
         });
+    }
+
+    private async saveSettings() {
+        // Show styled confirmation dialog
+        this.showConfirmDialog(
+            'Save your keyboard settings to the cloud?',
+            'This will overwrite any previously saved settings.',
+            async () => {
+                try {
+                    // Import Firebase and NotificationManager
+                    const { FirebaseService } = await import('../services/firebase');
+                    const { NotificationManager } = await import('./NotificationManager');
+                    const user = FirebaseService.auth.currentUser;
+
+                    // Get current control settings
+                    const settings = {
+                        controls: controls.getAllControls(),
+                        savedAt: Date.now()
+                    };
+
+                    if (user) {
+                        // Save to Firebase
+                        await FirebaseService.saveUserSettings(user.uid, settings);
+                        NotificationManager.show('✅ Settings saved to cloud!', 'success');
+                    } else {
+                        // Fallback to localStorage
+                        localStorage.setItem('user_settings', JSON.stringify(settings));
+                        NotificationManager.show('⚠️ Not logged in - settings saved locally only', 'warning');
+                    }
+                } catch (error) {
+                    const { NotificationManager } = await import('./NotificationManager');
+                    if (error instanceof Error) {
+                        NotificationManager.show(`Failed to save: ${error.message}`, 'error');
+                    }
+                }
+            }
+        );
+    }
+
+    private showConfirmDialog(title: string, message: string, onConfirm: () => void) {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '10000';
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.backgroundColor = '#2a2a2a';
+        dialog.style.border = '2px solid #00aaff';
+        dialog.style.borderRadius = '8px';
+        dialog.style.padding = '25px';
+        dialog.style.minWidth = '400px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.boxShadow = '0 0 20px rgba(0, 170, 255, 0.5)';
+
+        // Title
+        const titleEl = document.createElement('h3');
+        titleEl.textContent = title;
+        titleEl.style.color = '#fff';
+        titleEl.style.margin = '0 0 15px 0';
+        titleEl.style.fontSize = '18px';
+        dialog.appendChild(titleEl);
+
+        // Message
+        const messageEl = document.createElement('p');
+        messageEl.textContent = message;
+        messageEl.style.color = '#ccc';
+        messageEl.style.margin = '0 0 20px 0';
+        messageEl.style.lineHeight = '1.5';
+        dialog.appendChild(messageEl);
+
+        // Buttons container
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex';
+        btnContainer.style.gap = '10px';
+        btnContainer.style.justifyContent = 'flex-end';
+
+        // Cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.padding = '8px 20px';
+        cancelBtn.style.backgroundColor = '#555';
+        cancelBtn.style.color = '#fff';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.borderRadius = '4px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.style.fontSize = '14px';
+        cancelBtn.onclick = () => overlay.remove();
+        btnContainer.appendChild(cancelBtn);
+
+        // Confirm button
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Save';
+        confirmBtn.style.padding = '8px 20px';
+        confirmBtn.style.backgroundColor = '#4CAF50';
+        confirmBtn.style.color = '#fff';
+        confirmBtn.style.border = 'none';
+        confirmBtn.style.borderRadius = '4px';
+        confirmBtn.style.cursor = 'pointer';
+        confirmBtn.style.fontSize = '14px';
+        confirmBtn.style.fontWeight = 'bold';
+        confirmBtn.onclick = () => {
+            onConfirm();
+            overlay.remove();
+        };
+        btnContainer.appendChild(confirmBtn);
+
+        dialog.appendChild(btnContainer);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        // Click outside to close
+        overlay.onclick = (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        };
     }
 
     private createButton(text: string, color: string): HTMLButtonElement {
