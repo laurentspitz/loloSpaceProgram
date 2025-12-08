@@ -570,16 +570,37 @@ export class ThreeRenderer {
 
                 mesh = new THREE.Mesh(geometry, material);
 
-                // Add glow effect for sun and planets with atmospheres
-                if (body.name === 'Sun' || body.atmosphereColor) {
+                // Add atmosphere halo
+                if (body.atmosphereColor) {
+                    const atmosScale = body.atmosphereRadiusScale || 1.25;
+                    const atmosRadius = radius * atmosScale;
+                    const atmosGeometry = new THREE.PlaneGeometry(atmosRadius * 2, atmosRadius * 2);
+
+                    const atmosTexture = TextureGenerator.createAtmosphereHalo(
+                        body.atmosphereColor,
+                        body.atmosphereOpacity !== undefined ? body.atmosphereOpacity : 0.4
+                    );
+
+                    const atmosMaterial = new THREE.MeshBasicMaterial({
+                        map: atmosTexture,
+                        transparent: true,
+                        side: THREE.DoubleSide,
+                        depthWrite: false // Don't occlude other objects
+                    });
+
+                    const atmosMesh = new THREE.Mesh(atmosGeometry, atmosMaterial);
+                    atmosMesh.position.z = -0.5; // Behind the planet (but in front of background)
+                    mesh.add(atmosMesh);
+                } else if (body.name === 'Sun') {
+                    // Sun glow (legacy simple glow)
                     const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 4096);
                     const glowMaterial = new THREE.MeshBasicMaterial({
-                        color: body.name === 'Sun' ? 0xffaa00 : TextureGenerator.parseColor(body.atmosphereColor || body.color),
+                        color: 0xffaa00,
                         transparent: true,
                         opacity: 0.3
                     });
                     const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-                    glowMesh.position.z = -1; // Behind the planet
+                    glowMesh.position.z = -1;
                     mesh.add(glowMesh);
                 }
 

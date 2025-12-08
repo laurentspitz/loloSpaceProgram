@@ -6,7 +6,7 @@ import { Vector2 } from '../core/Vector2';
 export interface PartConfig {
     id: string;
     name: string;
-    type: 'capsule' | 'tank' | 'engine' | 'rcs' | 'decoupler' | 'structure';
+    type: 'capsule' | 'tank' | 'engine' | 'rcs' | 'decoupler' | 'structure' | 'parachute';
     description: string;
     dimensions: {
         width: number;    // meters
@@ -30,6 +30,11 @@ export interface PartConfig {
     }>;
     visual?: {
         effect?: 'standard' | 'blue_flame' | 'rcs';
+    };
+    dragSettings?: {
+        dragCoeffStowed: number;
+        dragCoeffDeployed: number;
+        deployedArea: number; // m^2
     };
 }
 

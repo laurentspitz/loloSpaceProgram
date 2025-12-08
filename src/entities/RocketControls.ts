@@ -10,6 +10,7 @@ export interface RocketInput {
     stage: boolean;     // True if spacebar is pressed
     rcsEnabled: boolean; // True if RCS is active
     sasEnabled: boolean; // True if Stability Assist is active
+    deployParachute: boolean; // True if deployment requested
 }
 
 export class RocketControls {
@@ -21,6 +22,7 @@ export class RocketControls {
     private stagePressed: boolean = false; // Track previous state to trigger once per press
     private rcsPressed: boolean = false; // Latch for RCS toggle
     private sasPressed: boolean = false; // Latch for SAS toggle
+    private parachutePressed: boolean = false; // Latch for Parachute toggle
 
     constructor() {
         this.setupEventListeners();
@@ -101,12 +103,25 @@ export class RocketControls {
             this.sasPressed = false;
         }
 
+        // Parachute Deploy (P key)
+        let deployParachute = false;
+        if (this.keys.has('p')) {
+            if (!this.parachutePressed) {
+                deployParachute = true;
+                this.parachutePressed = true;
+                console.log('Parachute Deployment Requested');
+            }
+        } else {
+            this.parachutePressed = false;
+        }
+
         return {
             throttle: this.throttle,
             rotation: rotation * this.rotationSpeed,
             stage: stage,
             rcsEnabled: this.rcsEnabled,
-            sasEnabled: this.sasEnabled
+            sasEnabled: this.sasEnabled,
+            deployParachute: deployParachute
         };
     }
 

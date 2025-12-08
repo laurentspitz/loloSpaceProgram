@@ -36,6 +36,11 @@ export const SolarSystemData: StarSystemConfig = {
                     initialVelocity: 35000,
                     type: 'terrestrial',
                     atmosphereColor: "rgba(243, 156, 18, 0.4)",
+                    atmosphereOpacity: 0.6,
+                    atmosphereRadiusScale: 1.3,
+                    atmosphereDensity: 65.0,
+                    atmosphereHeight: 250000,
+                    atmosphereFalloff: 15900,
                     description: "The second planet from the Sun. It has a thick, toxic atmosphere.",
                     satellites: []
                 },
@@ -47,7 +52,16 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 149.6e9,
                     initialVelocity: 29780,
                     type: 'terrestrial',
-                    atmosphereColor: "rgba(52, 152, 219, 0.3)",
+                    atmosphereColor: "rgba(100, 180, 255, 0.0)",
+                    atmosphereOpacity: 0.25, // User requested "less opaque"
+                    atmosphereRadiusScale: 1.15,
+                    atmosphereDensity: 5.0, // Increased from 1.225 for game feel
+                    // ARCADE PHYSICS TUNING:
+                    // Authentically, atmosphere ends at ~100-160km.
+                    // But visually (halo) it extends much further due to 3x planet scale.
+                    // User expects drag at 1000km visual altitude.
+                    atmosphereHeight: 1000000, // 1000 km height (was 160km)
+                    atmosphereFalloff: 100000, // 100 km scale height (was 8km) to ensure density at 1000km
                     description: "Our home. The only known celestial body to harbor life.",
                     satellites: [
                         {
@@ -70,7 +84,12 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 227.9e9,
                     initialVelocity: 24070,
                     type: 'terrestrial',
-                    atmosphereColor: "rgba(231, 76, 60, 0.2)",
+                    atmosphereColor: "rgba(255, 69, 0, 0.4)", // Red-Orange, more visible
+                    atmosphereOpacity: 0.5,
+                    atmosphereRadiusScale: 1.1,
+                    atmosphereDensity: 0.02,
+                    atmosphereHeight: 50000,
+                    atmosphereFalloff: 11000,
                     description: "The Red Planet. Dusty, cold, desert world with a very thin atmosphere.",
                     satellites: [
                         { name: "Phobos", mass: 1.0659e16, radius: 11266, color: "#8B4513", distanceFromParent: 9376000, initialVelocity: 2138, type: 'moon', description: "The larger and closer of the two natural satellites of Mars." },
@@ -108,7 +127,22 @@ export const SolarSystemData: StarSystemConfig = {
                     atmosphereColor: "rgba(241, 196, 15, 0.2)",
                     description: "The sixth planet from the Sun and the second-largest in the Solar System, famous for its ring system.",
                     satellites: [
-                        { name: "Titan", mass: 1.345e23, radius: 2574700, color: "#F4A460", distanceFromParent: 1221870000, initialVelocity: 5570, type: 'moon', atmosphereColor: "rgba(218, 165, 32, 0.4)", description: "The largest moon of Saturn and the second-largest natural satellite in the Solar System." }
+                        {
+                            name: "Titan",
+                            mass: 1.345e23,
+                            radius: 2574700,
+                            color: "#F4A460",
+                            distanceFromParent: 1221870000,
+                            initialVelocity: 5570,
+                            type: 'moon',
+                            atmosphereColor: "rgba(218, 165, 32, 0.4)",
+                            atmosphereOpacity: 0.4,
+                            atmosphereRadiusScale: 1.4,
+                            atmosphereDensity: 5.0,
+                            atmosphereHeight: 600000,
+                            atmosphereFalloff: 40000,
+                            description: "The largest moon of Saturn and the second-largest natural satellite in the Solar System."
+                        }
                     ]
                 },
                 {

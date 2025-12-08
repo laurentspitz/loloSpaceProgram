@@ -552,4 +552,56 @@ export class TextureGenerator {
         texture.needsUpdate = true;
         return texture;
     }
+    /**
+     * Create atmosphere halo texture with soft gradient
+     */
+    static createAtmosphereHalo(color: string, opacity: number = 0.5): THREE.CanvasTexture {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        // Clear
+        ctx.clearRect(0, 0, size, size);
+
+        // Create radial gradient
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const radius = size / 2;
+
+        const gradient = ctx.createRadialGradient(
+            centerX, centerY, radius * 0.7, // Start fading from 70% radius
+            centerX, centerY, radius
+        );
+
+        // Parse color
+        const colorMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        let r = 255, g = 255, b = 255;
+
+        if (colorMatch) {
+            r = parseInt(colorMatch[1]);
+            g = parseInt(colorMatch[2]);
+            b = parseInt(colorMatch[3]);
+        } else if (color.startsWith('#')) {
+            const num = parseInt(color.replace('#', ''), 16);
+            r = (num >> 16) & 255;
+            g = (num >> 8) & 255;
+            b = num & 255;
+        }
+
+        // Inner part (transparent or faint color to blend with planet)
+        // We want the atmosphere to be visible mostly as a rim/halo
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0)`);
+        gradient.addColorStop(0.2, `rgba(${r}, ${g}, ${b}, ${opacity * 0.2})`);
+        gradient.addColorStop(0.6, `rgba(${r}, ${g}, ${b}, ${opacity})`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`); // Fade to zero at edge
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
 }

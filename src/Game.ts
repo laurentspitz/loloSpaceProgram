@@ -134,7 +134,7 @@ export class Game {
         // Update rocket controls
         if (this.rocket) {
             // Pass real time (dt) for controls, and scaled physics time (totalDt) for thrust
-            this.rocket.update(dt, totalDt);
+            this.rocket.update(dt, totalDt, this.bodies);
         }
 
         // Sub-stepping for stability
@@ -269,8 +269,25 @@ export class Game {
 
                     if (shouldUpdate) {
                         // Valid elliptical orbit - use analytical solution
-                        this.rocket.body.orbit = orbit;
-                        this.lastOrbitUpdateTime = performance.now();
+
+                        // BUT: If we are in atmosphere, the analytical solution (Kepler) is wrong because it ignores drag.
+                        // User wants to see the trajectory shrink due to drag.
+                        // So if we are in atmosphere, we should force Numerical Prediction (which handles drag).
+
+                        // Check atmospheric depth
+                        const dist = this.rocket.body.position.distanceTo(dominantBody.position);
+                        const PLANET_SCALE = 3.0; // Matching SceneSetup
+                        const altitude = dist - (dominantBody.radius * PLANET_SCALE);
+                        const inAtmosphere = dominantBody.atmosphereHeight && altitude < dominantBody.atmosphereHeight;
+
+                        if (inAtmosphere && altitude > 0) {
+                            // Force Numerical Prediction by nullifying orbit
+                            // This falls through to the 'else' block below
+                            this.rocket.body.orbit = null;
+                        } else {
+                            this.rocket.body.orbit = orbit;
+                            this.lastOrbitUpdateTime = performance.now();
+                        }
                     }
 
                     // CRITICAL: Clear numerical trajectory to prevent z-fighting and stale lines
@@ -321,11 +338,24 @@ export class Game {
                     this.rocket.body.orbit = null;
                     // Use TrajectoryPredictor to generate points for visualization
                     // IMPORTANT: Update every frame since body positions change
+
+                    // Adaptive Step Size:
+                    // If close to body (in atmosphere), use small steps for drag accuracy.
+                    // If far, use large steps.
+                    const distToParent = this.rocket.body.position.distanceTo(dominantBody.position);
+                    const PLANET_SCALE = 3.0;
+                    const isInAtmo = dominantBody.atmosphereHeight && (distToParent < (dominantBody.radius * PLANET_SCALE) + dominantBody.atmosphereHeight);
+
+                    // If in atmosphere, use 5s steps (high precision for drag).
+                    // If outside/escape, use 120s steps.
+                    const stepSize = isInAtmo ? 5.0 : 120.0;
+                    const numSteps = isInAtmo ? 500 : 1000; // 500*5 = 2500s (40 mins, enough for reentry). 1000*120=33h.
+
                     const trajectoryPoints = TrajectoryPredictor.predict(
                         this.rocket,
                         this.bodies,
-                        120, // 2 minute steps (longer for Sun-scale distances)
-                        1000 // 1000 steps = ~33 hours of trajectory
+                        stepSize,
+                        numSteps
                     );
                     this.renderer.updateTrajectory(trajectoryPoints, this.renderer.getCenter());
                 }

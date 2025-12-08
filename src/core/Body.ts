@@ -19,9 +19,17 @@ export class Body {
     // Visual Properties
     type: 'star' | 'gas_giant' | 'terrestrial' | 'moon' = 'terrestrial';
     atmosphereColor?: string;
+    atmosphereOpacity?: number; // 0.0 to 1.0 (default 0.3)
+    atmosphereRadiusScale?: number; // Multiplier of body radius (e.g. 1.2)
     ringColor?: string;
     ringInnerRadius?: number;
     ringOuterRadius?: number;
+
+    // Physics Properties
+    atmosphereDensity?: number; // Sea level density kg/m^3
+    atmosphereHeight?: number; // Scale height or max height in meters (approx)
+    atmosphereFalloff?: number; // Scale height for exponential falloff
+
 
     // Procedural Features
     craters: Crater[] = [];
@@ -55,5 +63,24 @@ export class Body {
             this.path.shift();
         }
         this.path.push(this.position.clone());
+    }
+
+    /**
+     * Get atmospheric density at a given altitude
+     * @param altitude Altitude in meters
+     * @returns Density in kg/m^3
+     */
+    getAtmosphericDensity(altitude: number): number {
+        if (!this.atmosphereDensity || !this.atmosphereFalloff || !this.atmosphereHeight) {
+            return 0;
+        }
+
+        if (altitude > this.atmosphereHeight) {
+            return 0;
+        }
+
+        // Exponential atmosphere model
+        // rho = rho0 * e^(-h / H)
+        return this.atmosphereDensity * Math.exp(-altitude / this.atmosphereFalloff);
     }
 }

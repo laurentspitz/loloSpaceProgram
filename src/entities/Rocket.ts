@@ -35,10 +35,10 @@ export class Rocket {
     readonly engineHeight: number = 1.8;   // Smaller engine
 
     // Part stack from assembly (if built in Hangar)
-    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean }>;
+    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean }>;
 
     // Stages (arrays of parts, from top to bottom)
-    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean }>> = [];
+    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean }>> = [];
     currentStageIndex: number = 0;
 
     // Callback for stage separation (to spawn debris)
@@ -102,7 +102,7 @@ export class Rocket {
     /**
      * Update rocket physics and state
      */
-    update(_deltaTime: number, physicsDeltaTime: number) {
+    update(_deltaTime: number, physicsDeltaTime: number, bodies?: Body[]) {
         if (!this.isActive) return;
 
         // Get player input
@@ -111,6 +111,11 @@ export class Rocket {
         // 1. Calculate Forces and Torques
         let totalForce = new Vector2(0, 0); // Local Frame force
         let totalTorque = 0;
+
+        // Apply Atmospheric Drag
+        if (bodies) {
+            this.applyDrag(physicsDeltaTime, bodies, totalForce);
+        }
 
         // Engines & RCS
         if (this.partStack) {
@@ -288,6 +293,11 @@ export class Rocket {
         // Check for staging
         if (input.stage) {
             this.activateStage();
+        }
+
+        // Check for parachute deployment
+        if (input.deployParachute) {
+            this.deployParachute();
         }
     }
 
@@ -627,6 +637,218 @@ export class Rocket {
             electricity: this.electricity,
             maxElectricity: this.maxElectricity
         };
+    }
+
+    /**
+     * Deploy parachutes
+     */
+    deployParachute() {
+        if (!this.partStack) return;
+
+        let deployedAny = false;
+        this.partStack.forEach(p => {
+            if (p.definition.type === 'parachute' && !p.deployed) {
+                p.deployed = true;
+                // Keep it active for visual updates if needed
+                p.active = true;
+                deployedAny = true;
+            }
+        });
+
+        if (deployedAny) {
+            console.log('Parachutes deployed!');
+            this.meshVersion++; // Trigger visual update
+        }
+    }
+
+    /**
+     * Apply atmospheric drag
+     */
+    private applyDrag(_dt: number, bodies: Body[], totalForce: Vector2) {
+        // Find nearest body with atmosphere
+        let nearestBody: Body | null = null;
+        let minDist = Infinity;
+
+        // Optimization: Check only if possibly close enough
+        for (const body of bodies) {
+            if (!body.atmosphereHeight) continue;
+
+            const dist = this.body.position.distanceTo(body.position);
+
+            const PLANET_SCALE = 3.0; // Matching SceneSetup
+            const visualRadius = body.radius * PLANET_SCALE;
+
+            // Check if within atmosphere + VISUAL radius
+            if (dist < visualRadius + body.atmosphereHeight) {
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestBody = body;
+                }
+            }
+        }
+
+        if (!nearestBody) return;
+
+        // Calculate altitude
+        // CRITICAL FIX: Planets are rendered and collided at 3.0x Scale (SceneSetup.ts)
+        // But body.radius is the physical 1.0x radius.
+        // We must subtract the VISUAL radius to get the true altitude above the terrain.
+        const PLANET_SCALE = 3.0; // Must match SceneSetup.ts and CollisionManager
+        const altitude = minDist - (nearestBody.radius * PLANET_SCALE);
+
+        // At 2km visual alt: Dist = 3*R + 2000. 
+        // Old calc: Alt = (3*R + 2000) - R = 2*R + 2000 => Space.
+        // New calc: Alt = (3*R + 2000) - 3*R = 2000 => Atmosphere!
+
+        if (altitude < 0) return; // Underground
+
+        // Get density
+        const rho = nearestBody.getAtmosphericDensity(altitude);
+        if (rho <= 0.000001) {
+            if (altitude < nearestBody.atmosphereHeight && Math.random() < 0.01) {
+                console.log(`[Physics] Rho Zero! Alt: ${altitude}, Falloff: ${nearestBody.atmosphereFalloff}`);
+            }
+            return;
+        }
+
+        // Calculate velocity relative to atmosphere
+        // Atmosphere rotates with the planet? Yes usually.
+        // Planet surface velocity at equator = 2*PI*R / T.
+        // We can approximate atmosphere velocity as rigid body rotation of planet.
+        // V_atm = V_planet + V_rot X r
+        // Simplified: Just use planet linear velocity for now (wind is zero relative to surface at 0 rotation, but planets rotate...
+        // User's Earth rotates. `SceneSetup.ts` gave it init velocity. But rotation period?
+        // Body doesn't have rotationSpeed property yet.
+        // Let's assume atmosphere moves with the planet's linear velocity for now (simple drag).
+        // If we want "friction" user asked for, it slows rocket relative to PLANET.
+
+        const relVel = this.body.velocity.sub(nearestBody.velocity);
+        const speed = relVel.mag();
+
+        if (speed < 0.1) return;
+
+        // Drag Equation: Fd = 0.5 * rho * v^2 * Cd * A
+
+        // Calculate Cd and Area
+        let Cd = 0.2; // Streamlined rocket default
+        // Area (Cross Section)
+        let area = Math.PI * (this.width / 2) * (this.width / 2); // ~7 m^2
+
+        // Modifiers based on parts (e.g. Parachute)
+        if (this.partStack) {
+            // Check if any parachute is active
+            let parachuteDeployed = false;
+            this.partStack.forEach(p => {
+                // BUG FIX: Check .deployed instead of .active
+                // .active is reset every frame for engines/RCS. Parachutes set .deployed persistently.
+                if (p.definition.type === 'parachute' && p.deployed) {
+                    parachuteDeployed = true;
+                }
+            });
+
+            if (parachuteDeployed) {
+                Cd = 1.5; // High drag
+                area = 50; // Big parachute area (approx 8m diameter)
+            }
+        }
+
+        // BOOST DRAG FOR GAMEPLAY FEEL
+        // Physics is correct, but at this scale it feels too weak.
+        // Multiply by factor to make it noticeable.
+        // User feedback: "Can't takeoff with 500.0". Reducing to 20.0.
+        const dragMultiplier = 20.0;
+        const dragMag = 0.5 * rho * speed * speed * Cd * area * dragMultiplier;
+
+        // Direction is opposite to relative velocity
+        const dragDir = relVel.normalize().scale(-1);
+        const dragForce = dragDir.scale(dragMag);
+
+        // Apply drag directly to body velocity logic to avoid coordinate confusion
+        // F = ma -> a = F/m
+        const dragAccel = dragForce.scale(1 / this.body.mass);
+
+        // Apply to velocity immediately (Euler integration step for drag)
+        this.body.velocity.addInPlace(dragAccel.scale(_dt));
+
+        // ----------------------------------------
+        // AERODYNAMIC TORQUE (Pendulum Effect)
+        // ----------------------------------------
+        // Apply torque based on where the drag force is applied (Center of Pressure vs Center of Mass)
+        // If parachute is deployed, Drag Center is high up (at the parachute).
+        // If falling, Drag is Up, CoP is Top => Pulls top up => Stable.
+
+        // Determine Center of Pressure (Local Frame)
+        // Simple approximation:
+        // If Parachute: Top of rocket.
+        // If Normal: Middle of rocket (approximate).
+
+        let centerOfPressureY = 0; // Local Y relative to rocket center
+
+        // Check parachute state from earlier check
+        let isParachuteDeployed = false;
+        if (this.partStack) {
+            // Re-check or reuse? Let's re-use logic but make variable clear
+            isParachuteDeployed = this.partStack.some(p => p.definition.type === 'parachute' && p.deployed);
+        }
+
+        if (isParachuteDeployed) {
+            // CoP is at the top of the rocket (approx parachute attach point)
+            centerOfPressureY = this.getTotalHeight() / 2;
+        } else {
+            // Standard aerodynamic stability
+            // For a rocket, CoP is usually lower than CoM for stability? 
+            // Actually fins put CoP low.
+            // Let's assume CoP is slightly below geometric center for a standard rocket with fins?
+            // Or just use CoM to avoid unwanted rotation if we don't simulate full aero.
+            // For this requested feature ("influence rotation"), let's only apply significant torque if Parachute is out.
+            // Or if user wants "drag stabilizes rocket" generally.
+            // Let's stick to Parachute for now as requested.
+            centerOfPressureY = this.centerOfMass.y; // Neutral
+        }
+
+        if (isParachuteDeployed) {
+            // Calculate Moment Arm in World Space
+            // Arm_local = CoP - CoM
+            // CoP_local = (0, centerOfPressureY)
+            const armLocal = new Vector2(0 - this.centerOfMass.x, centerOfPressureY - this.centerOfMass.y);
+
+            // Rotate Arm to World orientation
+            // Rocket Angle = this.rotation
+            // Vector (x, y) rotates by theta:
+            // x' = x cos - y sin
+            // y' = x sin + y cos
+            // Note: Our rotation definition might be PI/2 offset logic.
+            // this.rotation is angle of Vertical axis?
+            // In update(): angle = this.rotation - Math.PI / 2;
+            // Let's use the same transform as visuals.
+            const angle = this.rotation - Math.PI / 2;
+            const ax = armLocal.x * Math.cos(angle) - armLocal.y * Math.sin(angle);
+            const ay = armLocal.x * Math.sin(angle) + armLocal.y * Math.cos(angle);
+            const armWorld = new Vector2(ax, ay);
+
+            // Torque = r x F (2D cross product)
+            // T = rx * Fy - ry * Fx
+            // dragForce is in World frame
+            const torque = armWorld.x * dragForce.y - armWorld.y * dragForce.x;
+
+            // Apply angular acceleration
+            // alpha = T / I
+            const alpha = torque / Math.max(1, this.momentOfInertia);
+            this.angularVelocity += alpha * _dt;
+
+            // console.log(`Drag Torque: ${torque.toFixed(0)}, Alpha: ${alpha.toFixed(3)}`);
+        }
+
+        // Debug logging for atmosphere entry
+        if (rho > 0.01 && this.body.velocity.mag() > 50) {
+            // console.log(`Drag Applied: ${dragMag.toFixed(0)}N, Accel=${dragAccel.mag().toFixed(2)} m/s2`);
+        }
+
+        // Debug logging for atmosphere entry?
+        // Debug logging for atmosphere entry?
+        if (rho > 0.01 && this.body.velocity.mag() > 100) {
+            console.log(`In Atmosphere: Alt=${altitude.toFixed(0)}m, Rho=${rho.toFixed(4)}, Drag=${dragMag.toFixed(0)}N`);
+        }
     }
 
     /**

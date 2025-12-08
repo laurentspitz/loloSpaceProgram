@@ -41,6 +41,76 @@ export class TrajectoryPredictor {
 
             const acceleration = totalForce;
 
+            // Apply Atmospheric Drag (Prediction)
+            // Ideally we should share code with Rocket.ts but for now we duplicate simplified logic
+            // Find body with atmosphere we are in
+            let nearestBody: Body | null = null;
+            let minDist = Infinity; // This minDist is for finding the closest body, not necessarily for atmosphere
+
+            for (const body of bodies) {
+                if (!body.atmosphereHeight) continue;
+                const d = simPos.distanceTo(body.position);
+                if (d < minDist) { // Find the physically closest body
+                    minDist = d;
+                    nearestBody = body;
+                }
+            }
+
+            if (nearestBody) {
+                // Altitude above VISUAL radius
+                const PLANET_SCALE = 3.0;
+                const altitude = minDist - (nearestBody.radius * PLANET_SCALE);
+
+                // Calculate density
+                // rho = rho0 * exp(-h / H)
+                const rho = (nearestBody.atmosphereDensity || 0) * Math.exp(-altitude / (nearestBody.atmosphereFalloff || 1));
+
+                if (rho > 0.0001) {
+                    // Velocity relative to atmosphere (simplified: typically close to orbital, but just use velocity magnitude)
+                    // relative velocity: rocket vel - body vel
+                    const relVel = simVel.sub(nearestBody.velocity);
+                    const speed = relVel.mag();
+
+                    // Drag: F = 0.5 * rho * v^2 * Cd * A
+
+                    // Check if rocket has deployed parachute
+                    // Ideally we pass this in, but we can check the rocket instance provided
+                    let Cd = 0.2; // Standard Drag
+                    let Area = 7.0; // Standard Area
+
+                    let hasParachute = false;
+                    if (rocket.partStack) {
+                        hasParachute = rocket.partStack.some(p => p.definition.type === 'parachute' && p.deployed);
+                    }
+
+                    if (hasParachute) {
+                        Cd = 1.5;
+                        Area = 50.0;
+                    }
+
+                    // User complained "no impact", so let's BOOST the multiplier significantly
+                    // Was 100.0, trying 500.0 to ensure visibility
+                    // Now reduced to 20.0 since physics is fixed (3x scale)
+                    const DragMultiplier = 20.0;
+
+                    const dragForceMag = 0.5 * rho * speed * speed * Cd * Area * DragMultiplier;
+                    const dragDir = relVel.normalize().scale(-1);
+                    const dragAcc = dragDir.scale(dragForceMag / 1000); // 1000kg dummy mass? 
+                    // Wait, current logic: totalForce is ACCELERATION (G * M / r^2). 
+                    // No, forceMag calculation was (Physics.G * body.mass) / (dist * dist). 
+                    // That IS acceleration (g). 
+                    // So we must add drag ACCELERATION.
+                    // a_drag = F_drag / m. 
+                    // Let's assume rocket mass ~5000kg (Mk1 + Tank + Engine dry is ~2-3t, wet ~5t).
+                    const estimatedMass = 5000;
+
+                    acceleration.addInPlace(dragAcc.scale(1000 / estimatedMass)); // Adjusted scale
+                    // Actually better:
+                    const dragAccelVec = dragDir.scale(dragForceMag / estimatedMass);
+                    acceleration.addInPlace(dragAccelVec);
+                }
+            }
+
             // Symplectic Euler integration (same as Physics.ts)
             simVel = simVel.add(acceleration.scale(timeStep));
             simPos = simPos.add(simVel.scale(timeStep));

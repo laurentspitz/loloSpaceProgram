@@ -76,6 +76,21 @@ export class RocketRenderer {
                 }
 
                 group.add(mesh);
+
+                // Render deployed parachute
+                if (part.definition.type === 'parachute' && part.deployed) {
+                    const chute = this.createParachuteVisuals(part);
+                    chute.position.x = mesh.position.x;
+                    // Position chute above the part (relative to rotation?)
+                    // The createParachuteVisuals method will handle the offset relative to the part center
+                    chute.position.y = mesh.position.y;
+                    chute.rotation.z = mesh.rotation.z;
+                    // Flip if needed
+                    if (part.flipped) {
+                        chute.scale.x = -1;
+                    }
+                    group.add(chute);
+                }
             });
 
             return group;
@@ -328,6 +343,76 @@ export class RocketRenderer {
                 group.add(mesh);
             });
         }
+
+        return group;
+    }
+
+    /**
+     * Create parachute visuals (canopy + lines)
+     */
+    static createParachuteVisuals(_part: any): THREE.Group {
+        const group = new THREE.Group();
+
+        // Dimensions
+        const chuteDiameter = 10; // Large 10m chute
+        const chuteHeight = 12;   // Distance from part
+
+        // 1. Canopy (Semi-circle / Dome shape)
+        // In 2D, just a Chord or Arc shape
+        const canopyShape = new THREE.Shape();
+        // FLIP: Draw arc upwards (0 to PI) but starting from chuteHeight?
+        // Previously: absarc(0, chuteHeight, d/2, PI, 0, false) -> Top half circle
+        // User says it looked inverted.
+        // Let's try drawing it "upwards" relative to attach point.
+        // If (0,0) is attach point, chute is at +chuteHeight.
+
+        // Let's draw the arc from 0 to PI (top half)
+        // THREE.absarc(aX, aY, aRadius, aStartAngle, aEndAngle, aClockwise)
+        // We want a dome (n shape). 
+        // 0 is East (Right). PI is West (Left).
+        // Counter-Clockwise (false) goes 0 -> PI via Top (Up).
+        canopyShape.absarc(0, chuteHeight, chuteDiameter / 2, 0, Math.PI, false);
+
+        // Close the shape? Or leave as arc? Shape needs to be closed for ShapeGeometry
+        // Let's make it a mushroom shape
+        // Flatten bottom
+        canopyShape.lineTo(chuteDiameter / 2, chuteHeight);
+
+        const canopyGeom = new THREE.ShapeGeometry(canopyShape);
+        const canopyMat = new THREE.MeshBasicMaterial({
+            color: 0xFFA500, // Orange
+            side: THREE.DoubleSide
+        });
+
+        // Ensure parachute is visible above rocket
+        group.scale.set(1, 1, 1); // Reset scale in case it inherits weirdly
+        const canopy = new THREE.Mesh(canopyGeom, canopyMat);
+        group.add(canopy);
+
+        // 2. Lines
+        const lineMat = new THREE.LineBasicMaterial({ color: 0xDDDDDD });
+        const lineGeo = new THREE.BufferGeometry();
+        const positions = [];
+
+        // Connect part center (0,0) to canopy edges
+        // Left line
+        positions.push(0, 0, 0);
+        positions.push(-chuteDiameter / 2, chuteHeight, 0);
+
+        // Right line
+        positions.push(0, 0, 0);
+        positions.push(chuteDiameter / 2, chuteHeight, 0);
+
+        // Inner lines
+        positions.push(0, 0, 0);
+        positions.push(-chuteDiameter / 4, chuteHeight + 1, 0); // Slightly higher attach point on curve
+
+        positions.push(0, 0, 0);
+        positions.push(chuteDiameter / 4, chuteHeight + 1, 0);
+
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const lines = new THREE.LineSegments(lineGeo, lineMat);
+        group.add(lines);
 
         return group;
     }

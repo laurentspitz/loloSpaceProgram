@@ -55,6 +55,14 @@ export class SystemGenerator {
 
             body.type = bodyConfig.type;
             body.atmosphereColor = bodyConfig.atmosphereColor;
+            body.atmosphereOpacity = bodyConfig.atmosphereOpacity;
+            body.atmosphereRadiusScale = bodyConfig.atmosphereRadiusScale;
+
+            // Physics props
+            body.atmosphereDensity = bodyConfig.atmosphereDensity;
+            body.atmosphereHeight = bodyConfig.atmosphereHeight;
+            body.atmosphereFalloff = bodyConfig.atmosphereFalloff;
+
             body.description = bodyConfig.description;
 
             // Rings

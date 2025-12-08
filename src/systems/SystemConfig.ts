@@ -11,6 +11,14 @@ export interface CelestialBodyConfig {
     initialVelocity?: number;   // Tangential velocity in m/s (optional, calculated if omitted?)
     type: BodyType;
     atmosphereColor?: string;
+    atmosphereOpacity?: number;
+    atmosphereRadiusScale?: number;
+
+    // Physics
+    atmosphereDensity?: number;
+    atmosphereHeight?: number;
+    atmosphereFalloff?: number;
+
     ringColor?: string;
     ringInner?: number; // relative to radius
     ringOuter?: number; // relative to radius

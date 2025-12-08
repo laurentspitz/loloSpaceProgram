@@ -1,6 +1,6 @@
 import { Vector2 } from '../core/Vector2';
 
-export type PartType = 'capsule' | 'tank' | 'engine' | 'decoupler' | 'structure' | 'rcs';
+export type PartType = 'capsule' | 'tank' | 'engine' | 'decoupler' | 'structure' | 'rcs' | 'parachute';
 
 export interface PartStats {
     mass: number;       // kg
