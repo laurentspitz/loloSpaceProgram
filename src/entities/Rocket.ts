@@ -114,7 +114,7 @@ export class Rocket {
 
         // Apply Atmospheric Drag
         if (bodies) {
-            this.applyDrag(physicsDeltaTime, bodies, totalForce);
+            this.applyDrag(physicsDeltaTime, bodies);
         }
 
         // Engines & RCS
@@ -664,7 +664,7 @@ export class Rocket {
     /**
      * Apply atmospheric drag
      */
-    private applyDrag(_dt: number, bodies: Body[], totalForce: Vector2) {
+    private applyDrag(_dt: number, bodies: Body[]) {
         // Find nearest body with atmosphere
         let nearestBody: Body | null = null;
         let minDist = Infinity;
@@ -705,7 +705,8 @@ export class Rocket {
         // Get density
         const rho = nearestBody.getAtmosphericDensity(altitude);
         if (rho <= 0.000001) {
-            if (altitude < nearestBody.atmosphereHeight && Math.random() < 0.01) {
+            // Fix: Check for undefined atmosphereHeight safely
+            if (altitude < (nearestBody.atmosphereHeight || 0) && Math.random() < 0.01) {
                 console.log(`[Physics] Rho Zero! Alt: ${altitude}, Falloff: ${nearestBody.atmosphereFalloff}`);
             }
             return;
