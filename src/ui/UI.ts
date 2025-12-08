@@ -555,7 +555,7 @@ export class UI {
         console.log(`New rocket velocity: (${newVelX.toFixed(2)}, ${newVelY.toFixed(2)})`);
 
         // Use setTimeout to ensure position is set AFTER current frame/update cycle
-        // TODO voir si on peut ce passer de ce setTimeout
+        // Initial UI Update
         setTimeout(() => {
             // CREATE NEW Vector2 objects instead of mutating
             rocket.body.position = new Vector2(newPosX, newPosY);

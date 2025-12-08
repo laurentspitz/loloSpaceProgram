@@ -521,7 +521,7 @@ export class TextureGenerator {
             const r = (0.15 + rng() * 0.25) * size; // Larger blobs (15-40%)
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, r);
-            // Reduced alpha to soften the effect (per user request)
+            // Reduced alpha to soften the effect
             const alpha = 0.04 + rng() * 0.06;
 
             gradient.addColorStop(0, `rgba(${centerR}, ${centerG}, ${centerB}, ${alpha})`);

@@ -212,11 +212,9 @@ export class Rocket {
                 // Approximate consumption relative to main engine efficiency
                 // Or just arbitrary small amount. 
                 const rcsFuel = totalRCSThrust * 0.0000005 * physicsDeltaTime; // Very efficient?
-                // Just subtract from body mass directly for now
+                // Just subtract from body mass directly
                 if (this.body.mass > this.dryMass) {
                     this.body.mass -= rcsFuel;
-                    // Todo: update engine.fuelMass but it's private/protected possibly or specific logic.
-                    // This is a visual/physics mass update only.
                 }
             }
         }
@@ -250,7 +248,7 @@ export class Rocket {
                 if (this.electricity >= energyNeeded) {
                     this.electricity -= energyNeeded;
 
-                    // Reduced control power (User request: "reduce rotation effect")
+                    // Reduced control power
                     // Was 20 * mass, now 2 * mass
                     const controlPower = this.body.mass * 2.0;
                     const controlTorque = input.rotation * controlPower;
@@ -708,16 +706,7 @@ export class Rocket {
             return;
         }
 
-        // Calculate velocity relative to atmosphere
-        // Atmosphere rotates with the planet? Yes usually.
-        // Planet surface velocity at equator = 2*PI*R / T.
-        // We can approximate atmosphere velocity as rigid body rotation of planet.
-        // V_atm = V_planet + V_rot X r
-        // Simplified: Just use planet linear velocity for now (wind is zero relative to surface at 0 rotation, but planets rotate...
-        // User's Earth rotates. `SceneSetup.ts` gave it init velocity. But rotation period?
-        // Body doesn't have rotationSpeed property yet.
-        // Let's assume atmosphere moves with the planet's linear velocity for now (simple drag).
-        // If we want "friction" user asked for, it slows rocket relative to PLANET.
+
 
         const relVel = this.body.velocity.sub(nearestBody.velocity);
         const speed = relVel.mag();

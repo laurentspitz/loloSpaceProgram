@@ -53,7 +53,7 @@ export const SolarSystemData: StarSystemConfig = {
                     initialVelocity: 29780,
                     type: 'terrestrial',
                     atmosphereColor: "rgba(100, 180, 255, 0.0)",
-                    atmosphereOpacity: 0.25, // User requested "less opaque"
+                    atmosphereOpacity: 0.25,
                     atmosphereRadiusScale: 1.15,
                     atmosphereDensity: 5.0, // Increased from 1.225 for game feel
                     // ARCADE PHYSICS TUNING:

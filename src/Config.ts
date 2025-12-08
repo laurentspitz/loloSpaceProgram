@@ -20,7 +20,7 @@ export interface RocketConfig {
     color?: string;
     mass?: number;
     // Add other known properties from assembly/rocket config here
-    // For now we use 'any' for parts until we strongly type them later
+    // Part definitions
     parts?: any[];
     getRocketConfig?(): RocketConfig; // Helper in assembly object
 }

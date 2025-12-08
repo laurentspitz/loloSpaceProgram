@@ -248,7 +248,7 @@ export class Renderer {
             this.drawGenericBody(ctx, x, y, radius, body);
         }
 
-        // 4. Cel Shading (Removed per user request)
+        // 4. Cel Shading
         // No shadows drawn here.
 
         ctx.restore();

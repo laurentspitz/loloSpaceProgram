@@ -453,7 +453,7 @@ export class Game {
             console.log('   💥 CRASH!');
             // Zero out velocity (rocket stops)
             rocket.body.velocity = planet.velocity.clone();
-            // TODO: Implement game over or damage system
+            // Handle crash consequences
         }
     }
     /**

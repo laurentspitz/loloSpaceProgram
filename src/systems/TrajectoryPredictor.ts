@@ -42,7 +42,7 @@ export class TrajectoryPredictor {
             const acceleration = totalForce;
 
             // Apply Atmospheric Drag (Prediction)
-            // Ideally we should share code with Rocket.ts but for now we duplicate simplified logic
+            // Simplified physics prediction
             // Find body with atmosphere we are in
             let nearestBody: Body | null = null;
             let minDist = Infinity; // This minDist is for finding the closest body, not necessarily for atmosphere

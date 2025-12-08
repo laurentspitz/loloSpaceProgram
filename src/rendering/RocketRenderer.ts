@@ -27,11 +27,6 @@ export class RocketRenderer {
      * Create rocket geometry with textures
      */
     static createRocketMesh(rocket: Rocket): THREE.Group {
-        // Ensure textures are loaded
-        if (!this.textures.capsule) {
-            this.loadTextures();
-        }
-
         const group = new THREE.Group();
 
         // If rocket has a part stack (from Hangar), render it
@@ -97,6 +92,12 @@ export class RocketRenderer {
         }
 
         // Otherwise, use default design
+
+        // Ensure textures are loaded for default design
+        if (!this.textures.capsule) {
+            this.loadTextures();
+        }
+
         const width = rocket.width;
         const capsuleH = rocket.capsuleHeight;
         const tankH = rocket.tankHeight;
