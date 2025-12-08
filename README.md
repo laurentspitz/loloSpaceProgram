@@ -102,7 +102,8 @@ src/
 
 ## 📝 License
 
-MIT
+© 2025 Laurent Spitz. All rights reserved.
+Source code is available for educational purposes only. Unauthorized copying, modification, distribution, or commercial use is strictly prohibited.
 
 ## 🙏 Remerciements
 
