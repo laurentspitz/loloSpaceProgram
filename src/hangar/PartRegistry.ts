@@ -29,8 +29,6 @@ export class PartRegistry {
             return;
         }
 
-        console.log('[PartRegistry] Initializing with modular part system...');
-
         try {
             // Load all parts from the modular system
             this.moduleParts = await PartLoader.loadAllParts();
@@ -41,13 +39,11 @@ export class PartRegistry {
                     // Await the conversion since it's now async
                     const definition = await PartLoader.convertToDefinition(part);
                     this.parts.set(id, definition);
-                    console.log(`[PartRegistry] Registered: ${part.config.name} (${id})`);
                 } catch (error) {
                     console.error(`[PartRegistry] Failed to register part ${id}:`, error);
                 }
             }
 
-            console.log(`[PartRegistry] Initialization complete. ${this.parts.size} parts registered.`);
             this.initialized = true;
         } catch (error) {
             console.error('[PartRegistry] Error during initialization:', error);

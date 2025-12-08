@@ -115,7 +115,6 @@ export class MainMenu {
             }
 
             try {
-                console.log('🎮 MainMenu - Loading slot:', slotId, 'with data:', slotData);
                 this.onStartGame(slotData);
                 const { NotificationManager } = await import('./NotificationManager');
                 NotificationManager.show("Game Loaded!", 'success');

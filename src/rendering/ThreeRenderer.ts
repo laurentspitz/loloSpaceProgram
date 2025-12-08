@@ -1718,8 +1718,8 @@ export class ThreeRenderer {
         const newScale = Math.sqrt(targetFraction * 1e-6 / objectSize);
 
         // Apply new scale
-        this.scale = newScale;
-
-        console.log(`Auto-zoom: object size=${objectSize.toFixed(2)}m, new scale=${newScale.toExponential(2)}`);
+        if (newScale !== this.scale) {
+            this.scale = newScale;
+        }
     }
 }

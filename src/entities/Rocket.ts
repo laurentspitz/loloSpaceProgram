@@ -467,7 +467,6 @@ export class Rocket {
         // stages[last] is the payload.
         this.currentStageIndex = 0;
 
-        console.log('Rocket stages initialized:', this.stages.length);
     }
 
     /**
@@ -476,11 +475,8 @@ export class Rocket {
     activateStage() {
         // If we are at the last stage (payload), nothing to decouple
         if (this.currentStageIndex >= this.stages.length - 1) {
-            console.log('No more stages to decouple');
             return;
         }
-
-        console.log(`Activating stage separation! Dropping stage ${this.currentStageIndex}`);
 
         // Get parts to drop
         const stageToDrop = this.stages[this.currentStageIndex];
@@ -848,7 +844,7 @@ export class Rocket {
         // Debug logging for atmosphere entry?
         // Debug logging for atmosphere entry?
         if (rho > 0.01 && this.body.velocity.mag() > 100) {
-            console.log(`In Atmosphere: Alt=${altitude.toFixed(0)}m, Rho=${rho.toFixed(4)}, Drag=${dragMag.toFixed(0)}N`);
+            // console.log(`In Atmosphere: Alt=${altitude.toFixed(0)}m, Rho=${rho.toFixed(4)}, Drag=${dragMag.toFixed(0)}N`);
         }
     }
 

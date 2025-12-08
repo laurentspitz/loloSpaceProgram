@@ -85,8 +85,6 @@ export class RocketControls {
             if (!this.rcsPressed) {
                 this.rcsEnabled = !this.rcsEnabled;
                 this.rcsPressed = true;
-                // UI feedback via console for now
-                console.log(`RCS: ${this.rcsEnabled ? 'ON' : 'OFF'}`);
             }
         } else {
             this.rcsPressed = false;
@@ -97,7 +95,6 @@ export class RocketControls {
             if (!this.sasPressed) {
                 this.sasEnabled = !this.sasEnabled;
                 this.sasPressed = true;
-                console.log(`SAS: ${this.sasEnabled ? 'ON' : 'OFF'}`);
             }
         } else {
             this.sasPressed = false;
@@ -109,7 +106,6 @@ export class RocketControls {
             if (!this.parachutePressed) {
                 deployParachute = true;
                 this.parachutePressed = true;
-                console.log('Parachute Deployment Requested');
             }
         } else {
             this.parachutePressed = false;

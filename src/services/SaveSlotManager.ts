@@ -63,7 +63,9 @@ export class SaveSlotManager {
             // Clean undefined values before sending to Firebase
             const cleanedState = this.removeUndefined(enrichedState);
             await FirebaseService.saveGame(userId, slotName, cleanedState);
-            console.log(`✓ Game saved to slot "${slotName}"`);
+
+            // Also update local storage as backup/cached
+            this.saveLocalSlot(slotName, gameState);
         } catch (error) {
             console.error('Failed to save to Firebase:', error);
             // Fallback to local

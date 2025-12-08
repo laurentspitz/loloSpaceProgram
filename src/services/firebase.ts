@@ -146,20 +146,12 @@ export const FirebaseService = {
     },
 
     checkConnection: async () => {
-        console.log("Checking Firestore connection...");
         try {
             // Try to read a non-existent document just to test connection
             const testRef = doc(db, 'system', 'ping');
             await getDoc(testRef);
-            console.log("✅ Firestore connection OK!");
             return true;
         } catch (error: any) {
-            console.error("❌ Firestore Connection Error:", error.code, error.message);
-            if (error.code === 'unavailable') {
-                console.error("The client is offline or cannot reach Firestore backend.");
-            } else if (error.code === 'permission-denied') {
-                console.error("Connected but permission denied (Check Rules).");
-            }
             return false;
         }
     },

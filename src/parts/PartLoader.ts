@@ -25,26 +25,21 @@ export class PartLoader {
                 eager: false // Lazy load for better performance
             });
 
-            console.log(`[PartLoader] Discovering parts...`, Object.keys(partModules));
-
             for (const [path, importFn] of Object.entries(partModules)) {
                 try {
                     const module = await importFn();
                     const part: BasePart = module.default;
 
                     if (!part || !part.id || !part.config) {
-                        console.warn(`[PartLoader] Invalid part module at ${path}`);
                         continue;
                     }
 
                     this.loadedParts.set(part.id, part);
-                    console.log(`[PartLoader] Loaded part: ${part.id} (${part.config.name})`);
                 } catch (error) {
                     console.error(`[PartLoader] Failed to load part from ${path}:`, error);
                 }
             }
 
-            console.log(`[PartLoader] Successfully loaded ${this.loadedParts.size} parts`);
         } catch (error) {
             console.error('[PartLoader] Error during part discovery:', error);
         }

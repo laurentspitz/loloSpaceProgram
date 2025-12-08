@@ -37,14 +37,11 @@ export class App {
     startGame(state?: any) {
         this.cleanup();
 
-        console.log('🎮 App.startGame called with state:', state);
+        console.log('Starting game...');
         this.game = new Game(this.assembly);
 
         if (state) {
-            console.log('✅ State exists, calling deserializeState...');
             this.game.deserializeState(state);
-        } else {
-            console.log('⚠️ No state provided, starting fresh game');
         }
 
         // Start the game loop after state is restored

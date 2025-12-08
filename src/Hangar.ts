@@ -48,7 +48,6 @@ export class Hangar {
                 // Attach name to config
                 (config as any).name = this.assembly.name;
 
-                console.log('Hangar: Dispatching launch-game with config:', config);
                 const event = new CustomEvent('launch-game', {
                     detail: { assembly: config }
                 });

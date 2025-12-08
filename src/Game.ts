@@ -509,7 +509,6 @@ export class Game {
             }
         };
 
-        console.log('🚀 SAVING GAME STATE - Rocket position:', rocketData.position, 'velocity:', rocketData.velocity);
         return state;
     }
 
@@ -522,9 +521,6 @@ export class Game {
             return;
         }
 
-        console.log("Loading game state...", state);
-        console.log('📍 LOADING - Target position:', state.rocket?.position, 'velocity:', state.rocket?.velocity);
-
         // 1. Restore Simulation Time
         this.elapsedGameTime = state.elapsedGameTime || 0;
         this.timeWarp = state.simulation.timeWarp;
@@ -536,14 +532,10 @@ export class Game {
             // For now, let's update the existing rocket if compatible
             const r = state.rocket;
 
-            console.log('🔧 BEFORE restore - Rocket at:', this.rocket.body.position.x, this.rocket.body.position.y);
-
             this.rocket.body.position = new Vector2(r.position.x, r.position.y);
             this.rocket.body.velocity = new Vector2(r.velocity.x, r.velocity.y);
             this.rocket.rotation = r.rotation;
             this.rocket.angularVelocity = r.angularVelocity || 0;
-
-            console.log('✅ AFTER restore - Rocket at:', this.rocket.body.position.x, this.rocket.body.position.y);
 
             // Restore resources
             if (r.fuel !== undefined) this.rocket.engine.fuelMass = r.fuel;
@@ -580,27 +572,30 @@ export class Game {
 
         // 4. CRITICAL: Update all celestial bodies to their correct positions at this game time
         // Fast-forward ONLY the planets, NOT the rocket (to preserve saved state)
-        console.log('🌍 Fast-forwarding planetary physics to match game time:', this.elapsedGameTime);
 
-        // Temporarily remove rocket from bodies array
-        const rocketBodyIndex = this.bodies.indexOf(this.rocket.body);
-        const rocketBody = this.bodies.splice(rocketBodyIndex, 1)[0];
+        // Make rocket static temporarily so it doesn't move during fast-forward
+        if (this.rocket) {
+            const wasStatic = this.rocket.body.isStatic;
+            this.rocket.body.isStatic = true;
 
-        // Fast-forward the simulation to the saved time (planets only)
-        const timeStep = 0.1; // 0.1 second steps
-        let timeRemaining = this.elapsedGameTime;
+            // Fast-forward the simulation to the saved time (planets only)
+            const timeStep = 0.1; // 0.1 second steps
+            let timeRemaining = this.elapsedGameTime;
 
-        while (timeRemaining > 0) {
-            const dt = Math.min(timeStep, timeRemaining);
-            Physics.step(this.bodies, dt);
-            timeRemaining -= dt;
+            while (timeRemaining > 0) {
+                const dt = Math.min(timeStep, timeRemaining);
+                Physics.step(this.bodies, dt);
+                timeRemaining -= dt;
+            }
+
+            // Restore rocket's original static state
+            this.rocket.body.isStatic = wasStatic;
         }
 
-        // Restore rocket to bodies array at its original index
-        this.bodies.splice(rocketBodyIndex, 0, rocketBody);
-
-        console.log("🎯 Physics fast-forward complete!");
-
-        console.log("Game state loaded successfully!");
+        // CRITICAL: Reassign renderer's current rocket reference
+        // Without this, the renderer doesn't know about the rocket and won't draw it
+        if (this.rocket) {
+            this.renderer.currentRocket = this.rocket;
+        }
     }
 }
