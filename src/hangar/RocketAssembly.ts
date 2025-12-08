@@ -15,6 +15,7 @@ export class RocketAssembly {
     parts: PlacedPart[] = [];
     rootPartId: string | null = null;
     public name: string = "Untitled Rocket";
+    id?: string; // Firebase rocket ID (set when loaded from cloud)
 
     constructor() {
         // PartRegistry.init() should be called at app startup

@@ -14,6 +14,7 @@ export class HangarUI {
     onSave: (name: string) => void;
     onLoad: (assembly: RocketAssembly) => void;
     onBack: () => void;
+    onNew: () => void;
 
     // Stat value elements
     massValue!: HTMLSpanElement;
@@ -37,6 +38,7 @@ export class HangarUI {
         onSave: (name: string) => void,
         onLoad: (assembly: RocketAssembly) => void,
         onBack: () => void,
+        onNew: () => void,
         onToggleMirror: (active: boolean) => void,
         onToggleCoG: (active: boolean) => void
     ) {
@@ -46,6 +48,7 @@ export class HangarUI {
         this.onSave = onSave;
         this.onLoad = onLoad;
         this.onBack = onBack;
+        this.onNew = onNew;
         this.onToggleMirror = onToggleMirror;
         this.onToggleCoG = onToggleCoG;
 
@@ -382,9 +385,33 @@ export class HangarUI {
         this.twrValue = document.createElement('span');
         panel.appendChild(createStatRow('TWR (Earth):', this.twrValue));
 
+        // New Button
+        const newButton = document.createElement('button');
+        newButton.style.marginTop = '15px';
+        newButton.style.width = '100%';
+        newButton.style.padding = '8px';
+        newButton.style.backgroundColor = '#ff9800';
+        newButton.style.color = 'white';
+        newButton.style.border = 'none';
+        newButton.style.borderRadius = '4px';
+        newButton.style.cursor = 'pointer';
+        newButton.style.fontWeight = 'bold';
+        newButton.textContent = '🆕 NEW';
+        newButton.onclick = () => {
+            if (this.assembly.parts.length > 0) {
+                this.showConfirmDialog(
+                    'Start a new rocket? Current rocket will be lost if not saved.',
+                    () => this.onNew()
+                );
+            } else {
+                this.onNew();
+            }
+        };
+        panel.appendChild(newButton);
+
         // Load Button
         const loadButton = document.createElement('button');
-        loadButton.style.marginTop = '15px';
+        loadButton.style.marginTop = '8px';
         loadButton.style.width = '100%';
         loadButton.style.padding = '8px';
         loadButton.style.backgroundColor = '#4a9eff';
@@ -631,7 +658,8 @@ export class HangarUI {
                         async () => {
                             const { FirebaseService } = await import('../services/firebase');
                             const user = FirebaseService.auth.currentUser;
-                            await RocketSaveManager.delete(rocket.name, user?.uid);
+                            // Use rocket.id (Firebase ID) instead of rocket.name
+                            await RocketSaveManager.delete((rocket as any).id || rocket.name, user?.uid);
                             await this.showLoadDialog(); // Refresh list
                         }
                     );
@@ -643,7 +671,8 @@ export class HangarUI {
                 item.onclick = async () => {
                     const { FirebaseService } = await import('../services/firebase');
                     const user = FirebaseService.auth.currentUser;
-                    const loaded = await RocketSaveManager.load(rocket.name, user?.uid);
+                    // Use rocket.id (Firebase ID) instead of rocket.name
+                    const loaded = await RocketSaveManager.load((rocket as any).id || rocket.name, user?.uid);
                     if (loaded) {
                         this.rocketNameInput.value = loaded.name; // Update Input
                         this.onLoad(loaded);

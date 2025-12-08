@@ -4,6 +4,7 @@ import { FirebaseService } from '../services/firebase';
 import { NotificationManager } from '../ui/NotificationManager';
 
 export interface SavedRocket {
+    id?: string; // Firebase ID (optional for localStorage compatibility)
     name: string;
     savedAt: number; // timestamp
     partCount: number;
@@ -126,8 +127,29 @@ export class RocketSaveManager {
         };
 
         if (userId) {
-            // Save to Firebase - remove undefined values first
-            const id = `rocket_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+            // Save to Firebase - determine the ID to use
+            let rocketId: string;
+
+            // 1. If assembly already has an ID (loaded rocket), use it for UPDATE
+            if (assembly.id) {
+                rocketId = assembly.id;
+                console.log(`Updating existing rocket with ID: ${rocketId}`);
+            } else {
+                // 2. Check if a rocket with this name already exists
+                const existingRockets = await FirebaseService.loadRockets(userId);
+                const existingRocket = existingRockets.find((r: any) => r.name === trimmedName);
+
+                if (existingRocket) {
+                    // Reuse the existing rocket's ID to overwrite it
+                    rocketId = existingRocket.id;
+                    console.log(`Overwriting existing rocket "${trimmedName}" with ID: ${rocketId}`);
+                } else {
+                    // 3. Create a new ID for a new rocket
+                    rocketId = `rocket_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+                    console.log(`Creating new rocket with ID: ${rocketId}`);
+                }
+            }
+
             const dataToSave = this.removeUndefined({
                 name: trimmedName,
                 partCount: assembly.parts.length,
@@ -135,7 +157,11 @@ export class RocketSaveManager {
                 ...serialized
             });
 
-            await FirebaseService.saveRocket(userId, id, dataToSave);
+            await FirebaseService.saveRocket(userId, rocketId, dataToSave);
+
+            // Update the assembly's ID after save
+            assembly.id = rocketId;
+
             console.log(`✓ Rocket "${trimmedName}" saved to cloud`);
         } else {
             // Fallback to localStorage if not logged in
@@ -168,6 +194,7 @@ export class RocketSaveManager {
                     }));
                     assembly.rootPartId = rocket.rootPartId;
                     assembly.name = rocket.name;
+                    assembly.id = rocket.id; // Set the Firebase ID!
                     return assembly;
                 }
             } catch (e) {
@@ -216,6 +243,7 @@ export class RocketSaveManager {
             try {
                 const rockets = await FirebaseService.loadRockets(userId);
                 return rockets.map((r: any) => ({
+                    id: r.id, // Include the Firebase ID!
                     name: r.name || 'Unnamed Rocket',
                     savedAt: r.createdAt || r.updatedAt?.seconds * 1000 || Date.now(),
                     partCount: r.partCount || 0

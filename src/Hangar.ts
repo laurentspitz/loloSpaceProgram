@@ -94,6 +94,16 @@ export class Hangar {
                 // Back callback
                 window.dispatchEvent(new CustomEvent('navigate-menu'));
             },
+            () => {
+                // New callback - clear the assembly
+                this.assembly.parts = [];
+                this.assembly.rootPartId = null;
+                this.assembly.name = 'Untitled Rocket';
+                this.assembly.id = undefined; // Clear the ID for new rocket
+                this.ui.rocketNameInput.value = 'Untitled Rocket';
+                this.scene.update();
+                this.ui.updateStats();
+            },
             (active) => {
                 // Toggle Mirror
                 this.dragDropManager.setMirrorMode(active);
