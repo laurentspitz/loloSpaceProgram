@@ -34,16 +34,43 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Initialize Firebase with Fallback
+let app: any;
+let auth: any;
+let db: any;
+let isInitialized = false;
 
-// Initialize Firestore with offline persistence
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-    })
-});
+try {
+    // Check if critical config is present to avoid "invalid-api-key" error before it happens?
+    // Actually, initializeApp throws if apiKey is missing/invalid format, OR later calls do.
+    // The user's error was "auth/invalid-api-key".
+
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+
+    // Initialize Firestore with offline persistence
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    });
+
+    isInitialized = true;
+    console.log("Firebase initialized successfully.");
+
+} catch (error) {
+    console.warn("⚠️ Firebase Initialization Failed - Starting in OFFLINE Mode.");
+    console.warn("Error details:", error);
+
+    // Mock objects to prevent immediate crashes on property access (like auth.currentUser)
+    auth = {
+        currentUser: null,
+        // Mock onAuthStateChanged to immediately return 'null' user
+        onAuthStateChanged: (cb: any) => { cb(null); return () => { }; }
+    };
+    db = {};
+    isInitialized = false;
+}
 
 // Auth Providers
 const googleProvider = new GoogleAuthProvider();
@@ -59,12 +86,24 @@ export interface GameState {
     };
 }
 
+// Helper to check init
+const checkInit = () => {
+    if (!isInitialized) {
+        throw new Error("Game is in OFFLINE mode. Cloud features are disabled.");
+    }
+};
+
 export const FirebaseService = {
     auth,
     db,
+    isInitialized, // Public flag
 
     // --- Auth ---
     loginWithGoogle: async () => {
+        if (!isInitialized) {
+            console.warn("Cannot login: Offline Mode");
+            return null;
+        }
         try {
             const result = await signInWithPopup(auth, googleProvider);
             return result.user;
@@ -75,6 +114,7 @@ export const FirebaseService = {
     },
 
     logout: async () => {
+        if (!isInitialized) return;
         try {
             await signOut(auth);
         } catch (error) {
@@ -84,11 +124,17 @@ export const FirebaseService = {
     },
 
     onAuthStateChanged: (callback: (user: User | null) => void) => {
+        if (!isInitialized) {
+            // Immediately callback with null
+            callback(null);
+            return () => { }; // Unsubscribe no-op
+        }
         return onAuthStateChanged(auth, callback);
     },
 
     // --- Database ---
     saveGame: async (userId: string, slotName: string, data: any) => {
+        checkInit();
         try {
             const gameRef = doc(db, 'users', userId, 'saves', slotName);
             await setDoc(gameRef, {
@@ -103,6 +149,7 @@ export const FirebaseService = {
     },
 
     loadGame: async (userId: string, slotName: string) => {
+        checkInit();
         try {
             const gameRef = doc(db, 'users', userId, 'saves', slotName);
             const docSnap = await getDoc(gameRef);
@@ -120,6 +167,7 @@ export const FirebaseService = {
     },
 
     listSaves: async (userId: string) => {
+        checkInit();
         try {
             const savesRef = collection(db, 'users', userId, 'saves');
             const querySnapshot = await getDocs(savesRef);
@@ -134,6 +182,7 @@ export const FirebaseService = {
     },
 
     deleteGame: async (userId: string, slotName: string) => {
+        checkInit();
         try {
             const gameRef = doc(db, 'users', userId, 'saves', slotName);
             await deleteDoc(gameRef);
@@ -145,6 +194,7 @@ export const FirebaseService = {
     },
 
     checkConnection: async () => {
+        if (!isInitialized) return false;
         try {
             // Try to read a non-existent document just to test connection
             const testRef = doc(db, 'system', 'ping');
@@ -157,6 +207,7 @@ export const FirebaseService = {
 
     // --- Hangar Rockets ---
     saveRocket: async (userId: string, rocketId: string, rocketData: any) => {
+        checkInit();
         try {
             const rocketRef = doc(db, 'users', userId, 'rockets', rocketId);
             await setDoc(rocketRef, {
@@ -171,6 +222,7 @@ export const FirebaseService = {
     },
 
     loadRockets: async (userId: string) => {
+        checkInit();
         try {
             const rocketsRef = collection(db, 'users', userId, 'rockets');
             const querySnapshot = await getDocs(rocketsRef);
@@ -185,6 +237,7 @@ export const FirebaseService = {
     },
 
     deleteRocket: async (userId: string, rocketId: string) => {
+        checkInit();
         try {
             const rocketRef = doc(db, 'users', userId, 'rockets', rocketId);
             await deleteDoc(rocketRef);
@@ -196,24 +249,21 @@ export const FirebaseService = {
     },
 
     // --- User Settings ---
-    /**
-     * Save user settings (keyboard controls, preferences, etc.)
-     */
     saveUserSettings: async (userId: string, settings: any) => {
+        if (!isInitialized) return; // Silent fail for settings in offline mode? Or throw?
+        // Silent is better for UX, just doesn't persist to cloud.
         try {
             const settingsRef = doc(db, 'users', userId, 'settings', 'preferences');
             await setDoc(settingsRef, settings, { merge: true });
             console.log('✓ User settings saved');
         } catch (error) {
             console.error('Error saving user settings:', error);
-            throw error;
+            // Don't throw, just log
         }
     },
 
-    /**
-     * Load user settings
-     */
     loadUserSettings: async (userId: string) => {
+        if (!isInitialized) return null;
         try {
             const settingsRef = doc(db, 'users', userId, 'settings', 'preferences');
             const docSnap = await getDoc(settingsRef);
@@ -226,7 +276,7 @@ export const FirebaseService = {
             }
         } catch (error) {
             console.error('Error loading user settings:', error);
-            throw error;
+            return null; // Don't throw
         }
     }
 };
