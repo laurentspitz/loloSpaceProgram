@@ -7,6 +7,7 @@ export class SettingsPanel {
     container: HTMLDivElement;
     onClose: () => void;
     private nicknameInput: HTMLInputElement | null = null;
+    private activeBinding: { action: keyof ControlConfig; element: HTMLSpanElement } | null = null;
     settings: any = {};
 
     constructor(onClose: () => void) {

@@ -179,7 +179,7 @@ export class RocketSaveManager {
         if (userId) {
             // Try loading from Firebase
             try {
-                const rockets = await FirebaseService.loadRockets(userId);
+                const rockets = await FirebaseService.loadRockets(userId) as any[];
                 const rocket = rockets.find((r: any) => r.id === nameOrId || r.name === nameOrId);
 
                 if (rocket && rocket.parts) {

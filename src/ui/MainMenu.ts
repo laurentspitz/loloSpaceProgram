@@ -1,7 +1,5 @@
 import { SettingsPanel } from './SettingsPanel';
 import { AuthMenu } from './AuthMenu';
-import { FirebaseService } from '../services/firebase';
-import { NotificationManager } from './NotificationManager';
 import * as THREE from 'three';
 import { Background } from '../rendering/Background';
 
@@ -172,34 +170,10 @@ export class MainMenu {
         this.renderer.render(this.scene, this.camera);
     };
 
-    private async handleSaveGame() {
-        if (!this.authMenu.user) {
-            NotificationManager.show("Please login to save your game!", 'error');
-            return;
-        }
-
-        const game = (window as any).game;
-        if (!game || !game.rocket) {
-            NotificationManager.show("No active game to save!", 'error');
-            return;
-        }
-
-        try {
-            const state = game.serializeState();
-            if (state) {
-                await FirebaseService.saveGame(this.authMenu.user.uid, 'quicksave', state);
-                NotificationManager.show("Game Saved Successfully!", 'success');
-            }
-        } catch (e: any) {
-            console.error(e);
-            NotificationManager.show("Failed to save: " + e.message, 'error');
-        }
-    }
-
     private async handleLoadGame(btn?: HTMLButtonElement) {
         // Show save slot selector in load mode
         const { SaveSlotSelector } = await import('./SaveSlotSelector');
-        const selector = new SaveSlotSelector('load', async (slotId, slotData) => {
+        const selector = new SaveSlotSelector('load', async (_slotId, slotData) => {
             if (btn) {
                 btn.disabled = true;
                 btn.textContent = "📂 Loading...";

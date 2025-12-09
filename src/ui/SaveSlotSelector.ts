@@ -6,7 +6,7 @@ import { SaveSlotManager, type SaveSlot } from '../services/SaveSlotManager';
 import { FirebaseService } from '../services/firebase';
 
 export class SaveSlotSelector {
-    private onSlotSelected: (slotId: string, slotData: any) => void;
+    private onSlotSelected: (slotId: string, slotData?: any) => void;
     private mode: 'save' | 'load';
     private overlay: HTMLDivElement | null = null;
 

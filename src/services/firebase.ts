@@ -9,7 +9,6 @@ import {
 } from 'firebase/auth';
 import type { User } from 'firebase/auth';
 import {
-    getFirestore,
     doc,
     setDoc,
     getDoc,
