@@ -1,6 +1,8 @@
 import type { BasePart } from './BasePart';
 import type { PartDefinition } from '../hangar/PartDefinition';
 import { Vector2 } from '../core/Vector2';
+import { ThemeRegistry } from '../ui/ThemeRegistry';
+import type { CockpitTheme } from '../ui/CockpitTheme';
 
 /**
  * Automatic part loader using Vite's import.meta.glob
@@ -21,7 +23,7 @@ export class PartLoader {
         try {
             // Auto-discover all part modules
             // Vite will bundle these at build time
-            const partModules = import.meta.glob<{ default: BasePart }>('./*/index.ts', {
+            const partModules = import.meta.glob<{ default: BasePart, cockpitTheme?: CockpitTheme }>('./*/index.ts', {
                 eager: false // Lazy load for better performance
             });
 
@@ -32,6 +34,11 @@ export class PartLoader {
 
                     if (!part || !part.id || !part.config) {
                         continue;
+                    }
+
+                    // Auto-register theme if exported
+                    if (module.cockpitTheme) {
+                        ThemeRegistry.register(module.cockpitTheme);
                     }
 
                     this.loadedParts.set(part.id, part);
@@ -92,7 +99,8 @@ export class PartLoader {
                 direction: new Vector2(node.direction.x, node.direction.y),
                 type: node.type
             })),
-            effect: part.config.visual?.effect
+            effect: part.config.visual?.effect,
+            cockpit: part.config.cockpit
         };
     }
 }

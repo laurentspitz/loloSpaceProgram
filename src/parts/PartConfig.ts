@@ -36,6 +36,9 @@ export interface PartConfig {
         dragCoeffDeployed: number;
         deployedArea: number; // m^2
     };
+    cockpit?: {
+        themeId: string;
+    };
 }
 
 /**

@@ -1,20 +1,20 @@
 {
-    "id": "crew_dragon_pod",
-    "name": "Crew Dragon Pod",
+    "id": "apollo_capsule",
+    "name": "Apollo Command Module",
     "type": "capsule",
-    "description": "A futuristic capsule from SpaceX. Reliable, reusable, and stylish.",
+    "description": "Legacy command module from the Apollo era. Proven reliability.",
     "dimensions": {
         "width": 2.5,
         "height": 2.3
     },
     "stats": {
         "mass": 950,
-        "cost": 35000000,
-        "electricity": 100,
-        "sasConsumption": 0.4
+        "cost": 2500000,
+        "electricity": 80,
+        "sasConsumption": 0.3
     },
     "cockpit": {
-        "themeId": "dragon"
+        "themeId": "apollo"
     },
     "nodes": [
         {

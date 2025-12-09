@@ -21,5 +21,10 @@ export class CrewDragonPod extends BasePart {
     }
 }
 
+import { DragonCockpit } from './DragonCockpit';
+
+// Export the theme instance for auto-registration
+export const cockpitTheme = new DragonCockpit();
+
 // Export an instance as the default export
 export default new CrewDragonPod();

@@ -31,4 +31,7 @@ export interface PartDefinition {
     stats: PartStats;
     nodes: ConnectionNode[];
     effect?: 'standard' | 'blue_flame' | 'rcs';
+    cockpit?: {
+        themeId: string;
+    };
 }
