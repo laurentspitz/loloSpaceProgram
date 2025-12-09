@@ -32,14 +32,10 @@ export class SaveSlotSelector {
 
         // Create dialog
         const dialog = document.createElement('div');
-        dialog.style.backgroundColor = '#1a1a1a';
-        dialog.style.border = '2px solid #00aaff';
-        dialog.style.borderRadius = '12px';
-        dialog.style.padding = '30px';
+        dialog.className = 'game-modal-content';
         dialog.style.maxWidth = '700px';
         dialog.style.maxHeight = '80vh';
         dialog.style.overflowY = 'auto';
-        dialog.style.boxShadow = '0 0 30px rgba(0, 170, 255, 0.5)';
 
         // Title
         const title = document.createElement('h2');
@@ -100,13 +96,12 @@ export class SaveSlotSelector {
 
     private createSlotItem(slot: SaveSlot): HTMLDivElement {
         const item = document.createElement('div');
+        item.className = 'game-panel'; // Use game panel style for slots
         item.style.display = 'flex';
         item.style.justifyContent = 'space-between';
         item.style.alignItems = 'center';
         item.style.padding = '15px';
         item.style.marginBottom = '10px';
-        item.style.backgroundColor = '#2a2a2a';
-        item.style.borderRadius = '8px';
         item.style.cursor = this.mode === 'load' ? 'pointer' : 'default';
         item.style.transition = 'all 0.2s ease';
 
@@ -221,10 +216,7 @@ export class SaveSlotSelector {
         dialogOverlay.style.zIndex = '3001';
 
         const dialog = document.createElement('div');
-        dialog.style.backgroundColor = '#2a2a2a';
-        dialog.style.border = '2px solid #00aaff';
-        dialog.style.borderRadius = '8px';
-        dialog.style.padding = '25px';
+        dialog.className = 'game-modal-content';
         dialog.style.minWidth = '400px';
 
         const title = document.createElement('h3');
@@ -239,7 +231,7 @@ export class SaveSlotSelector {
         input.style.width = '100%';
         input.style.padding = '10px';
         input.style.fontSize = '16px';
-        input.style.backgroundColor = '#1a1a1a';
+        input.style.backgroundColor = 'rgba(0,0,0,0.5)';
         input.style.color = '#fff';
         input.style.border = '1px solid #00aaff';
         input.style.borderRadius = '4px';
@@ -290,11 +282,10 @@ export class SaveSlotSelector {
         dialogOverlay.style.zIndex = '3001';
 
         const dialog = document.createElement('div');
-        dialog.style.backgroundColor = '#2a2a2a';
-        dialog.style.border = '2px solid #ff4444';
-        dialog.style.borderRadius = '8px';
-        dialog.style.padding = '25px';
+        dialog.className = 'game-modal-content';
         dialog.style.minWidth = '400px';
+        dialog.style.borderColor = '#ff4444'; // Override to red for danger
+        dialog.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.3)';
 
         const titleEl = document.createElement('h3');
         titleEl.textContent = title;
@@ -339,28 +330,14 @@ export class SaveSlotSelector {
     private createButton(text: string, color: string): HTMLButtonElement {
         const btn = document.createElement('button');
         btn.textContent = text;
-        btn.style.padding = '10px 20px';
-        btn.style.fontSize = '14px';
-        btn.style.backgroundColor = 'transparent';
+        btn.className = 'game-btn';
         btn.style.color = color;
-        btn.style.border = `2px solid ${color}`;
-        btn.style.borderRadius = '6px';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'all 0.3s ease';
+        btn.style.borderColor = color;
+        // btn.style.padding = '10px 20px'; // Class has padding, but maybe we want larger?
+        btn.style.fontSize = '14px';
         btn.style.fontWeight = 'bold';
 
-        btn.onmouseover = () => {
-            btn.style.backgroundColor = color;
-            btn.style.color = '#000';
-            btn.style.boxShadow = `0 0 12px ${color}`;
-        };
-
-        btn.onmouseout = () => {
-            btn.style.backgroundColor = 'transparent';
-            btn.style.color = color;
-            btn.style.boxShadow = 'none';
-        };
-
+        btn.onclick = () => { }; // Replaced by caller
         return btn;
     }
 

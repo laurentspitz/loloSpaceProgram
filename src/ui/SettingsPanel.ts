@@ -30,15 +30,11 @@ export class SettingsPanel {
 
         // Create panel
         const panel = document.createElement('div');
-        panel.style.backgroundColor = '#1a1a1a';
-        panel.style.border = '2px solid #00aaff';
-        panel.style.borderRadius = '12px';
-        panel.style.padding = '30px';
+        panel.className = 'game-modal-content';
         panel.style.maxWidth = '600px';
         panel.style.width = '90%';
         panel.style.maxHeight = '85vh';
         panel.style.overflowY = 'auto';
-        panel.style.boxShadow = '0 0 30px rgba(0, 170, 255, 0.5)';
         this.container.appendChild(panel);
 
         // Title
@@ -156,6 +152,7 @@ export class SettingsPanel {
         document.addEventListener('keydown', this.handleKeyPress);
 
         document.body.appendChild(this.container);
+
     }
 
     private addControlSection(parent: HTMLElement, title: string, controlsList: [keyof ControlConfig, string][]) {
@@ -369,13 +366,9 @@ export class SettingsPanel {
 
         // Create dialog
         const dialog = document.createElement('div');
-        dialog.style.backgroundColor = '#2a2a2a';
-        dialog.style.border = '2px solid #00aaff';
-        dialog.style.borderRadius = '8px';
-        dialog.style.padding = '25px';
+        dialog.className = 'game-modal-content';
         dialog.style.minWidth = '400px';
         dialog.style.maxWidth = '500px';
-        dialog.style.boxShadow = '0 0 20px rgba(0, 170, 255, 0.5)';
 
         // Title
         const titleEl = document.createElement('h3');
@@ -444,26 +437,18 @@ export class SettingsPanel {
     private createButton(text: string, color: string): HTMLButtonElement {
         const btn = document.createElement('button');
         btn.textContent = text;
-        btn.style.padding = '10px 20px';
+        btn.className = 'game-btn'; // Use global class
+        // btn.style.padding = '10px 20px'; // Override if needed
         btn.style.fontSize = '16px';
-        btn.style.backgroundColor = 'transparent';
         btn.style.color = color;
-        btn.style.border = `2px solid ${color}`;
-        btn.style.borderRadius = '6px';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'all 0.3s ease';
+        btn.style.borderColor = color;
 
-        btn.onmouseover = () => {
-            btn.style.backgroundColor = color;
-            btn.style.color = '#000';
-            btn.style.boxShadow = `0 0 12px ${color}`;
-        };
-
-        btn.onmouseout = () => {
-            btn.style.backgroundColor = 'transparent';
-            btn.style.color = color;
-            btn.style.boxShadow = 'none';
-        };
+        // No manual hover overrides needed as game-btn handles it generally, 
+        // but preserving specific color border logic if desired.
+        // Let's strip manual hover to rely on class + color.
+        // Wait, game-btn hover changes bgcolor to rgba(80,80,80).
+        // The specific color logic here was specialized.
+        // Let's keep it simple: Use game-btn, set color/border.
 
         return btn;
     }

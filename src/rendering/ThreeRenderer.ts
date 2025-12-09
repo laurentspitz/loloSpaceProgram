@@ -200,6 +200,12 @@ export class ThreeRenderer {
         this.camera.updateProjectionMatrix();
     }
 
+    resetCamera() {
+        this.followedBody = null;
+        this.scale = 1e-9;
+        this.offset = new Vector2(0, 0);
+    }
+
     getCenter(): Vector2 {
         if (this.followedBody) {
             return this.getVisualPosition(this.followedBody);

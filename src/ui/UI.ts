@@ -37,6 +37,8 @@ export class UI {
     fuelGaugeBar: HTMLElement | null = null; // Replaces throttleSlider
     electricityDisplay: HTMLElement | null = null;
     electricityGaugeBar: HTMLElement | null = null;
+    timeSpeedDisplay: HTMLElement | null = null;
+    lastTimeWarp: number = 1; // Stores warp speed before pausing for settings
 
     // Autopilot state
     autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver' = 'off';
@@ -50,15 +52,34 @@ export class UI {
     maneuverNodeManager: ManeuverNodeManager | null = null;
     maneuverNodeUI: ManeuverNodeUI | null = null;
 
+    // Container for left-side panels to stack them vertically
+    leftPanelContainer: HTMLDivElement | null = null;
+
     constructor(renderer: Renderer | ThreeRenderer) {
         this.renderer = renderer;
+        // precise order of creation to ensure proper layering if needed, 
+        // though flex container handles layout.
+        this.initLeftPanelContainer();
         this.createControls();
         this.createMinimap();
         this.createRocketInfoPanel();
-        this.createControlsHelp();
         this.createDebugMenu();
         this.setupInput();
         this.initializeNavball();
+    }
+
+    initLeftPanelContainer() {
+        if (!this.leftPanelContainer) {
+            this.leftPanelContainer = document.createElement('div');
+            this.leftPanelContainer.style.position = 'absolute';
+            this.leftPanelContainer.style.top = '10px';
+            this.leftPanelContainer.style.left = '10px';
+            this.leftPanelContainer.style.display = 'flex';
+            this.leftPanelContainer.style.flexDirection = 'column';
+            this.leftPanelContainer.style.gap = '10px';
+            this.leftPanelContainer.style.pointerEvents = 'none'; // Let clicks pass through gaps
+            document.body.appendChild(this.leftPanelContainer);
+        }
     }
 
     init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager) {
@@ -83,73 +104,200 @@ export class UI {
         this.createSelectionDropdown();
     }
 
-    createControls() {
+    /**
+     * Helper to create a collapsible panel
+     */
+    private createCollapsiblePanel(titleText: string, content: HTMLElement, isCollapsed: boolean = true, width: string = '200px'): { container: HTMLDivElement, toggle: () => void } {
         const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.top = '10px';
-        container.style.left = '10px';
-        container.style.display = 'flex';
-        container.style.gap = '10px';
+        container.className = 'game-panel'; // Use global class
+        container.style.minWidth = width;
+        // Keep these if specific positioning logic relies on them, otherwise class handles margin
+        container.style.marginBottom = '0';
 
-        const focusRocketBtn = document.createElement('button');
-        focusRocketBtn.innerText = '🚀 Focus Rocket';
-        focusRocketBtn.style.fontSize = '14px';
-        focusRocketBtn.style.cursor = 'pointer';
-        focusRocketBtn.style.backgroundColor = '#333';
-        focusRocketBtn.style.color = '#fff';
-        focusRocketBtn.style.border = '1px solid #555';
-        focusRocketBtn.style.borderRadius = '3px';
-        focusRocketBtn.style.marginBottom = '5px';
-        focusRocketBtn.style.padding = '5px 10px';
+        // Title bar
+        const titleBar = document.createElement('div');
+        titleBar.className = 'panel-header';
+        if (isCollapsed) titleBar.classList.add('collapsed');
 
-        focusRocketBtn.onclick = () => {
-            // Check if renderer is ThreeRenderer (has currentRocket property)
+        const title = document.createElement('div');
+        title.className = 'panel-title';
+        title.innerText = titleText;
+
+        const toggleBtn = document.createElement('span');
+        toggleBtn.className = 'panel-toggle';
+        toggleBtn.innerText = isCollapsed ? '+' : '−';
+
+        titleBar.appendChild(title);
+        titleBar.appendChild(toggleBtn);
+        container.appendChild(titleBar);
+
+        // Content Container
+        const contentContainer = document.createElement('div');
+        contentContainer.style.overflow = 'hidden';
+        contentContainer.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
+
+        // Initial state
+        if (isCollapsed) {
+            contentContainer.style.maxHeight = '0px';
+            contentContainer.style.opacity = '0';
+        } else {
+            contentContainer.style.maxHeight = '500px'; // Arbitrary max
+            contentContainer.style.opacity = '1';
+        }
+
+        contentContainer.appendChild(content);
+        container.appendChild(contentContainer);
+
+        const toggle = () => {
+            isCollapsed = !isCollapsed;
+            toggleBtn.innerText = isCollapsed ? '+' : '−';
+
+            if (isCollapsed) {
+                contentContainer.style.maxHeight = '0px';
+                contentContainer.style.opacity = '0';
+                titleBar.classList.add('collapsed');
+            } else {
+                contentContainer.style.maxHeight = '500px';
+                contentContainer.style.opacity = '1';
+                titleBar.classList.remove('collapsed');
+            }
+        };
+
+        titleBar.onclick = toggle;
+
+        return { container, toggle };
+    }
+
+    createControls() {
+        // Main container logic moved to initLeftPanelContainer
+        // Use this.leftPanelContainer for appending
+
+        // --- Mission Controls Panel ---
+        const controlsContent = document.createElement('div');
+        controlsContent.style.display = 'flex';
+        controlsContent.style.flexDirection = 'column';
+        controlsContent.style.gap = '5px';
+
+        const createBtn = (text: string, onClick: () => void, title?: string) => {
+            const btn = document.createElement('button');
+            btn.innerText = text;
+            if (title) btn.title = title;
+            btn.className = 'game-btn'; // Use global class
+            btn.style.width = '100%';
+            btn.onclick = onClick;
+            return btn;
+        };
+
+        const focusRocketBtn = createBtn('🚀 Focus Rocket', () => {
             if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
                 this.renderer.followedBody = this.renderer.currentRocket.body;
                 this.renderer.autoZoomToBody(this.renderer.currentRocket.body);
+                // Clear dropdown selection
                 const select = document.getElementById('planet-select') as HTMLSelectElement;
                 if (select) select.value = "";
             }
-        };
+        });
+        controlsContent.appendChild(focusRocketBtn);
 
-        // Show Trajectory Button
-        const trajectoryBtn = document.createElement('button');
-        trajectoryBtn.innerText = '💫 Trajectory';
-        trajectoryBtn.title = 'Toggle Trajectory';
-        trajectoryBtn.style.fontSize = '14px';
-        trajectoryBtn.style.cursor = 'pointer';
-        trajectoryBtn.style.backgroundColor = '#333';
-        trajectoryBtn.style.color = '#fff'; // White text
-        trajectoryBtn.style.border = '1px solid #555';
-        trajectoryBtn.style.borderRadius = '3px';
-        trajectoryBtn.style.marginBottom = '5px';
-        trajectoryBtn.style.padding = '5px 10px';
-
-        trajectoryBtn.onclick = () => {
+        // Trajectory Button
+        const trajectoryBtn = createBtn('💫 Trajectory', () => {
             if (this.renderer instanceof ThreeRenderer) {
                 this.renderer.showTrajectory = !this.renderer.showTrajectory;
-                // Visual feedback: Blue background when active, Dark when inactive
-                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : '#333';
-                // Text always white
-                trajectoryBtn.style.color = '#fff';
+                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : ''; // Keep dynamic style
             }
-        };
+        }, 'Toggle Trajectory');
+        controlsContent.appendChild(trajectoryBtn);
 
+        // Reset Camera
+        const resetCamBtn = createBtn('🎥 Reset Camera', () => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.resetCamera();
+            }
+        });
+        controlsContent.appendChild(resetCamBtn);
 
-        // Save Game Button
-        const saveBtn = document.createElement('button');
-        saveBtn.innerText = '💾 Save';
-        saveBtn.title = 'Save Game';
-        saveBtn.style.fontSize = '14px';
-        saveBtn.style.cursor = 'pointer';
-        saveBtn.style.backgroundColor = '#333';
-        saveBtn.style.color = '#fff';
-        saveBtn.style.border = '1px solid #555';
-        saveBtn.style.borderRadius = '3px';
-        saveBtn.style.marginBottom = '5px';
-        saveBtn.style.padding = '5px 10px';
+        // ⚙️ SETTINGS BUTTON (Moved here)
+        const settingsBtn = createBtn('⚙️ SETTINGS', async () => {
+            // PAUSE GAME
+            this.lastTimeWarp = this.currentTimeWarp;
+            if (this.currentTimeWarp !== 0) {
+                this.setTimeWarp(0);
+            }
 
-        saveBtn.onclick = async () => {
+            // OPEN SETTINGS MODAL
+            const { SettingsPanel } = await import('./SettingsPanel');
+            const panel = new SettingsPanel(() => {
+                // RESUME GAME ON CLOSE
+                panel.dispose();
+
+                const resumeSpeed = (this as any).lastTimeWarp || 1;
+                if (resumeSpeed > 0) {
+                    this.setTimeWarp(resumeSpeed);
+                }
+            });
+        });
+        // Insert Settings button before Save/Exit or at layout discretion. 
+        // User said "with other buttons". Let's put it above Back to Menu?
+        // Current order: Reset Camera, Back, Save, Load.
+        // Let's append it to controlsContent alongside others.
+        controlsContent.insertBefore(settingsBtn, resetCamBtn.nextSibling); // Put it after Reset Camera button
+
+        // Back to Menu Button
+        const backBtn = createBtn('⬅ Back to Menu', async () => {
+            const { FirebaseService } = await import('../services/firebase');
+            const { NotificationManager } = await import('./NotificationManager');
+            const user = FirebaseService.auth.currentUser;
+
+            if (user) {
+                // User Logged In: Prompt to Save & Exit using Custom Dialog
+                this.showConfirmDialog(
+                    "Save Progress?",
+                    "Would you like to SAVE your progress before exiting to the main menu?",
+                    async () => {
+                        // YES -> Open Save Selector
+                        const { SaveSlotSelector } = await import('./SaveSlotSelector');
+                        const { SaveSlotManager } = await import('../services/SaveSlotManager');
+
+                        const selector = new SaveSlotSelector('save', async (slotId) => {
+                            try {
+                                if ((window as any).game) {
+                                    const state = (window as any).game.serializeState();
+                                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
+                                    NotificationManager.show("Game Saved! Exiting...", 'success');
+                                    setTimeout(() => window.location.reload(), 1000);
+                                } else {
+                                    window.location.reload();
+                                }
+                            } catch (e: any) {
+                                console.error("Save failed", e);
+                                NotificationManager.show("Save failed! NOT escaping.", 'error');
+                            }
+                        });
+                        await selector.show();
+                    },
+                    () => {
+                        // NO -> Confirm Exit without saving
+                        this.showConfirmDialog(
+                            "Exit without Saving?",
+                            "Are you sure? Unsaved progress will be lost.",
+                            () => window.location.reload(),
+                            () => { } // Cancel -> Do nothing
+                        );
+                    }
+                );
+
+            } else {
+                // Guest: Warn about data loss.
+                this.showConfirmDialog(
+                    "Exit Game?",
+                    "WARNING: You are playing as Guest. All progress will be LOST if you exit.",
+                    () => window.location.reload(),
+                    () => { }
+                );
+            }
+        });
+        controlsContent.appendChild(backBtn);
+        const saveBtn = createBtn('💾 Save Game', async () => {
             const { FirebaseService } = await import('../services/firebase');
             const { NotificationManager } = await import('./NotificationManager');
             const { SaveSlotSelector } = await import('./SaveSlotSelector');
@@ -187,90 +335,129 @@ export class UI {
             });
 
             await selector.show();
-        };
-        container.appendChild(focusRocketBtn);
-        container.appendChild(trajectoryBtn);
-        container.appendChild(saveBtn);
-        document.body.appendChild(container);
+        });
+        controlsContent.appendChild(saveBtn);
 
-        // Time Warp Controls with Date Display
-        const timeContainer = document.createElement('div');
-        timeContainer.style.position = 'absolute';
-        timeContainer.style.top = '10px';
-        timeContainer.style.right = '10px';
-        timeContainer.style.display = 'flex';
-        timeContainer.style.flexDirection = 'column';
-        timeContainer.style.alignItems = 'flex-end';
-        timeContainer.style.gap = '5px';
+        // Create Collapsible Panel for Controls
+        const { container: controlsPanel } = this.createCollapsiblePanel('MISSION CONTROLS', controlsContent, true); // Default collapsed
+
+        // Append to shared Left Panel Container
+        if (this.leftPanelContainer) {
+            this.leftPanelContainer.appendChild(controlsPanel);
+        } else {
+            // Fallback if not initialized for some reason
+            document.body.appendChild(controlsPanel);
+        }
+
+        this.createTimeControls();
+    }
+
+    createTimeControls() {
+        // Content Wrapper
+        const content = document.createElement('div');
+        content.style.display = 'flex';
+        content.style.flexDirection = 'column';
+        content.style.gap = '8px';
 
         // Date/Time Display
         const dateDisplay = document.createElement('div');
         dateDisplay.id = 'game-date-display';
         dateDisplay.style.color = '#88ccff';
         dateDisplay.style.fontFamily = 'monospace';
-        dateDisplay.style.fontSize = '14px';
-        dateDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        dateDisplay.style.padding = '5px 10px';
-        dateDisplay.style.borderRadius = '5px';
-        dateDisplay.innerText = '2025-12-07 00:00:00';
-        timeContainer.appendChild(dateDisplay);
+        dateDisplay.style.fontSize = '12px';
+        dateDisplay.style.display = 'flex';
+        dateDisplay.style.justifyContent = 'space-between';
+        // Initial content
+        dateDisplay.innerHTML = '<span style="color:#aaa">Date:</span> <span id="game-date-val">2025-12-07 00:00:00</span>';
+        content.appendChild(dateDisplay);
 
-        // Elapsed time (more compact display)
+
+        // Elapsed time
         const elapsedDisplay = document.createElement('div');
         elapsedDisplay.id = 'game-elapsed-display';
         elapsedDisplay.style.color = '#aaaaaa';
         elapsedDisplay.style.fontFamily = 'monospace';
         elapsedDisplay.style.fontSize = '11px';
-        elapsedDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        elapsedDisplay.style.padding = '3px 10px';
-        elapsedDisplay.style.borderRadius = '5px';
-        elapsedDisplay.innerText = 'MET: 0d 0h 0m 0s';
-        timeContainer.appendChild(elapsedDisplay);
+        elapsedDisplay.style.textAlign = 'right';
+        elapsedDisplay.innerText = 'T+ 00:00:00';
+        content.appendChild(elapsedDisplay);
 
-        // Time warp buttons container
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.style.display = 'flex';
-        buttonsContainer.style.gap = '5px';
-        buttonsContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        buttonsContainer.style.padding = '5px';
-        buttonsContainer.style.borderRadius = '5px';
+        // Divider
+        const divider = document.createElement('div');
+        divider.style.width = '100%';
+        divider.style.height = '1px';
+        divider.style.backgroundColor = '#555';
+        content.appendChild(divider);
 
-        const speedDisplay = document.createElement('span');
-        speedDisplay.style.color = 'white';
-        speedDisplay.style.fontFamily = 'monospace';
-        speedDisplay.style.alignSelf = 'center';
-        speedDisplay.style.minWidth = '60px';
-        speedDisplay.innerText = '1x';
+        // Time warp controls row
+        const controlsRow = document.createElement('div');
+        controlsRow.style.display = 'flex';
+        controlsRow.style.justifyContent = 'flex-end';
+        controlsRow.style.alignItems = 'center';
+        controlsRow.style.gap = '2px'; // Gap between buttons
 
         const decreaseBtn = document.createElement('button');
-        decreaseBtn.innerText = '<<';
+        decreaseBtn.innerHTML = '&#9194;'; // Reverse/Rewind symbol
+        decreaseBtn.title = "Decrease Warp (,)";
+        decreaseBtn.className = 'game-btn game-btn-icon';
         decreaseBtn.onclick = () => this.changeTimeWarp(-1, speedDisplay);
 
         const pauseBtn = document.createElement('button');
-        pauseBtn.innerText = '||';
+        pauseBtn.innerHTML = '&#9208;'; // Pause symbol
+        pauseBtn.title = "Stop Warp (/)";
+        pauseBtn.className = 'game-btn game-btn-icon';
+        pauseBtn.style.color = '#ff4444'; // Override specific color
         pauseBtn.onclick = () => this.setTimeWarp(0, speedDisplay);
 
         const playBtn = document.createElement('button');
-        playBtn.innerText = '>';
+        playBtn.innerHTML = '&#9654;'; // Play symbol
+        playBtn.title = "Realtime (1x)";
+        playBtn.className = 'game-btn game-btn-icon';
+        playBtn.style.color = '#00C851';
         playBtn.onclick = () => this.setTimeWarp(1, speedDisplay);
 
         const increaseBtn = document.createElement('button');
-        increaseBtn.innerText = '>>';
+        increaseBtn.innerHTML = '&#9193;'; // Fast Forward symbol
+        increaseBtn.title = "Increase Warp (.)";
+        increaseBtn.className = 'game-btn game-btn-icon';
         increaseBtn.onclick = () => this.changeTimeWarp(1, speedDisplay);
 
-        buttonsContainer.appendChild(decreaseBtn);
-        buttonsContainer.appendChild(pauseBtn);
-        buttonsContainer.appendChild(playBtn);
-        buttonsContainer.appendChild(increaseBtn);
-        buttonsContainer.appendChild(speedDisplay);
+        controlsRow.appendChild(decreaseBtn);
+        controlsRow.appendChild(pauseBtn);
+        controlsRow.appendChild(playBtn);
+        controlsRow.appendChild(increaseBtn);
 
-        timeContainer.appendChild(buttonsContainer);
-        document.body.appendChild(timeContainer);
+        // Speed Display AFTER buttons
+        const speedDisplay = document.createElement('span');
+        speedDisplay.innerText = '1x';
+        speedDisplay.style.color = '#00C851'; // Green for active time
+        speedDisplay.style.fontFamily = 'monospace';
+        speedDisplay.style.fontWeight = 'bold';
+        speedDisplay.style.minWidth = '40px';
+        speedDisplay.style.textAlign = 'center';
+        speedDisplay.style.marginLeft = '5px'; // Add spacing
+        this.timeSpeedDisplay = speedDisplay;
+        controlsRow.appendChild(speedDisplay);
+
+        content.appendChild(controlsRow);
+
+
+        // Create Collapsible Panel
+        const { container } = this.createCollapsiblePanel('TIME CONTROL', content, false, '160px');
+        container.style.position = 'absolute';
+        container.style.top = '10px';
+        container.style.right = '10px';
+        // Make it identifiable for layout if needed, though absolute right is fine.
+
+        document.body.appendChild(container);
     }
 
-    setTimeWarp(levelIndexOrValue: number, display: HTMLElement) {
+    setTimeWarp(levelIndexOrValue: number, display?: HTMLElement) {
         // If 0 or 1 passed directly
         let newWarp = levelIndexOrValue;
+
+        const targetDisplay = display || this.timeSpeedDisplay;
+        if (!targetDisplay) return;
 
         // Find nearest level if it's a value
         if (!this.warpLevels.includes(newWarp)) {
@@ -278,7 +465,13 @@ export class UI {
         }
 
         this.currentTimeWarp = newWarp;
-        display.innerText = this.currentTimeWarp + 'x';
+        targetDisplay.innerText = this.currentTimeWarp + 'x';
+
+        // Color coding
+        if (newWarp === 0) targetDisplay.style.color = '#ff4444'; // Red for pause
+        else if (newWarp === 1) targetDisplay.style.color = '#00C851'; // Green for realtime
+        else targetDisplay.style.color = '#ffbb33'; // Orange for warp
+
         if (this.onTimeWarpChange) {
             this.onTimeWarpChange(this.currentTimeWarp);
         }
@@ -302,58 +495,11 @@ export class UI {
     }
 
     createSelectionDropdown() {
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.top = '50px';
-        container.style.left = '10px';
-        container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        container.style.padding = '10px';
-        container.style.borderRadius = '5px';
-        container.style.maxHeight = '500px'; // Increased height
-        container.style.overflowY = 'auto';
-        container.style.minWidth = '280px'; // Slightly wider for hierarchy
-
-        // Title bar with collapse button
-        const titleBar = document.createElement('div');
-        titleBar.style.display = 'flex';
-        titleBar.style.justifyContent = 'space-between';
-        titleBar.style.alignItems = 'center';
-        titleBar.style.marginBottom = '10px';
-        titleBar.style.borderBottom = '1px solid rgba(255,255,255,0.3)';
-        titleBar.style.paddingBottom = '5px';
-
-        const title = document.createElement('div');
-        title.innerText = 'CELESTIAL BODIES';
-        title.style.color = 'white';
-        title.style.fontFamily = 'monospace';
-        title.style.fontWeight = 'bold';
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.innerText = '−';
-        toggleBtn.style.padding = '0 8px';
-        toggleBtn.style.fontSize = '16px';
-        toggleBtn.style.cursor = 'pointer';
-
-        const contentDiv = document.createElement('div');
-        contentDiv.style.display = 'block'; // Expanded by default? Or keep hidden? Original was hidden.
-
-        toggleBtn.onclick = () => {
-            if (contentDiv.style.display === 'none') {
-                contentDiv.style.display = 'block';
-                toggleBtn.innerText = '−';
-            } else {
-                contentDiv.style.display = 'none';
-                toggleBtn.innerText = '+';
-            }
-        };
-
-        titleBar.appendChild(title);
-        titleBar.appendChild(toggleBtn);
-        container.appendChild(titleBar);
-
         // Body list
         const bodyList = document.createElement('div');
         bodyList.id = 'body-list';
+        bodyList.style.maxHeight = '400px';
+        bodyList.style.overflowY = 'auto';
 
         // Recursive function to build hierarchy
         const buildHierarchy = (bodies: Body[], parentElement: HTMLElement, indent: number) => {
@@ -375,9 +521,18 @@ export class UI {
         const roots = this.bodies.filter(b => !b.parent);
         buildHierarchy(roots, bodyList, 0);
 
-        contentDiv.appendChild(bodyList);
-        container.appendChild(contentDiv);
-        document.body.appendChild(container);
+        const { container } = this.createCollapsiblePanel('CELESTIAL BODIES', bodyList, true); // Default collapsed
+
+        if (this.leftPanelContainer) {
+            this.leftPanelContainer.appendChild(container);
+        } else {
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'absolute';
+            wrapper.style.top = '150px';
+            wrapper.style.left = '10px';
+            wrapper.appendChild(container);
+            document.body.appendChild(wrapper);
+        }
     }
 
     /**
@@ -602,37 +757,89 @@ export class UI {
     }
 
     createMinimap() {
+        // Container for map content
+        const mapContent = document.createElement('div');
+        mapContent.style.position = 'relative';
+        mapContent.style.width = '200px';
+        mapContent.style.height = '200px';
+
         this.minimapCanvas = document.createElement('canvas');
         this.minimapCanvas.width = 200;
         this.minimapCanvas.height = 200;
-        this.minimapCanvas.style.position = 'absolute';
-        this.minimapCanvas.style.bottom = '10px';
-        this.minimapCanvas.style.right = '10px';
-        this.minimapCanvas.style.border = '1px solid white';
-        this.minimapCanvas.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        this.minimapCanvas.style.backgroundColor = 'black';
+        this.minimapCanvas.style.borderRadius = '3px'; // Inner radius
+        // No absolute positioning on canvas, it's inside the flow
 
+        mapContent.appendChild(this.minimapCanvas);
         this.minimapCtx = this.minimapCanvas.getContext('2d')!;
-        document.body.appendChild(this.minimapCanvas);
 
-        // Minimap controls
+        // Integrated Buttons (Overlay)
         const controls = document.createElement('div');
         controls.style.position = 'absolute';
-        controls.style.bottom = '220px';
-        controls.style.right = '10px';
+        controls.style.top = '5px';
+        controls.style.right = '5px';
         controls.style.display = 'flex';
-        controls.style.gap = '5px';
+        controls.style.gap = '2px';
 
         const plusBtn = document.createElement('button');
         plusBtn.innerText = '+';
+        plusBtn.className = 'game-btn game-btn-icon';
+        plusBtn.style.width = '20px';
+        plusBtn.style.height = '20px';
+        plusBtn.style.lineHeight = '18px';
         plusBtn.onclick = () => this.minimapScale *= 1.5;
 
         const minusBtn = document.createElement('button');
         minusBtn.innerText = '-';
+        minusBtn.className = 'game-btn game-btn-icon';
+        minusBtn.style.width = '20px';
+        minusBtn.style.height = '20px';
+        minusBtn.style.lineHeight = '18px';
         minusBtn.onclick = () => this.minimapScale /= 1.5;
 
         controls.appendChild(plusBtn);
         controls.appendChild(minusBtn);
-        document.body.appendChild(controls);
+        mapContent.appendChild(controls);
+
+        // Create Panel
+        // Collapsible Upwards logic:
+        // Standard createCollapsiblePanel puts Title on TOP.
+        // If we want Title on BOTTOM (so it expands up), we need flex-direction: column-reverse?
+        // User: "reste en bas et ce depli vers le haut" -> Stays at bottom and unfolds upwards.
+        // If we use standard:
+        // [Title]
+        // [Content]
+        // Anchored at Bottom.
+        // Collapsed: Only Title visible at Bottom.
+        // Expanded: Title moves UP, Content appears below it?
+        // No, if bottom is fixed:
+        // [Title] (Top = ScreenH - TitleH) -> Correct
+        // Expanded: 
+        // [Title] (Top = ScreenH - ContentH - TitleH) -> Moves UP.
+        // [Content] (Bottom = 0)
+        // This means content is BELOW title.
+        // If user wants "Unfold UP", they usually expect:
+        // [Content]
+        // [Title/Toggle]
+        // So clicking Title reveals content ABOVE it.
+        // But standard UI usually keeps Title on top.
+        // Let's stick to standard layout first as it's consistent. The "Unfold Up" effect (panel growing upwards) is achieved by bottom alignment.
+        // The only difference is whether the Title bar rides the top of the panel (standard) or stays at the bottom.
+        // "reste en bas" implies the title bar stays fixed at the bottom?
+        // If so, I should use `flex-direction: column-reverse`.
+
+        // Let's try to adapt createCollapsiblePanel slightly or just built a specific one here.
+        // Actually, just standard is fine. The Panel GROWS UPWARDS.
+        // [ Title ]  <-- Moves Up
+        // [ Map   ]  <-- Fixed at Bottom
+        // This is perfectly valid "Unfolding Up".
+
+        const { container } = this.createCollapsiblePanel('MINIMAP', mapContent, true, '200px');
+        container.style.position = 'absolute';
+        container.style.bottom = '10px';
+        container.style.right = '10px';
+
+        document.body.appendChild(container);
     }
 
     setupInput() {
@@ -786,42 +993,24 @@ export class UI {
     }
 
     createRocketInfoPanel() {
-        const panel = document.createElement('div');
-        panel.style.position = 'absolute';
-        panel.style.bottom = '10px';
-        panel.style.left = '10px';
-        panel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        panel.style.color = 'white';
-        panel.style.padding = '10px';
-        panel.style.borderRadius = '5px';
-        panel.style.fontFamily = 'monospace';
-        panel.style.fontSize = '14px';
-        panel.style.minWidth = '200px';
-        panel.style.display = 'none'; // Hidden by default until rocket exists
-
-        // Title
-        const title = document.createElement('div');
-        title.innerText = 'ROCKET TELEMETRY';
-        title.style.fontWeight = 'bold';
-        title.style.borderBottom = '1px solid #555';
-        title.style.marginBottom = '5px';
-        title.style.paddingBottom = '2px';
-        panel.appendChild(title);
+        const content = document.createElement('div');
+        content.style.display = 'flex';
+        content.style.flexDirection = 'column';
+        content.style.gap = '8px';
 
         // Fuel
         const fuelRow = document.createElement('div');
         fuelRow.style.display = 'flex';
         fuelRow.style.justifyContent = 'space-between';
         fuelRow.innerHTML = '<span>Fuel:</span> <span id="rocket-fuel">100%</span>';
-        panel.appendChild(fuelRow);
+        content.appendChild(fuelRow);
         this.fuelDisplay = fuelRow.querySelector('#rocket-fuel');
 
         // Fuel Gauge (Visual Bar)
         const fuelGaugeContainer = document.createElement('div');
-        fuelGaugeContainer.style.marginBottom = '8px';
-        fuelGaugeContainer.style.height = '10px';
+        fuelGaugeContainer.style.height = '6px'; // Slimmer
         fuelGaugeContainer.style.backgroundColor = '#333';
-        fuelGaugeContainer.style.borderRadius = '5px';
+        fuelGaugeContainer.style.borderRadius = '3px';
         fuelGaugeContainer.style.overflow = 'hidden';
         fuelGaugeContainer.style.border = '1px solid #555';
 
@@ -832,7 +1021,7 @@ export class UI {
         fuelBar.style.transition = 'width 0.2s, background-color 0.2s';
 
         fuelGaugeContainer.appendChild(fuelBar);
-        panel.appendChild(fuelGaugeContainer);
+        content.appendChild(fuelGaugeContainer);
         this.fuelGaugeBar = fuelBar;
 
         // Electricity
@@ -840,15 +1029,14 @@ export class UI {
         elecRow.style.display = 'flex';
         elecRow.style.justifyContent = 'space-between';
         elecRow.innerHTML = '<span>Electricity:</span> <span id="rocket-elec">100%</span>';
-        panel.appendChild(elecRow);
+        content.appendChild(elecRow);
         this.electricityDisplay = elecRow.querySelector('#rocket-elec');
 
         // Electricity Gauge (Visual Bar)
         const elecGaugeContainer = document.createElement('div');
-        elecGaugeContainer.style.marginBottom = '8px';
-        elecGaugeContainer.style.height = '10px';
+        elecGaugeContainer.style.height = '6px';
         elecGaugeContainer.style.backgroundColor = '#333';
-        elecGaugeContainer.style.borderRadius = '5px';
+        elecGaugeContainer.style.borderRadius = '3px';
         elecGaugeContainer.style.overflow = 'hidden';
         elecGaugeContainer.style.border = '1px solid #555';
 
@@ -859,101 +1047,200 @@ export class UI {
         elecBar.style.transition = 'width 0.2s, background-color 0.2s';
 
         elecGaugeContainer.appendChild(elecBar);
-        panel.appendChild(elecGaugeContainer);
+        content.appendChild(elecGaugeContainer);
         this.electricityGaugeBar = elecBar;
 
-        // Delta V
-        const dvRow = document.createElement('div');
-        dvRow.style.display = 'flex';
-        dvRow.style.justifyContent = 'space-between';
-        dvRow.innerHTML = '<span>Delta V:</span> <span id="rocket-dv">0 m/s</span>';
-        panel.appendChild(dvRow);
-        this.deltaVDisplay = dvRow.querySelector('#rocket-dv');
+        // Stats Grid
+        const statsGrid = document.createElement('div');
+        statsGrid.style.display = 'grid';
+        statsGrid.style.gridTemplateColumns = '1fr 1fr';
+        statsGrid.style.gap = '8px 12px';
+        statsGrid.style.fontSize = '12px';
 
-        // Mass
-        const massRow = document.createElement('div');
-        massRow.style.display = 'flex';
-        massRow.style.justifyContent = 'space-between';
-        massRow.innerHTML = '<span>Mass:</span> <span id="rocket-mass">0 kg</span>';
-        panel.appendChild(massRow);
-        this.massDisplay = massRow.querySelector('#rocket-mass');
+        // Helpers for stats
+        const createStat = (label: string, id: string, suffix: string) => {
+            const div = document.createElement('div');
+            div.innerHTML = `<span style="color:#aaa">${label}:</span> <span id="${id}" style="float:right; color:white">0 ${suffix}</span>`;
+            return div;
+        };
 
-        // Throttle (text display)
-        const throttleRow = document.createElement('div');
-        throttleRow.style.display = 'flex';
-        throttleRow.style.justifyContent = 'space-between';
-        throttleRow.style.marginBottom = '5px';
-        throttleRow.innerHTML = '<span>Throttle:</span> <span id="rocket-throttle">0%</span>';
-        panel.appendChild(throttleRow);
-        this.throttleDisplay = throttleRow.querySelector('#rocket-throttle');
+        const dvStat = createStat('Delta V', 'rocket-dv', 'm/s');
+        const massStat = createStat('Mass', 'rocket-mass', 'kg');
+        const throttleStat = createStat('Throttle', 'rocket-throttle', '%');
+        const velStat = createStat('Velocity', 'rocket-vel', 'm/s');
+        const altStat = createStat('Altitude', 'rocket-alt', 'km');
+        const gravStat = createStat('Gravity', 'rocket-grav', 'm/s²');
+        // SOI is full width usually
 
+        statsGrid.appendChild(dvStat);
+        statsGrid.appendChild(massStat);
+        statsGrid.appendChild(throttleStat);
+        statsGrid.appendChild(velStat);
+        statsGrid.appendChild(altStat);
+        statsGrid.appendChild(gravStat);
 
+        content.appendChild(statsGrid);
 
-        // Remove old throttle slider reference
-        // this.throttleSlider = throttleSlider;
+        // References
+        this.deltaVDisplay = dvStat.querySelector('#rocket-dv');
+        this.massDisplay = massStat.querySelector('#rocket-mass');
+        this.throttleDisplay = throttleStat.querySelector('#rocket-throttle');
+        this.velocityDisplay = velStat.querySelector('#rocket-vel');
+        this.altitudeDisplay = altStat.querySelector('#rocket-alt');
+        this.gravityDisplay = gravStat.querySelector('#rocket-grav');
 
-        // Velocity
-        const velRow = document.createElement('div');
-        velRow.style.display = 'flex';
-        velRow.style.justifyContent = 'space-between';
-        velRow.innerHTML = '<span>Velocity:</span> <span id="rocket-vel">0 m/s</span>';
-        panel.appendChild(velRow);
-        this.velocityDisplay = velRow.querySelector('#rocket-vel');
-
-        // Altitude
-        const altRow = document.createElement('div');
-        altRow.style.display = 'flex';
-        altRow.style.justifyContent = 'space-between';
-        altRow.innerHTML = '<span>Altitude:</span> <span id="rocket-alt">0 km</span>';
-        panel.appendChild(altRow);
-        this.altitudeDisplay = altRow.querySelector('#rocket-alt');
-
-        // Gravity
-        const gravRow = document.createElement('div');
-        gravRow.style.display = 'flex';
-        gravRow.style.justifyContent = 'space-between';
-        gravRow.innerHTML = '<span>Gravity:</span> <span id="rocket-grav">0 m/s²</span>';
-        panel.appendChild(gravRow);
-        this.gravityDisplay = gravRow.querySelector('#rocket-grav');
-
-        // SOI (Sphere of Influence)
+        // SOI
         const soiRow = document.createElement('div');
-        soiRow.style.display = 'flex';
-        soiRow.style.justifyContent = 'space-between';
-        soiRow.innerHTML = '<span>SOI:</span> <span id="rocket-soi">-</span>';
-        panel.appendChild(soiRow);
+        soiRow.style.fontSize = '12px';
+        soiRow.style.marginTop = '4px';
+        soiRow.style.borderTop = '1px solid #444';
+        soiRow.style.paddingTop = '4px';
+        soiRow.innerHTML = '<span style="color:#aaa">Influence:</span> <span id="rocket-soi" style="float:right">-</span>';
+        content.appendChild(soiRow);
         this.soiDisplay = soiRow.querySelector('#rocket-soi');
 
-        document.body.appendChild(panel);
-        this.rocketInfoPanel = panel;
+        // Create Panel
+        // Use Collapsible Panel, anchored at bottom left.
+        const { container } = this.createCollapsiblePanel('ROCKET TELEMETRY', content, false, '240px'); // Default Expanded? Or Collapsed? User said "replier vers le bas" (fold down).
+        // Let's default collapsed to be compact? User said "il doit resté placé ou il est et ce replier vers le bas"
+        // "must stay where it is and fold downwards". Standard behavior for bottom-anchored is "top moves down".
 
-        // Insert Electricity Gauge right after Fuel Gauge
-        // Find existing fuel gauge container (it's the child after fuelRow)
-        // Or simpler: Just append it after fuel usage code in createRocketInfoPanel
-        // Re-implementing parts of createRocketInfoPanel to insert correctly
+        // Let's set it to collapsed by default to match other panels, or expanded?
+        // User didn't specify initial state for THIS one, but "plier ils prenne trop de place" was general feedback.
+        // I'll set it to collapsed initially for consistency.
+        // Wait, argument is `isCollapsed`. I'll set true.
+        // Edit: User actually said "plier au depart" for Controls. For Telemetry he said "replier vers le bas".
+        // I will default to collapsed.
+
+        container.style.position = 'absolute';
+        container.style.bottom = '10px';
+        container.style.left = '10px';
+        // Override display to none initially (controlled by logic)
+        container.style.display = 'none';
+        document.body.appendChild(container);
+        this.rocketInfoPanel = container;
+    }
+
+    // Generic Confirm Dialog Helper
+    private showConfirmDialog(title: string, message: string, onConfirm: () => void, onCancel: () => void) {
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '10000';
+
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.className = 'game-modal-content';
+        dialog.style.minWidth = '350px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.fontFamily = "'Segoe UI', sans-serif";
+        dialog.style.textAlign = 'center';
+
+        // Title
+        const titleEl = document.createElement('h3');
+        titleEl.textContent = title;
+        titleEl.style.color = '#fff';
+        titleEl.style.marginTop = '0';
+        titleEl.style.marginBottom = '15px';
+        dialog.appendChild(titleEl);
+
+        // Message
+        const msgEl = document.createElement('p');
+        msgEl.textContent = message;
+        msgEl.style.color = '#ccc';
+        msgEl.style.marginBottom = '25px';
+        dialog.appendChild(msgEl);
+
+        // Buttons
+        const btns = document.createElement('div');
+        btns.style.display = 'flex';
+        btns.style.justifyContent = 'center';
+        btns.style.gap = '15px';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Yes';
+        confirmBtn.className = 'game-btn';
+        confirmBtn.style.color = '#4CAF50';
+        confirmBtn.style.borderColor = '#4CAF50';
+        confirmBtn.style.padding = '8px 20px'; // Override
+        confirmBtn.style.cursor = 'pointer';
+        confirmBtn.onclick = () => {
+            overlay.remove();
+            onConfirm();
+        };
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'No';
+        cancelBtn.className = 'game-btn';
+        cancelBtn.style.color = '#ccc';
+        cancelBtn.style.borderColor = '#666';
+        cancelBtn.style.padding = '8px 20px';
+        cancelBtn.style.cursor = 'pointer';
+        cancelBtn.onclick = () => {
+            overlay.remove();
+            onCancel();
+        };
+
+        btns.appendChild(confirmBtn);
+        btns.appendChild(cancelBtn);
+        dialog.appendChild(btns);
+        overlay.appendChild(dialog);
+
+        document.body.appendChild(overlay);
     }
 
     createControlsHelp() {
-        const panel = document.createElement('div');
-        panel.style.position = 'absolute';
-        panel.style.top = '130px';
-        panel.style.right = '10px';
-        panel.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        panel.style.color = '#aaa';
-        panel.style.padding = '8px';
-        panel.style.borderRadius = '5px';
-        panel.style.fontFamily = 'monospace';
-        panel.style.fontSize = '12px';
-        panel.style.textAlign = 'right';
+        const content = document.createElement('div');
+        content.style.fontSize = '11px';
+        content.style.fontFamily = 'monospace';
+        content.style.color = '#ccc';
+        content.style.lineHeight = '1.6';
 
-        panel.innerHTML = `
-            <div><strong>CONTROLS</strong></div>
-            <div>Thrust: ${controls.getControl('thrust').toUpperCase()} / ${controls.getControl('cutEngines').toUpperCase()}</div>
-            <div>Rotate: ${controls.getControl('rotateLeft').toUpperCase()} / ${controls.getControl('rotateRight').toUpperCase()}</div>
-            <div>Fine Ctrl: ${controls.getControl('increaseThrottle')} / ${controls.getControl('decreaseThrottle')}</div>
-        `;
+        const addControl = (key: string, desc: string) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.innerHTML = `<span style="font-weight:bold; color:white">${key}</span> <span>${desc}</span>`;
+            return row;
+        };
 
-        document.body.appendChild(panel);
+        const keys = [
+            { k: `${controls.getControl('thrust').toUpperCase()} / ${controls.getControl('cutEngines').toUpperCase()}`, d: 'Thrust / Cut' },
+            { k: `${controls.getControl('rotateLeft').toUpperCase()} / ${controls.getControl('rotateRight').toUpperCase()}`, d: 'Rotate Left/Right' },
+            { k: controls.getControl('increaseThrottle').toUpperCase(), d: 'Throttle +' },
+            { k: controls.getControl('decreaseThrottle').toUpperCase(), d: 'Throttle -' },
+            { k: 'Z', d: 'Full Throttle' }, // 'Z' is often hardcoded or mapped to thrust? Config says thrust='z'.
+            // Wait, Config says thrust='z' and cutEngines='s'.
+            // If Z is "Thrust", then what is "Full Throttle"?
+            // Usually Z/Shift is throttle.
+            // Let's trust the Config names.
+            // If thrust='z', let's label it "Main Thrust".
+            { k: controls.getControl('toggleSAS').toUpperCase(), d: 'SAS' },
+            { k: controls.getControl('toggleRCS').toUpperCase(), d: 'RCS' },
+            { k: 'Space', d: 'Stage' }, // Not in config?
+            { k: `${controls.getControl('timeWarpIncrease')} / ${controls.getControl('timeWarpDecrease')}`, d: 'Time Warp +/-' },
+            { k: controls.getControl('timeWarpReset'), d: 'Reset Warp' },
+            { k: controls.getControl('toggleTrajectory').toUpperCase(), d: 'Trajectory' },
+            { k: controls.getControl('createManeuverNode').toUpperCase(), d: 'New Node' }
+        ];
+
+        keys.forEach(item => content.appendChild(addControl(item.k, item.d)));
+
+        // Create Panel
+        const { container } = this.createCollapsiblePanel('KEYBOARD CONTROLS', content, true, '220px'); // Default Collapsed
+        container.style.position = 'absolute';
+        container.style.top = '130px'; // Below Time Widget
+        container.style.right = '10px';
+
+        document.body.appendChild(container); // Append to body (right side)
     }
 
     updateRocketInfo(rocket: any) {
@@ -1197,9 +1484,10 @@ export class UI {
         const dateString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
         // Update date display
-        const dateDisplay = document.getElementById('game-date-display');
-        if (dateDisplay) {
-            dateDisplay.innerText = dateString;
+        // Update date display
+        const dateVal = document.getElementById('game-date-val');
+        if (dateVal) {
+            dateVal.innerText = dateString;
         }
 
         // Calculate Mission Elapsed Time (MET)
@@ -1422,27 +1710,10 @@ export class UI {
     }
 
     createDebugMenu() {
-        const panel = document.createElement('div');
-        panel.style.position = 'absolute';
-        panel.style.top = '10px';
-        panel.style.left = '50%';
-        panel.style.transform = 'translateX(-50%)';
-        panel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        panel.style.color = 'white';
-        panel.style.padding = '5px 10px';
-        panel.style.borderRadius = '5px';
-        panel.style.fontFamily = 'monospace';
-        panel.style.fontSize = '12px';
-        panel.style.display = 'flex';
-        panel.style.gap = '10px';
-        panel.style.alignItems = 'center';
-
-        // Title
-        const title = document.createElement('span');
-        title.innerText = 'DEBUG:';
-        title.style.fontWeight = 'bold';
-        title.style.color = '#aaa';
-        panel.appendChild(title);
+        const debugContent = document.createElement('div');
+        debugContent.style.display = 'flex';
+        debugContent.style.flexDirection = 'column';
+        debugContent.style.gap = '5px';
 
         // Infinite Fuel Checkbox
         const fuelContainer = document.createElement('div');
@@ -1463,13 +1734,13 @@ export class UI {
         fuelLabel.htmlFor = 'debug-infinite-fuel';
         fuelLabel.innerText = 'Infinite Fuel';
         fuelLabel.style.cursor = 'pointer';
+        fuelLabel.style.fontSize = '12px';
+        fuelLabel.style.color = 'white';
+        fuelLabel.style.fontFamily = 'monospace';
 
         fuelContainer.appendChild(fuelCheck);
         fuelContainer.appendChild(fuelLabel);
-        panel.appendChild(fuelContainer);
-
-        // Trajectory Toggle
-
+        debugContent.appendChild(fuelContainer);
 
         // Show Colliders Toggle
         const colliderContainer = document.createElement('div');
@@ -1491,10 +1762,13 @@ export class UI {
         colliderLabel.htmlFor = 'debug-colliders';
         colliderLabel.innerText = 'Show Colliders';
         colliderLabel.style.cursor = 'pointer';
+        colliderLabel.style.fontSize = '12px';
+        colliderLabel.style.color = 'white';
+        colliderLabel.style.fontFamily = 'monospace';
 
         colliderContainer.appendChild(colliderCheck);
         colliderContainer.appendChild(colliderLabel);
-        panel.appendChild(colliderContainer);
+        debugContent.appendChild(colliderContainer);
 
         // Show CoG Toggle
         const cogContainer = document.createElement('div');
@@ -1516,26 +1790,30 @@ export class UI {
         cogLabel.htmlFor = 'debug-cog';
         cogLabel.innerText = 'Show CoG';
         cogLabel.style.cursor = 'pointer';
+        cogLabel.style.fontSize = '12px';
+        cogLabel.style.color = 'white';
+        cogLabel.style.fontFamily = 'monospace';
 
         cogContainer.appendChild(cogCheck);
         cogContainer.appendChild(cogLabel);
-        panel.appendChild(cogContainer);
-
+        debugContent.appendChild(cogContainer);
 
         // FPS Counter
         const fpsContainer = document.createElement('div');
         fpsContainer.style.display = 'flex';
         fpsContainer.style.alignItems = 'center';
         fpsContainer.style.gap = '5px';
-        fpsContainer.style.marginLeft = '10px';
-        fpsContainer.style.borderLeft = '1px solid #555';
-        fpsContainer.style.paddingLeft = '10px';
+        fpsContainer.style.borderTop = '1px solid #555';
+        fpsContainer.style.paddingTop = '5px';
+        fpsContainer.style.marginTop = '5px';
 
         const fpsLabel = document.createElement('span');
         fpsLabel.innerText = 'FPS: --';
         fpsLabel.style.color = '#00C851';
+        fpsLabel.style.fontSize = '12px';
+        fpsLabel.style.fontFamily = 'monospace';
         fpsContainer.appendChild(fpsLabel);
-        panel.appendChild(fpsContainer);
+        debugContent.appendChild(fpsContainer);
 
         // FPS Calculation Loop
         let lastTime = performance.now();
@@ -1558,7 +1836,19 @@ export class UI {
         };
         requestAnimationFrame(updateFPS);
 
-        document.body.appendChild(panel);
+
+        // Wrap in collapsible panel
+        // Need a wrapper to position it absolute
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.top = '10px';
+        wrapper.style.left = '50%';
+        wrapper.style.transform = 'translateX(-50%)';
+
+        const { container } = this.createCollapsiblePanel('DEBUG TOOLS', debugContent, true, '200px');
+        wrapper.appendChild(container);
+
+        document.body.appendChild(wrapper);
     }
 
     /**

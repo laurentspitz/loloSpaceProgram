@@ -9,3 +9,133 @@ body {
 canvas {
   display: block;
 }
+
+/* UI Harmonization - Game Styling */
+
+/* Common Panel Style */
+.game-panel {
+  background-color: rgba(0, 0, 0, 0.8);
+  /* The "Nice Gray" Transparency */
+  border-radius: 5px;
+  padding: 5px 8px;
+  color: white;
+  font-family: monospace;
+  margin-bottom: 5px;
+  /* Spacing between panels */
+  pointer-events: auto;
+  /* Ensure panel captures clicks */
+  transition: all 0.2s ease;
+}
+
+/* Panel Header/Title */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-header.collapsed {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.panel-title {
+  color: #fff;
+  font-weight: bold;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.panel-toggle {
+  color: #aaa;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* Standard Game Button */
+.game-btn {
+  background-color: rgba(50, 50, 50, 0.8);
+  border: 1px solid #555;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: monospace;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.game-btn:hover {
+  background-color: rgba(80, 80, 80, 0.9);
+  color: white;
+  border-color: #00aaff;
+  box-shadow: 0 0 5px rgba(0, 170, 255, 0.3);
+}
+
+.game-btn:active {
+  background-color: #00aaff;
+  color: black;
+  transform: translateY(1px);
+}
+
+/* Icon / Small Button (Time warp, Zoom) */
+.game-btn-icon {
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  /* Centered icon */
+  font-size: 14px;
+  border-radius: 3px;
+  background-color: #333;
+  /* Slightly darker default */
+  display: flex;
+  /* Enforce flexbox */
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  /* Reset line-height */
+}
+
+/* Specific component overrides if needed */
+/* Specific component overrides if needed */
+.text-green {
+  color: #00C851;
+}
+
+.text-yellow {
+  color: #FFEB3B;
+}
+
+.text-muted {
+  color: #aaa;
+}
+
+/* Modal Content Box */
+.game-modal-content {
+  background-color: rgba(0, 0, 0, 0.9);
+  /* Harmonized with game-panel but slightly darker for focus */
+  border: 2px solid #00aaff;
+  border-radius: 8px;
+  padding: 25px;
+  color: white;
+  font-family: monospace;
+  box-shadow: 0 0 30px rgba(0, 170, 255, 0.5);
+}
+
+.game-modal-content h2,
+.game-modal-content h3 {
+  margin-top: 0;
+  color: #00aaff;
+  text-align: center;
+  text-shadow: 0 0 10px rgba(0, 170, 255, 0.5);
+}
