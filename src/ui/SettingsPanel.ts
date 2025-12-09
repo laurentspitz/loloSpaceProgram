@@ -6,10 +6,12 @@ import { controls, type ControlConfig } from '../config/Controls';
 export class SettingsPanel {
     container: HTMLDivElement;
     onClose: () => void;
-    private activeBinding: { action: keyof ControlConfig; element: HTMLSpanElement } | null = null;
+    private nicknameInput: HTMLInputElement | null = null;
+    settings: any = {};
 
     constructor(onClose: () => void) {
         this.onClose = onClose;
+        this.loadSettings(); // Load settings immediately
 
         // Create overlay container
         this.container = document.createElement('div');
@@ -32,14 +34,15 @@ export class SettingsPanel {
         panel.style.borderRadius = '12px';
         panel.style.padding = '30px';
         panel.style.maxWidth = '600px';
-        panel.style.maxHeight = '80vh';
+        panel.style.width = '90%';
+        panel.style.maxHeight = '85vh';
         panel.style.overflowY = 'auto';
         panel.style.boxShadow = '0 0 30px rgba(0, 170, 255, 0.5)';
         this.container.appendChild(panel);
 
         // Title
         const title = document.createElement('h2');
-        title.textContent = 'KEYBOARD CONTROLS';
+        title.textContent = 'SETTINGS & CONTROLS';
         title.style.color = '#00aaff';
         title.style.margin = '0 0 25px 0';
         title.style.fontSize = '28px';
@@ -47,8 +50,50 @@ export class SettingsPanel {
         title.style.textShadow = '0 0 10px #00aaff';
         panel.appendChild(title);
 
+        // --- Nickname Section ---
+        const nicknameSection = document.createElement('fieldset');
+        nicknameSection.style.border = '1px solid #444';
+        nicknameSection.style.borderRadius = '8px';
+        nicknameSection.style.padding = '15px';
+        nicknameSection.style.marginBottom = '20px';
+        nicknameSection.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
+
+        const nicknameLegend = document.createElement('legend');
+        nicknameLegend.textContent = 'Astronaut Profile';
+        nicknameLegend.style.color = '#00aaff';
+        nicknameLegend.style.padding = '0 10px';
+        nicknameLegend.style.fontWeight = 'bold';
+        nicknameSection.appendChild(nicknameLegend);
+
+        const nicknameRow = document.createElement('div');
+        nicknameRow.style.display = 'flex';
+        nicknameRow.style.justifyContent = 'space-between';
+        nicknameRow.style.alignItems = 'center';
+
+        const label = document.createElement('label');
+        label.textContent = 'Callsign (Nickname):';
+        label.style.color = '#ccc';
+        nicknameRow.appendChild(label);
+
+        this.nicknameInput = document.createElement('input');
+        this.nicknameInput.type = 'text';
+        this.nicknameInput.placeholder = 'Enter your callsign...';
+        this.nicknameInput.value = this.settings.nickname || '';
+        this.nicknameInput.style.backgroundColor = '#333';
+        this.nicknameInput.style.border = '1px solid #555';
+        this.nicknameInput.style.color = '#fff';
+        this.nicknameInput.style.padding = '8px';
+        this.nicknameInput.style.borderRadius = '4px';
+        this.nicknameInput.style.fontSize = '16px';
+        this.nicknameInput.style.width = '200px';
+        nicknameRow.appendChild(this.nicknameInput);
+
+        nicknameSection.appendChild(nicknameRow);
+        panel.appendChild(nicknameSection);
+        // ------------------------
+
         // Controls sections
-        this.addControlSection(panel, 'Rocket Controls', [
+        this.addControlSection(panel, '🚀 Rocket Controls', [
             ['thrust', 'Thrust (Full)'],
             ['cutEngines', 'Cut Engines'],
             ['rotateLeft', 'Rotate Left'],
@@ -57,24 +102,24 @@ export class SettingsPanel {
             ['decreaseThrottle', 'Decrease Throttle'],
         ]);
 
-        this.addControlSection(panel, 'Time Warp', [
+        this.addControlSection(panel, '⏳ Time Warp', [
             ['timeWarpIncrease', 'Increase'],
             ['timeWarpDecrease', 'Decrease'],
             ['timeWarpReset', 'Reset'],
         ]);
 
-        this.addControlSection(panel, 'Maneuver Nodes', [
+        this.addControlSection(panel, '📐 Maneuver Nodes', [
             ['createManeuverNode', 'Create'],
             ['deleteManeuverNode', 'Delete'],
         ]);
 
-        this.addControlSection(panel, 'View Controls', [
+        this.addControlSection(panel, '👀 View Controls', [
             ['toggleTrajectory', 'Toggle Trajectory'],
             ['zoomIn', 'Zoom In'],
             ['zoomOut', 'Zoom Out'],
         ]);
 
-        this.addControlSection(panel, 'Autopilot', [
+        this.addControlSection(panel, '🤖 Autopilot', [
             ['togglePrograde', 'Prograde'],
             ['toggleRetrograde', 'Retrograde'],
             ['toggleTarget', 'Target'],
@@ -113,14 +158,21 @@ export class SettingsPanel {
     }
 
     private addControlSection(parent: HTMLElement, title: string, controlsList: [keyof ControlConfig, string][]) {
-        // Section title
-        const sectionTitle = document.createElement('h3');
-        sectionTitle.textContent = title;
-        sectionTitle.style.color = '#aaaaaa';
-        sectionTitle.style.fontSize = '18px';
-        sectionTitle.style.marginTop = '20px';
-        sectionTitle.style.marginBottom = '10px';
-        parent.appendChild(sectionTitle);
+        // Use fieldset for nice grouping
+        const fieldset = document.createElement('fieldset');
+        fieldset.style.border = '1px solid #444';
+        fieldset.style.borderRadius = '8px';
+        fieldset.style.padding = '15px';
+        fieldset.style.marginBottom = '20px';
+        fieldset.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
+
+        // Legend Title
+        const legend = document.createElement('legend');
+        legend.textContent = title;
+        legend.style.color = '#aaaaaa';
+        legend.style.padding = '0 10px';
+        legend.style.fontWeight = 'bold';
+        fieldset.appendChild(legend);
 
         // Control rows
         controlsList.forEach(([action, label]) => {
@@ -128,26 +180,30 @@ export class SettingsPanel {
             row.style.display = 'flex';
             row.style.justifyContent = 'space-between';
             row.style.alignItems = 'center';
-            row.style.padding = '8px 0';
+            row.style.padding = '6px 0'; // Slightly tighter vertical padding
             row.style.borderBottom = '1px solid #333';
+            if (controlsList.indexOf([action, label]) === controlsList.length - 1) {
+                row.style.borderBottom = 'none'; // Remove last border
+            }
 
             const labelSpan = document.createElement('span');
             labelSpan.textContent = label;
             labelSpan.style.color = '#cccccc';
-            labelSpan.style.fontSize = '16px';
+            labelSpan.style.fontSize = '15px';
             row.appendChild(labelSpan);
 
             const keySpan = document.createElement('span');
             keySpan.textContent = this.formatKey(controls.getControl(action));
             keySpan.style.color = '#00aaff';
-            keySpan.style.fontSize = '16px';
-            keySpan.style.padding = '5px 12px';
+            keySpan.style.fontSize = '14px';
+            keySpan.style.padding = '4px 10px';
             keySpan.style.backgroundColor = '#2a2a2a';
             keySpan.style.borderRadius = '4px';
             keySpan.style.cursor = 'pointer';
             keySpan.style.minWidth = '80px';
             keySpan.style.textAlign = 'center';
             keySpan.style.transition = 'all 0.2s ease';
+            keySpan.style.border = '1px solid #00aaff33'; // Subtle border
 
             keySpan.onclick = () => this.startRebinding(action, keySpan);
             keySpan.onmouseover = () => {
@@ -162,8 +218,35 @@ export class SettingsPanel {
             };
 
             row.appendChild(keySpan);
-            parent.appendChild(row);
+            fieldset.appendChild(row);
         });
+
+        parent.appendChild(fieldset);
+    }
+
+    // Load settings from storage
+    private async loadSettings() {
+        try {
+            // First check local storage for immediate load
+            const localData = localStorage.getItem('user_settings');
+            if (localData) {
+                this.settings = JSON.parse(localData);
+            }
+
+            // Then try to fetch from Firebase if logged in (async update)
+            const { FirebaseService } = await import('../services/firebase');
+            if (FirebaseService.auth.currentUser) {
+                const cloudSettings = await FirebaseService.loadUserSettings(FirebaseService.auth.currentUser.uid);
+                if (cloudSettings) {
+                    this.settings = { ...this.settings, ...cloudSettings };
+                    if (this.nicknameInput) {
+                        this.nicknameInput.value = this.settings.nickname || '';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load settings", e);
+        }
     }
 
     private formatKey(key: string): string {
@@ -229,8 +312,8 @@ export class SettingsPanel {
     private async saveSettings() {
         // Show styled confirmation dialog
         this.showConfirmDialog(
-            'Save your keyboard settings to the cloud?',
-            'This will overwrite any previously saved settings.',
+            'Save settings?',
+            'This will update your profile and controls.',
             async () => {
                 try {
                     // Import Firebase and NotificationManager
@@ -238,20 +321,26 @@ export class SettingsPanel {
                     const { NotificationManager } = await import('./NotificationManager');
                     const user = FirebaseService.auth.currentUser;
 
-                    // Get current control settings
-                    const settings = {
+                    // Update settings object
+                    this.settings = {
+                        ...this.settings,
+                        nickname: this.nicknameInput?.value || '',
                         controls: controls.getAllControls(),
                         savedAt: Date.now()
                     };
 
+                    // Save to localStorage always
+                    localStorage.setItem('user_settings', JSON.stringify(this.settings));
+
+                    // Dispatch event for instant UI update
+                    window.dispatchEvent(new CustomEvent('settings-changed', { detail: this.settings }));
+
                     if (user) {
                         // Save to Firebase
-                        await FirebaseService.saveUserSettings(user.uid, settings);
+                        await FirebaseService.saveUserSettings(user.uid, this.settings);
                         NotificationManager.show('✅ Settings saved to cloud!', 'success');
                     } else {
-                        // Fallback to localStorage
-                        localStorage.setItem('user_settings', JSON.stringify(settings));
-                        NotificationManager.show('⚠️ Not logged in - settings saved locally only', 'warning');
+                        NotificationManager.show('💾 Settings saved locally', 'success');
                     }
                 } catch (error) {
                     const { NotificationManager } = await import('./NotificationManager');

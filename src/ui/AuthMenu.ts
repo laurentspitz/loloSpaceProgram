@@ -61,6 +61,11 @@ export class AuthMenu {
             this.user = user;
             this.updateUI();
         });
+
+        // Listen for settings changes (nickname update)
+        window.addEventListener('settings-changed', () => {
+            this.updateUI();
+        });
     }
 
     async handleLogin() {
@@ -89,12 +94,49 @@ export class AuthMenu {
     }
 
     updateUI() {
-        if (this.user) {
-            this.statusText.textContent = `👤 ${this.user.displayName}`;
-            this.loginButton.style.display = 'none';
-            this.logoutButton.style.display = 'block';
+        // Try to get nickname from local settings
+        let displayName = "";
+        try {
+            const settingsStr = localStorage.getItem('user_settings');
+            if (settingsStr) {
+                const settings = JSON.parse(settingsStr);
+                if (settings.nickname) {
+                    displayName = settings.nickname;
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        // Fallback to auth name
+        if (!displayName && this.user) {
+            displayName = this.user.displayName || 'Unknown Astronaut';
+        }
+
+        if (this.user || displayName) {
+            // If we have a nickname but no user login, still show it? 
+            // Requirement says "display instead of user name if exists".
+            // Assuming we show profile if logged in OR if nickname is set (local profile).
+            // But Login/Logout buttons depend on auth state.
+
+            this.statusText.textContent = `👨‍🚀 ${displayName}`;
+            this.statusText.title = this.user ? (this.user.displayName || '') : 'Local Profile';
+            this.statusText.style.cursor = 'default';
+            this.statusText.style.fontSize = '16px';
+
+            if (this.user) {
+                this.loginButton.style.display = 'none';
+                this.logoutButton.style.display = 'block';
+            } else {
+                // If just local nickname, still allow login
+                this.loginButton.style.display = 'block';
+                this.logoutButton.style.display = 'none';
+            }
         } else {
             this.statusText.textContent = 'Not logged in';
+            this.statusText.title = '';
+            this.statusText.style.cursor = 'default';
+            this.statusText.style.fontSize = 'inherit';
             this.loginButton.style.display = 'block';
             this.logoutButton.style.display = 'none';
         }
