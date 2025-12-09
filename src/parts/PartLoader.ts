@@ -100,7 +100,9 @@ export class PartLoader {
                 type: node.type
             })),
             effect: part.config.visual?.effect,
-            cockpit: part.config.cockpit
+            cockpit: part.config.cockpit,
+            creationYear: part.config.creationYear,
+            country: part.config.country
         };
     }
 }

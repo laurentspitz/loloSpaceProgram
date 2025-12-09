@@ -28,6 +28,8 @@ export interface PartDefinition {
     texture: string;
     width: number;      // meters
     height: number;     // meters
+    creationYear?: number;
+    country?: string;
     stats: PartStats;
     nodes: ConnectionNode[];
     effect?: 'standard' | 'blue_flame' | 'rcs';

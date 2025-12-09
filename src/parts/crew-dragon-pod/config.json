@@ -4,9 +4,11 @@
     "type": "capsule",
     "description": "A futuristic capsule from SpaceX. Reliable, reusable, and stylish.",
     "dimensions": {
-        "width": 2.5,
-        "height": 2.3
+        "width": 4.0,
+        "height": 5.0
     },
+    "creationYear": 2020,
+    "country": "USA",
     "stats": {
         "mass": 950,
         "cost": 35000000,

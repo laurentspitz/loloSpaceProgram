@@ -40,7 +40,7 @@ export class App {
         console.log('Starting game...');
         this.game = new Game(this.assembly);
 
-        if (state) {
+        if (state && !state.newGame) {
             this.game.deserializeState(state);
         }
 
@@ -59,8 +59,11 @@ export class App {
             this.menu = null;
         }
         if (this.game) {
+            // this.game.dispose(); // If Game has dispose, call it
             this.game = null;
         }
+        (window as any).game = null; // Clear global reference
+
         if (this.hangar) {
             this.hangar.dispose();
             this.hangar = null;

@@ -4,9 +4,11 @@
     "type": "engine",
     "description": "A powerful first-stage engine.",
     "dimensions": {
-        "width": 2.5,
-        "height": 3.583
+        "width": 2.0,
+        "height": 2.5
     },
+    "creationYear": 1957,
+    "country": "USA",
     "stats": {
         "mass": 1250,
         "cost": 2000000,

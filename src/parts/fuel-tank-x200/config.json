@@ -5,8 +5,10 @@
     "description": "A large fuel tank for heavy lifting.",
     "dimensions": {
         "width": 2.5,
-        "height": 2.222
+        "height": 3.75
     },
+    "creationYear": 1957,
+    "country": "USA",
     "stats": {
         "mass": 500,
         "cost": 300000,

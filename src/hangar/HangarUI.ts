@@ -2,6 +2,7 @@ import { PartRegistry } from './PartRegistry';
 import { RocketAssembly } from './RocketAssembly';
 import type { PartDefinition } from './PartDefinition';
 import { RocketSaveManager } from './RocketSaveManager';
+import { GameTimeManager } from '../managers/GameTimeManager';
 
 
 export class HangarUI {
@@ -208,14 +209,29 @@ export class HangarUI {
         palette.style.flexDirection = 'column';
         palette.style.gap = '10px';
 
+        const currentYear = GameTimeManager.getYear((window as any).game?.elapsedGameTime || 0);
+
+        // Show year in title
         const title = document.createElement('h3');
-        title.textContent = 'Parts';
+        title.textContent = `Parts (${currentYear})`;
         title.style.color = '#fff';
         title.style.margin = '0 0 10px 0';
         title.style.textAlign = 'center';
         palette.appendChild(title);
 
-        const parts = PartRegistry.getAll();
+        const parts = PartRegistry.getAll().filter(part => {
+            const partYear = part.creationYear || 1957;
+            return partYear <= currentYear;
+        });
+
+        if (parts.length === 0) {
+            const empty = document.createElement('div');
+            empty.textContent = "No parts available yet!";
+            empty.style.color = "#888";
+            empty.style.textAlign = "center";
+            palette.appendChild(empty);
+        }
+
         parts.forEach(part => {
             const item = document.createElement('div');
             item.style.display = 'flex';

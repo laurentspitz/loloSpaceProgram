@@ -12,6 +12,8 @@ export interface PartConfig {
         width: number;    // meters
         height: number;   // meters
     };
+    creationYear?: number; // Historical year part becomes available
+    country?: string;      // USA, USSR, etc.
     stats: {
         mass: number;     // kg
         cost: number;     // credits

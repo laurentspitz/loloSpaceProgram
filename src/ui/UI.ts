@@ -1,5 +1,9 @@
+
 import { Renderer } from '../Renderer';
 import { ThreeRenderer } from '../rendering/ThreeRenderer';
+import { Config } from '../Config';
+import { GameTimeManager } from '../managers/GameTimeManager';
+import type { RocketConfig } from '../Config';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
@@ -243,11 +247,11 @@ export class UI {
         themeSelect.style.width = '100%';
         themeSelect.style.marginBottom = '5px';
         themeSelect.innerHTML = `
-            <option value="standard">🖥️ Standard UI</option>
-            <option value="scifi">🛸 Sci-Fi Cockpit</option>
-            <option value="apollo">🚀 Apollo Panel</option>
-            <option value="dragon">🐉 Crew Dragon</option>
-        `;
+    < option value = "standard" >🖥️ Standard UI </option>
+        < option value = "scifi" >🛸 Sci - Fi Cockpit </option>
+            < option value = "apollo" >🚀 Apollo Panel </option>
+                < option value = "dragon" >🐉 Crew Dragon </option>
+                    `;
         themeSelect.onchange = (e) => {
             const val = (e.target as HTMLSelectElement).value as 'standard' | 'scifi' | 'apollo' | 'dragon';
             this.setTheme(val);
@@ -306,7 +310,27 @@ export class UI {
         });
         controlsContent.appendChild(backBtn);
 
-        // 7. Save Game Button
+        // 7. Hangar Button
+        const hangarBtn = createBtn('🛠️ Hangar', () => {
+            if (confirm('Go to Hangar? Current flight progress will be lost.')) {
+                window.location.reload(); // Simple reload to restart in hangar mode if URL param set, or just use event
+                // Better: Dispatch event
+                const event = new CustomEvent('navigate-hangar');
+                window.dispatchEvent(event);
+            }
+        }, 'Go to Vehicle Assembly');
+        controlsContent.appendChild(hangarBtn);
+
+        // 8. Chronology Button
+        const chronologyBtn = createBtn('📅 Chronology', async () => {
+            const { ChronologyMenu } = await import('./ChronologyMenu');
+            new ChronologyMenu(() => {
+                // On close callback
+            });
+        }, 'View Space History');
+        controlsContent.appendChild(chronologyBtn);
+
+        // 9. Save Game Button
         const saveBtn = createBtn('💾 Save Game', async () => {
             const { FirebaseService } = await import('../services/firebase');
             const { NotificationManager } = await import('./NotificationManager');
@@ -552,7 +576,7 @@ export class UI {
         row.style.display = 'flex';
         row.style.gap = '5px';
         row.style.marginBottom = '5px';
-        row.style.marginLeft = `${indentLevel * 15}px`;
+        row.style.marginLeft = `${indentLevel * 15} px`;
         row.style.alignItems = 'center';
         row.style.position = 'relative'; // For tooltip positioning
 
@@ -588,7 +612,7 @@ export class UI {
         // Focus button
         const focusBtn = document.createElement('button');
         focusBtn.innerText = '👁️';
-        focusBtn.title = `Focus on ${body.name}`;
+        focusBtn.title = `Focus on ${body.name} `;
         focusBtn.style.padding = '2px 6px';
         focusBtn.style.fontSize = '10px';
         focusBtn.style.backgroundColor = '#333';
@@ -606,7 +630,7 @@ export class UI {
         // Orbit button
         const orbitBtn = document.createElement('button');
         orbitBtn.innerText = '🛸';
-        orbitBtn.title = `Orbit ${body.name}`;
+        orbitBtn.title = `Orbit ${body.name} `;
         orbitBtn.style.padding = '2px 6px';
         orbitBtn.style.fontSize = '10px';
         orbitBtn.style.backgroundColor = '#333';
@@ -657,7 +681,7 @@ export class UI {
             document.body.appendChild(this.tooltipElement);
         }
 
-        this.tooltipElement.innerHTML = `<strong style="color:white; display:block; margin-bottom:4px">${title}</strong>${description}`;
+        this.tooltipElement.innerHTML = `< strong style = "color:white; display:block; margin-bottom:4px" > ${title} </strong>${description}`;
         this.tooltipElement.style.display = 'block';
 
         // Position to the right of the cursor
@@ -1476,11 +1500,8 @@ export class UI {
      * @param elapsedSeconds Total elapsed game time in seconds
      */
     updateDateTime(elapsedSeconds: number) {
-        // Start date: Today (December 7, 2025)
-        const baseDate = new Date('2025-12-07T00:00:00Z');
-
-        // Add elapsed seconds to base date
-        const currentDate = new Date(baseDate.getTime() + elapsedSeconds * 1000);
+        // Use shared manager for date calculation
+        const currentDate = GameTimeManager.getDate(elapsedSeconds);
 
         // Format date as YYYY-MM-DD HH:MM:SS
         const year = currentDate.getUTCFullYear();

@@ -4,9 +4,11 @@
     "type": "capsule",
     "description": "Legacy command module from the Apollo era. Proven reliability.",
     "dimensions": {
-        "width": 2.5,
-        "height": 2.3
+        "width": 3.9,
+        "height": 3.5
     },
+    "creationYear": 1967,
+    "country": "USA",
     "stats": {
         "mass": 950,
         "cost": 2500000,

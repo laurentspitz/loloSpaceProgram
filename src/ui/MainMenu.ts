@@ -104,15 +104,37 @@ export class MainMenu {
         buttonContainer.style.zIndex = '1';
         this.container.appendChild(buttonContainer);
 
-        // Solar System Button
-        const solarSystemBtn = this.createButton('🚀 Solar System (Play)', '#00aaff');
+        // Solar System Button (Resume/Play)
+        const solarSystemBtn = this.createButton('🚀 Continue / Play', '#00aaff');
         solarSystemBtn.onclick = () => this.onStartGame();
         buttonContainer.appendChild(solarSystemBtn);
+
+        // New Game Button
+        const newGameBtn = this.createButton('✨ New Game (Start 1957)', '#00ffaa');
+        newGameBtn.onclick = () => {
+            // Reset logic effectively handled by starting with clean state if we control it
+            // But here we rely on onStartGame. We might need to pass a flag or handle reset in Game.ts
+            // For now, let's assume onStartGame can take a 'reset' param or we send a dummy state that forces reset
+            // Actually, the user says "je vois toute les part des le depart", implying persistent state or default incorrect.
+            // Let's pass a specific state object that implies "New Game".
+            this.onStartGame({ newGame: true });
+        };
+        buttonContainer.appendChild(newGameBtn);
 
         // Build Rocket Button
         const hangarBtn = this.createButton('🛠️ Build Rocket (Hangar)', '#ffaa00');
         hangarBtn.onclick = () => this.onOpenHangar();
         buttonContainer.appendChild(hangarBtn);
+
+        // Chronology Button
+        const chronologyBtn = this.createButton('📅 Chronology', '#aa00ff');
+        chronologyBtn.onclick = async () => {
+            const { ChronologyMenu } = await import('./ChronologyMenu');
+            new ChronologyMenu(() => {
+                // On close, do nothing (stay in main menu)
+            });
+        };
+        buttonContainer.appendChild(chronologyBtn);
 
         // Load Game Button
         const loadBtn = this.createButton('📂 Load Game', '#FF9800');
