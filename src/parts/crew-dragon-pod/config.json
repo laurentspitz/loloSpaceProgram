@@ -1,0 +1,30 @@
+{
+    "id": "crew_dragon_pod",
+    "name": "Crew Dragon Pod",
+    "type": "capsule",
+    "description": "A futuristic capsule from SpaceX. Reliable, reusable, and stylish.",
+    "dimensions": {
+        "width": 2.5,
+        "height": 2.5
+    },
+    "stats": {
+        "mass": 950,
+        "cost": 35000000,
+        "electricity": 100,
+        "sasConsumption": 0.4
+    },
+    "nodes": [
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -1.25
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}
