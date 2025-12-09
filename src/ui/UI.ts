@@ -42,6 +42,12 @@ export class UI {
 
     // Autopilot state
     autopilotMode: 'off' | 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver' = 'off';
+
+    // Theming
+    currentTheme: 'standard' | 'scifi' | 'apollo' | 'dragon' = 'standard';
+    scifiOverlay: HTMLElement | null = null;
+    apolloOverlay: HTMLElement | null = null;
+    dragonOverlay: HTMLElement | null = null;
     rcsBtn: HTMLButtonElement | null = null;
     sasBtn: HTMLButtonElement | null = null;
 
@@ -59,27 +65,15 @@ export class UI {
         this.renderer = renderer;
         // precise order of creation to ensure proper layering if needed, 
         // though flex container handles layout.
-        this.initLeftPanelContainer();
         this.createControls();
         this.createMinimap();
         this.createRocketInfoPanel();
         this.createDebugMenu();
         this.setupInput();
         this.initializeNavball();
-    }
 
-    initLeftPanelContainer() {
-        if (!this.leftPanelContainer) {
-            this.leftPanelContainer = document.createElement('div');
-            this.leftPanelContainer.style.position = 'absolute';
-            this.leftPanelContainer.style.top = '10px';
-            this.leftPanelContainer.style.left = '10px';
-            this.leftPanelContainer.style.display = 'flex';
-            this.leftPanelContainer.style.flexDirection = 'column';
-            this.leftPanelContainer.style.gap = '10px';
-            this.leftPanelContainer.style.pointerEvents = 'none'; // Let clicks pass through gaps
-            document.body.appendChild(this.leftPanelContainer);
-        }
+        // Initialize Theme defaults (force standard layout reset)
+        this.setTheme('standard');
     }
 
     init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager) {
@@ -169,10 +163,7 @@ export class UI {
     }
 
     createControls() {
-        // Main container logic moved to initLeftPanelContainer
-        // Use this.leftPanelContainer for appending
-
-        // --- Mission Controls Panel ---
+        // --- Mission Controls Content ---
         const controlsContent = document.createElement('div');
         controlsContent.style.display = 'flex';
         controlsContent.style.flexDirection = 'column';
@@ -188,27 +179,27 @@ export class UI {
             return btn;
         };
 
+        // 1. Focus Rocket
         const focusRocketBtn = createBtn('🚀 Focus Rocket', () => {
             if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
                 this.renderer.followedBody = this.renderer.currentRocket.body;
                 this.renderer.autoZoomToBody(this.renderer.currentRocket.body);
-                // Clear dropdown selection
                 const select = document.getElementById('planet-select') as HTMLSelectElement;
                 if (select) select.value = "";
             }
         });
         controlsContent.appendChild(focusRocketBtn);
 
-        // Trajectory Button
+        // 2. Trajectory Toggle
         const trajectoryBtn = createBtn('💫 Trajectory', () => {
             if (this.renderer instanceof ThreeRenderer) {
                 this.renderer.showTrajectory = !this.renderer.showTrajectory;
-                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : ''; // Keep dynamic style
+                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : '';
             }
         }, 'Toggle Trajectory');
         controlsContent.appendChild(trajectoryBtn);
 
-        // Reset Camera
+        // 3. Reset Camera
         const resetCamBtn = createBtn('🎥 Reset Camera', () => {
             if (this.renderer instanceof ThreeRenderer) {
                 this.renderer.resetCamera();
@@ -216,47 +207,54 @@ export class UI {
         });
         controlsContent.appendChild(resetCamBtn);
 
-        // ⚙️ SETTINGS BUTTON (Moved here)
+        // 4. Settings
         const settingsBtn = createBtn('⚙️ SETTINGS', async () => {
-            // PAUSE GAME
             this.lastTimeWarp = this.currentTimeWarp;
             if (this.currentTimeWarp !== 0) {
                 this.setTimeWarp(0);
             }
-
-            // OPEN SETTINGS MODAL
             const { SettingsPanel } = await import('./SettingsPanel');
             const panel = new SettingsPanel(() => {
-                // RESUME GAME ON CLOSE
                 panel.dispose();
-
                 const resumeSpeed = (this as any).lastTimeWarp || 1;
                 if (resumeSpeed > 0) {
                     this.setTimeWarp(resumeSpeed);
                 }
             });
         });
-        // Insert Settings button before Save/Exit or at layout discretion. 
-        // User said "with other buttons". Let's put it above Back to Menu?
-        // Current order: Reset Camera, Back, Save, Load.
-        // Let's append it to controlsContent alongside others.
-        controlsContent.insertBefore(settingsBtn, resetCamBtn.nextSibling); // Put it after Reset Camera button
+        controlsContent.appendChild(settingsBtn);
 
-        // Back to Menu Button
+        // 5. Theme Selector
+        const themeSelect = document.createElement('select');
+        themeSelect.className = 'game-btn';
+        themeSelect.style.width = '100%';
+        themeSelect.style.marginBottom = '5px';
+        themeSelect.innerHTML = `
+            <option value="standard">🖥️ Standard UI</option>
+            <option value="scifi">🛸 Sci-Fi Cockpit</option>
+            <option value="apollo">🚀 Apollo Panel</option>
+            <option value="dragon">🐉 Crew Dragon</option>
+        `;
+        themeSelect.onchange = (e) => {
+            const val = (e.target as HTMLSelectElement).value as 'standard' | 'scifi' | 'apollo' | 'dragon';
+            this.setTheme(val);
+            (e.target as HTMLSelectElement).blur();
+        };
+        controlsContent.appendChild(themeSelect);
+
+        // 6. Back to Menu
         const backBtn = createBtn('⬅ Back to Menu', async () => {
             const { FirebaseService } = await import('../services/firebase');
-            const { NotificationManager } = await import('./NotificationManager');
             const user = FirebaseService.auth.currentUser;
 
             if (user) {
-                // User Logged In: Prompt to Save & Exit using Custom Dialog
                 this.showConfirmDialog(
                     "Save Progress?",
                     "Would you like to SAVE your progress before exiting to the main menu?",
                     async () => {
-                        // YES -> Open Save Selector
                         const { SaveSlotSelector } = await import('./SaveSlotSelector');
                         const { SaveSlotManager } = await import('../services/SaveSlotManager');
+                        const { NotificationManager } = await import('./NotificationManager'); // Dynamic import
 
                         const selector = new SaveSlotSelector('save', async (slotId) => {
                             try {
@@ -276,27 +274,26 @@ export class UI {
                         await selector.show();
                     },
                     () => {
-                        // NO -> Confirm Exit without saving
                         this.showConfirmDialog(
                             "Exit without Saving?",
                             "Are you sure? Unsaved progress will be lost.",
                             () => window.location.reload(),
-                            () => { } // Cancel -> Do nothing
+                            () => { }
                         );
                     }
                 );
-
             } else {
-                // Guest: Warn about data loss.
                 this.showConfirmDialog(
-                    "Exit Game?",
-                    "WARNING: You are playing as Guest. All progress will be LOST if you exit.",
+                    "Exit to Menu?",
+                    "Progress will NOT be saved (Guest Mode). Continue?",
                     () => window.location.reload(),
                     () => { }
                 );
             }
         });
         controlsContent.appendChild(backBtn);
+
+        // 7. Save Game Button
         const saveBtn = createBtn('💾 Save Game', async () => {
             const { FirebaseService } = await import('../services/firebase');
             const { NotificationManager } = await import('./NotificationManager');
@@ -308,18 +305,15 @@ export class UI {
                 NotificationManager.show("You need to be logged in to save!", 'error');
                 return;
             }
-
             if (!this.currentRocket || !(window as any).game) {
                 NotificationManager.show("No active game to save!", 'error');
                 return;
             }
 
-            // Show save slot selector
             const selector = new SaveSlotSelector('save', async (slotId) => {
                 saveBtn.disabled = true;
                 const originalText = saveBtn.innerText;
                 saveBtn.innerText = "⏳ Saving...";
-
                 try {
                     const state = (window as any).game.serializeState();
                     const { SaveSlotManager } = await import('../services/SaveSlotManager');
@@ -333,21 +327,20 @@ export class UI {
                     saveBtn.innerText = originalText;
                 }
             });
-
             await selector.show();
         });
         controlsContent.appendChild(saveBtn);
 
-        // Create Collapsible Panel for Controls
-        const { container: controlsPanel } = this.createCollapsiblePanel('MISSION CONTROLS', controlsContent, true); // Default collapsed
+        // --- Create Collapsible Panel & Append ---
+        // Create Collapsible Panel DIRECTLY (No nested wrapper)
+        // Default to Collapsed (true) as requested.
+        const { container } = this.createCollapsiblePanel('MISSION CONTROLS', controlsContent, true, '200px');
+        container.id = 'mission-controls-panel';
+        container.style.position = 'absolute';
+        container.style.top = '10px';
+        container.style.left = '10px';
 
-        // Append to shared Left Panel Container
-        if (this.leftPanelContainer) {
-            this.leftPanelContainer.appendChild(controlsPanel);
-        } else {
-            // Fallback if not initialized for some reason
-            document.body.appendChild(controlsPanel);
-        }
+        document.body.appendChild(container);
 
         this.createTimeControls();
     }
@@ -447,6 +440,7 @@ export class UI {
         container.style.position = 'absolute';
         container.style.top = '10px';
         container.style.right = '10px';
+        container.id = 'time-controls-panel'; // Added ID for theme toggling
         // Make it identifiable for layout if needed, though absolute right is fine.
 
         document.body.appendChild(container);
@@ -527,9 +521,11 @@ export class UI {
             this.leftPanelContainer.appendChild(container);
         } else {
             const wrapper = document.createElement('div');
+            wrapper.id = 'celestial-bodies-panel';
             wrapper.style.position = 'absolute';
-            wrapper.style.top = '150px';
-            wrapper.style.left = '10px';
+            // Move below Time Controls (approx 150px height) + padding
+            wrapper.style.top = '170px';
+            wrapper.style.right = '10px';
             wrapper.appendChild(container);
             document.body.appendChild(wrapper);
         }
@@ -838,6 +834,7 @@ export class UI {
         container.style.position = 'absolute';
         container.style.bottom = '10px';
         container.style.right = '10px';
+        container.id = 'minimap-container'; // Added ID for theme toggling
 
         document.body.appendChild(container);
     }
@@ -1102,21 +1099,20 @@ export class UI {
         // Create Panel
         // Use Collapsible Panel, anchored at bottom left.
         const { container } = this.createCollapsiblePanel('ROCKET TELEMETRY', content, false, '240px'); // Default Expanded? Or Collapsed? User said "replier vers le bas" (fold down).
-        // Let's default collapsed to be compact? User said "il doit resté placé ou il est et ce replier vers le bas"
-        // "must stay where it is and fold downwards". Standard behavior for bottom-anchored is "top moves down".
-
-        // Let's set it to collapsed by default to match other panels, or expanded?
-        // User didn't specify initial state for THIS one, but "plier ils prenne trop de place" was general feedback.
+        // Let's default collapsed to be compact? User said "plier ils prenne trop de place" was general feedback.
         // I'll set it to collapsed initially for consistency.
         // Wait, argument is `isCollapsed`. I'll set true.
         // Edit: User actually said "plier au depart" for Controls. For Telemetry he said "replier vers le bas".
         // I will default to collapsed.
-
+        // Ensure it has an ID for theming if createCollapsiblePanel doesn't assign one we can easily target.
+        // The container returned is the wrapper.
+        container.id = 'rocket-info-panel';
         container.style.position = 'absolute';
+        // User requested "callé en bas" (anchored to bottom).
+        // Standard bottom-left anchor.
         container.style.bottom = '10px';
         container.style.left = '10px';
-        // Override display to none initially (controlled by logic)
-        container.style.display = 'none';
+
         document.body.appendChild(container);
         this.rocketInfoPanel = container;
     }
@@ -1509,27 +1505,29 @@ export class UI {
     initializeNavball() {
         const canvas = document.getElementById('navball') as HTMLCanvasElement;
         if (canvas) {
+            canvas.id = 'navball-canvas'; // Give it a specific ID for theme switching
             this.navballRenderer = new NavballRenderer(canvas);
-            this.createAutopilotButtons(canvas);
+            this.createAutopilotButtons();
         } else {
             console.warn('Navball canvas not found');
         }
     }
 
-    createAutopilotButtons(navballCanvas: HTMLCanvasElement) {
-        // Get navball position
-        const navballRect = navballCanvas.getBoundingClientRect();
-        const navballSize = 200; // From NavballRenderer
-        const navballCenterY = navballRect.top + navballSize / 2;
-
+    createAutopilotButtons() {
         // Create container for autopilot buttons
         const container = document.createElement('div');
         container.style.position = 'absolute';
-        container.style.left = `${navballRect.left - 80}px`;
-        container.style.top = `${navballCenterY - 60}px`;
+        // Position relative to screen center bottom (Navball is centered)
+        // Navball width ~200px? Canvas size usually 200x200.
+        // Buttons should be to the left of it.
+        container.style.bottom = '20px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-180px)'; // Shift left of navball (100px radius + padding)
+
         container.style.display = 'grid';
         container.style.gridTemplateColumns = 'repeat(2, 36px)';
         container.style.gap = '8px';
+        container.id = 'navball-autopilot-buttons'; // Add ID for potential theme hiding/moving
 
         // Helper function to create icon canvas using IconGenerator
         const createIconCanvas = (type: 'prograde' | 'retrograde' | 'target' | 'anti-target' | 'maneuver'): HTMLCanvasElement => {
@@ -1882,5 +1880,577 @@ export class UI {
                 el.parentNode.removeChild(el);
             }
         });
+    }
+    // --- THEMING & COCKPIT ---
+
+    setTheme(theme: 'standard' | 'scifi' | 'apollo' | 'dragon') {
+        this.currentTheme = theme;
+        // Clean up classes
+        document.body.classList.remove('theme-standard', 'theme-scifi', 'theme-cockpit', 'theme-apollo', 'theme-dragon');
+        document.body.classList.add(`theme-${theme}`);
+
+        // Hide all overlays first
+        if (this.scifiOverlay) this.scifiOverlay.style.display = 'none';
+        if (this.apolloOverlay) this.apolloOverlay.style.display = 'none';
+        if (this.dragonOverlay) this.dragonOverlay.style.display = 'none';
+
+        // 1. HELPER: Restore Standard Position
+        // Reparents element to body and resets positioning styles if it was inside a dashboard
+        const restoreToBody = (id: string, top?: string, bottom?: string, left?: string, right?: string) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.parentElement !== document.body) {
+                    document.body.appendChild(el);
+                }
+                el.style.position = 'absolute';
+                el.style.display = 'block'; // Ensure visible
+                el.style.transform = 'none';
+                if (top) el.style.top = top; else el.style.top = '';
+                if (bottom) el.style.bottom = bottom; else el.style.bottom = '';
+                if (left) el.style.left = left; else el.style.left = '';
+                if (right) el.style.right = right; else el.style.right = '';
+            }
+            return el;
+        };
+
+        // 2. HELPER: Move to Screen
+        // Moves element into a container and resets positioning to fit
+        const moveToScreen = (id: string, containerId: string) => {
+            const el = document.getElementById(id);
+            const container = document.getElementById(containerId);
+            if (el && container) {
+                container.appendChild(el);
+                el.style.position = 'static'; // Allow it to flow
+                el.style.width = '100%';
+                el.style.height = 'auto';
+                el.style.display = 'block';
+                // Remove absolute positioning props
+                el.style.top = ''; el.style.bottom = ''; el.style.left = ''; el.style.right = '';
+            }
+        };
+
+        if (theme === 'dragon') {
+            if (!this.dragonOverlay) this.createDragonOverlay();
+            this.dragonOverlay!.style.display = 'block';
+
+            // --- LEFT SCREEN: Systems (Mission Control + Telemetry) ---
+            moveToScreen('mission-controls-panel', 'dragon-content-left');
+            // Force Mission Control to Expand? Or keep user preference? Keep preference.
+
+            moveToScreen('rocket-info-panel', 'dragon-content-left');
+
+            // --- CENTER SCREEN: Navball ---
+            const navCanvas = document.getElementById('navball-canvas');
+            const navContainer = document.getElementById('dragon-content-center');
+            const navButtons = document.getElementById('navball-autopilot-buttons');
+
+            if (navCanvas && navContainer) {
+                navContainer.appendChild(navCanvas);
+                // Center Navball in screen
+                navCanvas.style.position = 'relative';
+                navCanvas.style.left = '50%';
+                navCanvas.style.top = '50%';
+                navCanvas.style.transform = 'translate(-50%, -50%) scale(0.8)'; // Scale down slightly to fit
+                navCanvas.style.bottom = '';
+            }
+            // Hide autopilot buttons or move them? 
+            // Dragon usually has touch controls. Let's move them too or hide.
+            // Let's move them below navball.
+            if (navButtons && navContainer) {
+                navContainer.appendChild(navButtons);
+                navButtons.style.position = 'absolute';
+                navButtons.style.bottom = '10px';
+                navButtons.style.left = '50%';
+                navButtons.style.transform = 'translateX(-50%) scale(0.8)';
+            }
+
+
+            // --- RIGHT SCREEN: Navigation (Time + Celestial) ---
+            moveToScreen('time-controls-panel', 'dragon-content-right');
+            moveToScreen('celestial-bodies-panel', 'dragon-content-right');
+            // Ensure celestial panel wrapper is static
+            const celPanel = document.getElementById('celestial-bodies-panel');
+            if (celPanel) celPanel.style.position = 'static';
+
+        } else if (theme === 'scifi') {
+            // Restore everything to body first
+            restoreToBody('mission-controls-panel', '10px', undefined, '10px');
+            restoreToBody('rocket-info-panel', undefined, '10px', '10px');
+            restoreToBody('time-controls-panel', '10px', undefined, undefined, '10px');
+            restoreToBody('celestial-bodies-panel', '170px', undefined, undefined, '10px');
+
+            // Navball
+            const navCanvas = document.getElementById('navball-canvas');
+            if (navCanvas) {
+                document.body.appendChild(navCanvas);
+                navCanvas.style.position = 'absolute';
+                navCanvas.style.bottom = '10px';
+                navCanvas.style.left = '50%';
+                navCanvas.style.transform = 'translateX(-50%)';
+            }
+            const navButtons = document.getElementById('navball-autopilot-buttons');
+            if (navButtons) {
+                document.body.appendChild(navButtons);
+                navButtons.style.display = 'grid';
+                navButtons.style.position = 'absolute';
+                navButtons.style.left = '50%';
+                navButtons.style.bottom = '20px';
+                navButtons.style.transform = 'translateX(-180px)';
+            }
+
+            if (!this.scifiOverlay) this.createScifiOverlay();
+            this.scifiOverlay!.style.display = 'block';
+
+        } else if (theme === 'apollo') {
+            // Restore everything to body first
+            restoreToBody('mission-controls-panel', '10px', undefined, '10px');
+            restoreToBody('rocket-info-panel', undefined, '10px', '10px');
+            restoreToBody('time-controls-panel', '10px', undefined, undefined, '10px');
+            restoreToBody('celestial-bodies-panel', '170px', undefined, undefined, '10px');
+
+            if (!this.apolloOverlay) this.createApolloOverlay();
+            this.apolloOverlay!.style.display = 'flex';
+
+            // Navball handling specific to Apollo (moved to dashboard container)
+            const navContainer = document.getElementById('apollo-navball-container');
+            const navCanvas = document.getElementById('navball-canvas');
+            if (navContainer && navCanvas) {
+                navContainer.appendChild(navCanvas);
+                navCanvas.style.position = 'static';
+                navCanvas.style.transform = 'none';
+            }
+
+            // Hide standard panels if needed, OR keep them? 
+            // Apollo usually overlays everything. 
+            // Previous logic was to HIDE standard panels or let them sit behind?
+            // Actually previous code reset display block.
+            // Let's assume Apollo wants them accessible or hidden. 
+            // The request was "functions of standard UI", so let's keep them accessible (overlay z-index handles it).
+
+        } else {
+            // STANDARD
+            restoreToBody('mission-controls-panel', '10px', undefined, '10px');
+            restoreToBody('rocket-info-panel', undefined, '10px', '10px');
+            restoreToBody('time-controls-panel', '10px', undefined, undefined, '10px');
+            restoreToBody('celestial-bodies-panel', '170px', undefined, undefined, '10px');
+
+            const navCanvas = document.getElementById('navball-canvas');
+            if (navCanvas) {
+                document.body.appendChild(navCanvas);
+                navCanvas.style.position = 'absolute';
+                navCanvas.style.bottom = '10px';
+                navCanvas.style.left = '50%';
+                navCanvas.style.transform = 'translateX(-50%)';
+            }
+            const navButtons = document.getElementById('navball-autopilot-buttons');
+            if (navButtons) {
+                document.body.appendChild(navButtons);
+                navButtons.style.display = 'grid';
+                navButtons.style.position = 'absolute';
+                navButtons.style.left = '50%';
+                navButtons.style.bottom = '20px';
+                navButtons.style.transform = 'translateX(-180px)';
+            }
+        }
+    }
+
+    createScifiOverlay() {
+        if (this.scifiOverlay) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'cockpit-overlay';
+
+        // Frame Image
+        const frame = document.createElement('img');
+        frame.id = 'cockpit-frame';
+        frame.src = 'cockpit_frame.png';
+        frame.alt = "Cockpit Dashboard";
+        overlay.appendChild(frame);
+
+        // Data Slots
+        const createSlot = (id: string, defaultText: string) => {
+            const slot = document.createElement('div');
+            slot.id = id;
+            slot.className = 'cockpit-data';
+            slot.innerText = defaultText;
+            return slot;
+        };
+
+        overlay.appendChild(createSlot('cockpit-speed', 'SPD: 0 m/s'));
+        overlay.appendChild(createSlot('cockpit-alt', 'ALT: 0 m'));
+        overlay.appendChild(createSlot('cockpit-fuel', 'FUEL: 100%'));
+        overlay.appendChild(createSlot('cockpit-throt', 'THR: 0%'));
+
+        document.body.appendChild(overlay);
+        this.scifiOverlay = overlay;
+    }
+
+    createDragonOverlay() {
+        if (this.dragonOverlay) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'dragon-overlay';
+
+        // 1. Structure: Window Frame (Pillars)
+        const frameLeft = document.createElement('div');
+        frameLeft.className = 'dragon-pillar left';
+        overlay.appendChild(frameLeft);
+
+        const frameRight = document.createElement('div');
+        frameRight.className = 'dragon-pillar right';
+        overlay.appendChild(frameRight);
+
+        const frameTop = document.createElement('div');
+        frameTop.className = 'dragon-frame-top';
+        overlay.appendChild(frameTop);
+
+        // 2. Dashboard Console (Bottom)
+        const dashboard = document.createElement('div');
+        dashboard.id = 'dragon-dashboard';
+
+        // 3. Screens
+        const screenLeft = document.createElement('div');
+        screenLeft.id = 'dragon-screen-left';
+        screenLeft.className = 'dragon-screen';
+        // Label
+        const labelLeft = document.createElement('div');
+        labelLeft.className = 'screen-label';
+        labelLeft.innerText = "SYSTEMS & TELEMETRY";
+        screenLeft.appendChild(labelLeft);
+
+        const contentLeft = document.createElement('div');
+        contentLeft.className = 'screen-content';
+        contentLeft.id = 'dragon-content-left';
+        screenLeft.appendChild(contentLeft);
+        dashboard.appendChild(screenLeft);
+
+
+        const screenCenter = document.createElement('div');
+        screenCenter.id = 'dragon-screen-center';
+        screenCenter.className = 'dragon-screen';
+        const labelCenter = document.createElement('div');
+        labelCenter.className = 'screen-label';
+        labelCenter.innerText = "FLIGHT DYNAMICS";
+        screenCenter.appendChild(labelCenter);
+
+        const contentCenter = document.createElement('div');
+        contentCenter.className = 'screen-content';
+        contentCenter.id = 'dragon-content-center';
+        screenCenter.appendChild(contentCenter);
+        dashboard.appendChild(screenCenter);
+
+
+        const screenRight = document.createElement('div');
+        screenRight.id = 'dragon-screen-right';
+        screenRight.className = 'dragon-screen';
+        const labelRight = document.createElement('div');
+        labelRight.className = 'screen-label';
+        labelRight.innerText = "NAVIGATION & TIME";
+        screenRight.appendChild(labelRight);
+
+        const contentRight = document.createElement('div');
+        contentRight.className = 'screen-content';
+        contentRight.id = 'dragon-content-right';
+        screenRight.appendChild(contentRight);
+
+        dashboard.appendChild(screenRight);
+
+        overlay.appendChild(dashboard);
+
+        document.body.appendChild(overlay);
+        this.dragonOverlay = overlay;
+    }
+
+
+    createApolloOverlay() {
+        if (this.apolloOverlay) return;
+
+        const dash = document.createElement('div');
+        dash.id = 'apollo-dashboard';
+
+        // Helper for Analog Gauge
+        const createGauge = (id: string, label: string) => {
+            const g = document.createElement('div');
+            g.className = 'apollo-gauge';
+            g.id = id;
+
+            const needle = document.createElement('div');
+            needle.className = 'gauge-needle';
+            g.appendChild(needle);
+
+            const lbl = document.createElement('div');
+            lbl.className = 'gauge-label';
+            lbl.innerText = label;
+            g.appendChild(lbl);
+
+            const vfd = document.createElement('div');
+            vfd.className = 'apollo-vfd';
+            vfd.id = `${id}-vfd`; // e.g. gauge-speed-vfd
+            vfd.style.position = 'absolute';
+            vfd.style.bottom = '-30px';
+            vfd.style.left = '50%';
+            vfd.style.transform = 'translateX(-50%)';
+            vfd.innerText = '0000';
+            g.appendChild(vfd);
+
+            return g;
+        };
+
+        // Helper for Switches
+        const createSwitch = (label: string, onClick: () => void) => {
+            const cont = document.createElement('div');
+            cont.className = 'apollo-switch-container';
+
+            const sw = document.createElement('div');
+            sw.className = 'apollo-switch';
+            sw.onclick = () => {
+                sw.classList.toggle('active');
+                onClick();
+            };
+
+            const l = document.createElement('div');
+            l.className = 'switch-label';
+            l.innerText = label;
+
+            cont.appendChild(sw);
+            cont.appendChild(l);
+            return cont;
+        };
+
+        // --- LEFT PANEL (Fuel & Engines) ---
+        const leftBlock = document.createElement('div');
+        leftBlock.className = 'apollo-block';
+
+        // Fuel Gauge
+        const fuelGauge = createGauge('gauge-fuel', 'FUEL');
+        // Custom scale for fuel (no VFD, maybe %)
+        (fuelGauge.querySelector('.apollo-vfd') as HTMLElement).innerText = '100%';
+        leftBlock.appendChild(fuelGauge);
+
+        // SAS Switch
+        const sasSw = createSwitch('SAS', () => {
+            // Toggle SAS
+            if (this.currentRocket && this.currentRocket.controls) {
+                this.currentRocket.controls.sasEnabled = !this.currentRocket.controls.sasEnabled;
+                sasSw.querySelector('.apollo-switch')?.classList.toggle('active', this.currentRocket.controls.sasEnabled);
+                // Sync standard button if exists
+                if (this.sasBtn) {
+                    this.sasBtn.style.backgroundColor = this.currentRocket.controls.sasEnabled ? '#007bff' : '';
+                }
+            }
+        });
+
+        // RCS Switch
+        const rcsSw = createSwitch('RCS', () => {
+            if (this.currentRocket && this.currentRocket.controls) {
+                this.currentRocket.controls.rcsEnabled = !this.currentRocket.controls.rcsEnabled;
+                rcsSw.querySelector('.apollo-switch')?.classList.toggle('active', this.currentRocket.controls.rcsEnabled);
+                if (this.rcsBtn) {
+                    this.rcsBtn.style.backgroundColor = this.currentRocket.controls.rcsEnabled ? '#007bff' : '';
+                }
+            }
+        });
+
+        // Initialize state
+        if (this.currentRocket?.controls?.sasEnabled) sasSw.querySelector('.apollo-switch')?.classList.add('active');
+        if (this.currentRocket?.controls?.rcsEnabled) rcsSw.querySelector('.apollo-switch')?.classList.add('active');
+
+        // Throttle (Vertical Progress Bar?) or simple Text
+        const throttleBox = document.createElement('div');
+        throttleBox.style.color = '#ccc';
+        throttleBox.innerHTML = `<div>THROTTLE</div><div id="apollo-throttle" class="apollo-vfd">0%</div>`;
+
+        // Add switches to left block
+        const switchRow = document.createElement('div');
+        switchRow.style.display = 'flex';
+        switchRow.style.gap = '10px';
+        switchRow.appendChild(sasSw);
+        switchRow.appendChild(rcsSw);
+
+        leftBlock.appendChild(switchRow);
+        leftBlock.appendChild(throttleBox);
+
+        dash.appendChild(leftBlock);
+
+
+        // --- CENTER PANEL (Nav & Orbit) ---
+        const centerBlock = document.createElement('div');
+        centerBlock.className = 'apollo-block';
+
+        // Navball container
+        const navContainer = document.createElement('div');
+        navContainer.id = 'apollo-navball-container';
+        centerBlock.appendChild(navContainer);
+
+        // Orbit Info
+        const orbitInfo = document.createElement('div');
+        orbitInfo.style.display = 'flex';
+        orbitInfo.style.flexDirection = 'column';
+        orbitInfo.style.gap = '5px';
+        orbitInfo.innerHTML = `
+            <div style="display:flex; align-items:center;">
+                <span class="vfd-label">AP:</span> <div id="apollo-ap" class="apollo-vfd">---</div>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <span class="vfd-label">PE:</span> <div id="apollo-pe" class="apollo-vfd">---</div>
+            </div>
+        `;
+        centerBlock.appendChild(orbitInfo);
+
+        dash.appendChild(centerBlock);
+
+
+        // --- RIGHT PANEL (Flight Data & Menu) ---
+        const rightBlock = document.createElement('div');
+        rightBlock.className = 'apollo-block';
+
+        // Speed & Alt Gauges
+        rightBlock.appendChild(createGauge('gauge-speed', 'VELOCITY'));
+        rightBlock.appendChild(createGauge('gauge-alt', 'ALTITUDE'));
+
+        // Menu Switches
+        // "Mission" Switch -> Toggles Mission Control Panel visibility
+        const missionSw = createSwitch('CONTROL', () => {
+            const panel = document.getElementById('mission-controls-panel');
+            if (panel) {
+                const current = panel.style.getPropertyValue('display');
+                // The panel class has !important none in Apollo.
+                // We must override inline with important or toggle class?
+                // Toggling class is cleaner but we are using theme classes.
+                // Let's use setProperty important.
+                const newDisplay = (current === 'none' || current === '') ? 'flex' : 'none';
+                panel.style.setProperty('display', newDisplay, 'important');
+            }
+        });
+
+        // "Time" Switch
+        const timeSw = createSwitch('TIME', () => {
+            // Toggle time controls? 
+            // Time controls are in top-right.
+            const timePanel = document.getElementById('time-controls-panel');
+            if (timePanel) {
+                const current = timePanel.style.getPropertyValue('display');
+                const newDisplay = (current === 'none' || current === '') ? 'block' : 'none';
+                timePanel.style.setProperty('display', newDisplay, 'important');
+            }
+        });
+
+        // "Map" Switch
+        const mapSw = createSwitch('MAP', () => {
+            // Toggle minimap
+            const mm = document.getElementById('minimap-container');
+            if (mm) {
+                const current = mm.style.getPropertyValue('display');
+                const newDisplay = (current === 'none' || current === '') ? 'block' : 'none';
+                mm.style.setProperty('display', newDisplay, 'important');
+            }
+        });
+
+        rightBlock.appendChild(missionSw);
+        rightBlock.appendChild(timeSw);
+        rightBlock.appendChild(mapSw);
+
+        dash.appendChild(rightBlock);
+
+        document.body.appendChild(dash);
+        this.apolloOverlay = dash;
+    }
+
+    update() {
+        if (!this.currentRocket) return;
+        const rb = this.currentRocket.body;
+        if (!rb) return;
+
+        // Common Data
+        const speed = rb.velocity.mag();
+        // Calc Alt
+        let alt = 0;
+        let dominantBody = null;
+        let maxG = -1;
+        for (const b of this.bodies) {
+            const dist = rb.position.distanceTo(b.position);
+            const g = b.mass / (dist * dist);
+            if (g > maxG) { maxG = g; dominantBody = b; }
+        }
+        if (dominantBody) {
+            const dist = rb.position.distanceTo(dominantBody.position);
+            alt = Math.max(0, dist - dominantBody.radius);
+        }
+        const fuelPct = this.currentRocket.engine.getFuelPercent();
+
+        // --- SCIFI UPDATE ---
+        if (this.currentTheme === 'scifi') {
+            const speedEl = document.getElementById('cockpit-speed');
+            if (speedEl) speedEl.innerText = `SPD: ${speed.toFixed(1)} m/s`;
+
+            const altEl = document.getElementById('cockpit-alt');
+            if (altEl) altEl.innerText = `ALT: ${(alt / 1000).toFixed(1)} km`;
+
+            const fuelEl = document.getElementById('cockpit-fuel');
+            if (fuelEl) fuelEl.innerText = `FUEL: ${fuelPct.toFixed(0)}%`;
+        }
+
+        // --- APOLLO UPDATE ---
+        if (this.currentTheme === 'apollo') {
+            // Check if rotation elements are found
+            const spdNeedle = document.querySelector('#gauge-speed .gauge-needle') as HTMLElement;
+            // Speed Gauge (-135deg = 0, +135deg = max). Range 0-2000 m/s
+            if (spdNeedle) {
+                const spdRot = -135 + Math.min(270, (speed / 2000) * 270);
+                spdNeedle.style.transform = `rotate(${spdRot}deg)`;
+            } else {
+                console.warn("Apollo Speed Needle not found!");
+            }
+
+            const spdVfd = document.getElementById('gauge-speed-vfd');
+            if (spdVfd) spdVfd.innerText = speed.toFixed(0);
+
+            // Alt Gauge
+            const altNeedle = document.querySelector('#gauge-alt .gauge-needle') as HTMLElement;
+            if (altNeedle) {
+                const maxAlt = 100000; // 100km
+                const altRot = -135 + Math.min(270, (alt / maxAlt) * 270);
+                altNeedle.style.transform = `rotate(${altRot}deg)`;
+            }
+
+            const altVfd = document.getElementById('gauge-alt-vfd');
+            if (altVfd) altVfd.innerText = (alt / 1000).toFixed(1) + 'k';
+
+            // Fuel Gauge
+            const fuelNeedle = document.querySelector('#gauge-fuel .gauge-needle') as HTMLElement;
+            if (fuelNeedle) {
+                const fuelRot = -135 + ((fuelPct / 100) * 270);
+                fuelNeedle.style.transform = `rotate(${fuelRot}deg)`;
+            }
+
+            // Throttle VFD
+            const throttleVfd = document.getElementById('apollo-throttle');
+            if (throttleVfd) {
+                const throttle = this.currentRocket.controls ? (this.currentRocket.controls.throttle * 100).toFixed(0) : '0';
+                throttleVfd.innerText = `${throttle}%`;
+            }
+
+            // Orbit Info (Ap/Pe)
+            if (rb.orbit) {
+                const apEl = document.getElementById('apollo-ap');
+                const peEl = document.getElementById('apollo-pe');
+                // Calculate periapsis/apoapsis from a(1-e) and a(1+e)
+                const periDist = rb.orbit.a * (1 - rb.orbit.e);
+                const apoDist = rb.orbit.a * (1 + rb.orbit.e);
+
+                // Subtract body radius for altitude
+                const r = dominantBody ? dominantBody.radius : 0;
+                const peri = (periDist - r) / 1000; // km
+                const apo = (apoDist - r) / 1000; // km
+
+                if (apEl) apEl.innerText = apo.toFixed(0) + ' km';
+                if (peEl) peEl.innerText = peri.toFixed(0) + ' km';
+            } else {
+                const apEl = document.getElementById('apollo-ap');
+                if (apEl) apEl.innerText = '---';
+                const peEl = document.getElementById('apollo-pe');
+                if (peEl) peEl.innerText = '---';
+            }
+        }
     }
 }

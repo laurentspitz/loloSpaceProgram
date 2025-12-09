@@ -243,6 +243,7 @@ export class Game {
 
         if (this.rocket) {
             this.ui.updateRocketInfo(this.rocket);
+            this.ui.update(); // Update cockpit/theme logic
 
             // Update trajectory (Keplerian Orbit or Numerical Prediction)
             if (this.renderer.showTrajectory) {
