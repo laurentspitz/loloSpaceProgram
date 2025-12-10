@@ -209,7 +209,10 @@ export class HangarUI {
         palette.style.flexDirection = 'column';
         palette.style.gap = '10px';
 
-        const currentYear = GameTimeManager.getYear((window as any).game?.elapsedGameTime || 0);
+        const gameTime = (window as any).game?.elapsedGameTime;
+        const appTime = (window as any).app?.currentGameTime;
+        console.log('[HangarUI] Reading time - Game:', gameTime, 'App:', appTime);
+        const currentYear = GameTimeManager.getYear(gameTime || appTime || 0);
 
         // Show year in title
         const title = document.createElement('h3');

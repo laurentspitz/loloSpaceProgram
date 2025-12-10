@@ -8,7 +8,7 @@ import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
 import { SphereOfInfluence } from '../physics/SphereOfInfluence';
-import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
+import { ManeuverNodeManager } from '../systems/ManeuverNodeManager'; // This is from systems
 
 import { ManeuverNodeUI } from './ManeuverNodeUI';
 import { IconGenerator } from './IconGenerator';
@@ -18,6 +18,7 @@ import { Rocket } from '../entities/Rocket';
 
 import { ThemeRegistry } from './ThemeRegistry';
 import type { CockpitTheme } from './CockpitTheme';
+import { MissionManager } from '../systems/MissionSystem'; // NEW import
 
 export class UI {
     renderer: Renderer | ThreeRenderer;
@@ -53,6 +54,7 @@ export class UI {
     // Theming
     currentTheme: string = 'standard';
     activeTheme: CockpitTheme | null = null;
+    missionManager?: MissionManager;
     scifiOverlay: HTMLElement | null = null;
     apolloOverlay: HTMLElement | null = null;
     rcsBtn: HTMLButtonElement | null = null;
@@ -81,10 +83,27 @@ export class UI {
 
         // Initialize Theme defaults (force standard layout reset)
         this.setTheme('standard');
+
+        this.createMissionDisplay();
+
+        // Listen for Mission Completion
+        window.addEventListener('mission-completed', async (e: any) => {
+            const { NotificationManager } = await import('./NotificationManager');
+            const mission = e.detail.mission;
+            NotificationManager.show(`MISSION ACCOMPLISHED: ${mission.title}\nReward: ${mission.reward}`, 'success', 5000);
+            // Maybe play a sound?
+            console.log('UI received mission completion:', mission);
+            // Re-render Log if open
+            if (document.getElementById('mission-log-overlay')) {
+                document.body.removeChild(document.getElementById('mission-log-overlay')!);
+                this.toggleMissionLog();
+            }
+        });
     }
 
-    init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager) {
+    init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager, missionManager?: MissionManager) {
         this.bodies = bodies;
+        this.missionManager = missionManager;
         if (rocket) {
             this.currentRocket = rocket;
 
@@ -279,9 +298,10 @@ export class UI {
                                     const state = (window as any).game.serializeState();
                                     await SaveSlotManager.saveToSlot(slotId, state, user.uid);
                                     NotificationManager.show("Game Saved! Exiting...", 'success');
-                                    setTimeout(() => window.location.reload(), 1000);
+                                    // Navigate without reload
+                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
                                 } else {
-                                    window.location.reload();
+                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
                                 }
                             } catch (e: any) {
                                 console.error("Save failed", e);
@@ -294,7 +314,7 @@ export class UI {
                         this.showConfirmDialog(
                             "Exit without Saving?",
                             "Are you sure? Unsaved progress will be lost.",
-                            () => window.location.reload(),
+                            () => window.dispatchEvent(new CustomEvent('navigate-menu')),
                             () => { }
                         );
                     }
@@ -303,7 +323,7 @@ export class UI {
                 this.showConfirmDialog(
                     "Exit to Menu?",
                     "Progress will NOT be saved (Guest Mode). Continue?",
-                    () => window.location.reload(),
+                    () => window.dispatchEvent(new CustomEvent('navigate-menu')),
                     () => { }
                 );
             }
@@ -313,10 +333,11 @@ export class UI {
         // 7. Hangar Button
         const hangarBtn = createBtn('🛠️ Hangar', () => {
             if (confirm('Go to Hangar? Current flight progress will be lost.')) {
-                window.location.reload(); // Simple reload to restart in hangar mode if URL param set, or just use event
-                // Better: Dispatch event
-                const event = new CustomEvent('navigate-hangar');
-                window.dispatchEvent(event);
+                // Dispatch event instead of reload (requires App to listen for 'navigate-menu' then user clicks Hangar, or add 'navigate-hangar' to App)
+                // For now, let's send to menu to be safe and consistent with backBtn
+                window.dispatchEvent(new CustomEvent('navigate-menu'));
+
+                // Ideally we'd have a 'navigate-hangar' event in App.ts
             }
         }, 'Go to Vehicle Assembly');
         controlsContent.appendChild(hangarBtn);
@@ -482,6 +503,62 @@ export class UI {
 
         document.body.appendChild(container);
     }
+
+    createMissionDisplay() {
+        const container = document.createElement('div');
+        container.id = 'mission-display';
+        container.style.position = 'absolute';
+        container.style.top = '10px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        container.style.padding = '8px 15px';
+        container.style.borderRadius = '20px';
+        container.style.color = '#fff';
+        container.style.fontFamily = 'monospace';
+        container.style.fontSize = '14px';
+        container.style.cursor = 'pointer'; // Make it look clickable
+        container.title = "Click to View Mission Log";
+        container.addEventListener('click', () => {
+            this.toggleMissionLog();
+        });
+        container.style.textAlign = 'center';
+        container.style.pointerEvents = 'auto'; // Changed from 'none' to 'auto' to allow clicks
+        container.style.border = '1px solid #444';
+
+        container.innerHTML = `<span style="color:#aaa; font-size:10px">CURRENT OBJECTIVE</span><br><span id="mission-title">Loading...</span>`;
+
+        document.body.appendChild(container);
+
+        const updateMissionText = () => {
+            const game = (window as any).game;
+            if (game && game.missionManager) {
+                const currentYear = GameTimeManager.getYear(game.elapsedGameTime);
+                const nextMission = game.missionManager.getNextAvailableMission(currentYear);
+                const titleEl = container.querySelector('#mission-title');
+                if (titleEl) {
+                    if (nextMission) {
+                        titleEl.textContent = nextMission.title;
+                        (titleEl as HTMLElement).style.color = '#fff';
+                    } else {
+                        titleEl.textContent = 'No Active Missions';
+                        (titleEl as HTMLElement).style.color = '#888';
+                    }
+                }
+            }
+        };
+
+        // Initial update attempt
+        setTimeout(updateMissionText, 1000);
+
+        // Listen for updates
+        window.addEventListener('mission-completed', () => {
+            // Wait a moment for state to settle or simple update
+            updateMissionText();
+        });
+
+        // Also update on game start/load theoretically, but setTimeout helps.
+    }    // Make it identifiable for layout if needed, though absolute right is fine.
 
     setTimeWarp(levelIndexOrValue: number, display?: HTMLElement) {
         // If 0 or 1 passed directly
@@ -1802,6 +1879,43 @@ export class UI {
         colliderContainer.appendChild(colliderLabel);
         debugContent.appendChild(colliderContainer);
 
+        // --- Time Control ---
+        const timeContainer = document.createElement('div');
+        timeContainer.style.marginTop = '10px';
+        timeContainer.style.borderTop = '1px solid #444';
+        timeContainer.style.paddingTop = '10px';
+
+        const yearLabel = document.createElement('div');
+        yearLabel.id = 'debug-year-label';
+        yearLabel.textContent = 'Game Year: 1957';
+        yearLabel.style.color = '#ccc';
+        yearLabel.style.fontSize = '12px';
+        yearLabel.style.marginBottom = '5px';
+
+        const yearSlider = document.createElement('input');
+        yearSlider.type = 'range';
+        yearSlider.min = '1957';
+        yearSlider.max = '2050';
+        yearSlider.value = '1957';
+        yearSlider.style.width = '100%';
+        yearSlider.oninput = (e) => {
+            const year = parseInt((e.target as HTMLInputElement).value);
+            yearLabel.textContent = `Game Year: ${year}`;
+
+            // Update Game Time
+            const seconds = GameTimeManager.getSecondsFromYear(year);
+            const game = (window as any).game;
+            if (game) {
+                game.elapsedGameTime = seconds;
+                // Force update date display immediately
+                this.updateDateTime(seconds);
+            }
+        };
+
+        timeContainer.appendChild(yearLabel);
+        timeContainer.appendChild(yearSlider);
+        debugContent.appendChild(timeContainer);
+
         // Show CoG Toggle
         const cogContainer = document.createElement('div');
         cogContainer.style.display = 'flex';
@@ -1873,9 +1987,9 @@ export class UI {
         // Need a wrapper to position it absolute
         const wrapper = document.createElement('div');
         wrapper.style.position = 'absolute';
-        wrapper.style.top = '10px';
-        wrapper.style.left = '50%';
-        wrapper.style.transform = 'translateX(-50%)';
+        wrapper.style.top = '300px'; // Below mission controls
+        wrapper.style.left = '10px';
+        wrapper.style.transform = 'none';
 
         const { container } = this.createCollapsiblePanel('DEBUG TOOLS', debugContent, true, '200px');
         wrapper.appendChild(container);
@@ -1946,8 +2060,6 @@ export class UI {
                 el.style.transform = 'none';
                 el.style.top = top || '';
                 el.style.bottom = bottom || '';
-                el.style.left = left || '';
-                el.style.right = right || '';
             }
         };
 
@@ -2083,6 +2195,108 @@ export class UI {
             const fuelEl = document.getElementById('cockpit-fuel');
             if (fuelEl) fuelEl.innerText = `FUEL: ${fuelPct.toFixed(0)}%`;
         }
+    }
+
+    toggleMissionLog() {
+        const existing = document.getElementById('mission-log-overlay');
+        if (existing) {
+            document.body.removeChild(existing);
+            return;
+        }
+
+        if (!this.missionManager) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'mission-log-overlay';
+        overlay.style.position = 'absolute';
+        overlay.style.top = '50%';
+        overlay.style.left = '50%';
+        overlay.style.transform = 'translate(-50%, -50%)';
+        overlay.style.backgroundColor = 'rgba(10, 20, 30, 0.95)';
+        overlay.style.border = '2px solid #4466aa';
+        overlay.style.padding = '20px';
+        overlay.style.color = '#fff';
+        overlay.style.borderRadius = '8px';
+        overlay.style.width = '400px';
+        overlay.style.maxHeight = '600px';
+        overlay.style.overflowY = 'auto';
+        overlay.style.fontFamily = 'monospace';
+        overlay.style.zIndex = '2000';
+        overlay.style.boxShadow = '0 0 20px rgba(0,0,0,0.8)';
+
+        const header = document.createElement('h2');
+        header.innerText = 'MISSION LOG';
+        header.style.textAlign = 'center';
+        header.style.color = '#66aaff';
+        header.style.marginTop = '0';
+        overlay.appendChild(header);
+
+        const list = document.createElement('div');
+        list.style.marginTop = '20px';
+
+        const missions = this.missionManager.missions;
+
+        missions.forEach(m => {
+            const item = document.createElement('div');
+            item.style.marginBottom = '15px';
+            item.style.padding = '10px';
+            item.style.borderBottom = '1px solid #334455';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+
+            const info = document.createElement('div');
+
+            const title = document.createElement('div');
+            title.innerText = m.title;
+            title.style.fontWeight = 'bold';
+            title.style.fontSize = '1.1em';
+
+            const desc = document.createElement('div');
+            desc.innerText = m.description;
+            desc.style.fontSize = '0.9em';
+            desc.style.color = '#aaa';
+
+            const reward = document.createElement('div');
+            reward.innerText = `Reward: ${m.reward}`;
+            reward.style.fontSize = '0.8em';
+            reward.style.color = '#88cc88';
+
+            info.appendChild(title);
+            info.appendChild(desc);
+            info.appendChild(reward);
+
+            const status = document.createElement('div');
+            if (m.completed) {
+                status.innerText = '✔ COMPLETED';
+                status.style.color = '#44ff44';
+                title.style.color = '#44ff44';
+            } else {
+                status.innerText = 'PENDING';
+                status.style.color = '#bbbbbb';
+                status.style.fontSize = '0.9em';
+            }
+
+            item.appendChild(info);
+            item.appendChild(status);
+            list.appendChild(item);
+        });
+
+        overlay.appendChild(list);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerText = 'CLOSE';
+        closeBtn.style.marginTop = '20px';
+        closeBtn.style.width = '100%';
+        closeBtn.style.padding = '10px';
+        closeBtn.style.background = '#334455';
+        closeBtn.style.border = 'none';
+        closeBtn.style.color = 'white';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.onclick = () => document.body.removeChild(overlay);
+
+        overlay.appendChild(closeBtn);
+        document.body.appendChild(overlay);
     }
 }
 

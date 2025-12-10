@@ -13,7 +13,10 @@ import { Vector2 } from './core/Vector2';
 import { SceneSetup } from './SceneSetup';
 import { ManeuverNodeManager } from './systems/ManeuverNodeManager';
 import { Config } from './Config';
+import { GameTimeManager } from './managers/GameTimeManager';
 import type { RocketConfig } from './Config';
+
+import { MissionManager } from './systems/MissionSystem';
 
 export class Game {
     bodies: Body[];
@@ -32,6 +35,9 @@ export class Game {
     frameCount: number = 0;
     orbitRecalcInterval: number = 1; // Recalculate orbits every frame for smooth visualization
 
+    // Systems
+    public missionManager: MissionManager;
+
     // Max physics step size for stability (e.g. 1 second)
     // If we warp time, we take multiple steps of this size or smaller
     readonly MAX_PHYSICS_STEP = Config.PHYSICS.MAX_STEP;
@@ -45,6 +51,7 @@ export class Game {
 
     constructor(assembly?: RocketConfig) {
         this.sceneSetup = SceneSetup;
+        this.missionManager = new MissionManager();
 
         // Initialize canvas
         let canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -100,8 +107,9 @@ export class Game {
         };
 
         this.renderer.currentRocket = this.rocket;
-        this.ui.init(this.bodies, this.rocket || undefined, this.maneuverNodeManager);
-
+        if (this.rocket) {
+            this.ui.init(this.bodies, this.rocket, this.maneuverNodeManager, this.missionManager);
+        }
         // Start with camera following rocket
         this.renderer.followedBody = this.rocket!.body;
 
@@ -139,6 +147,12 @@ export class Game {
         // Accumulate elapsed game time for date display
         this.elapsedGameTime += totalDt;
         this.ui.updateDateTime(this.elapsedGameTime);
+
+        // Update Missions
+        if (this.rocket && this.frameCount % 60 === 0) { // Check every ~1 second (60 frames)
+            const currentYear = GameTimeManager.getYear(this.elapsedGameTime);
+            this.missionManager.update(this.rocket, currentYear, this.bodies);
+        }
 
         // Update rocket controls
         if (this.rocket) {
@@ -507,7 +521,8 @@ export class Game {
                 timeScale: this.timeScale,
                 timeWarp: this.timeWarp,
                 paused: this.timeScale === 0
-            }
+            },
+            missions: this.missionManager.serialize()
         };
 
         return state;
@@ -526,6 +541,11 @@ export class Game {
         this.elapsedGameTime = state.elapsedGameTime || 0;
         this.timeWarp = state.simulation.timeWarp;
         // Don't auto-pause or set timeScale yet, user might want to start paused
+
+        // Restore Missions
+        if (state.missions) {
+            this.missionManager.deserialize(state.missions);
+        }
 
         // 2. Restore Rocket
         if (state.rocket && this.rocket) {

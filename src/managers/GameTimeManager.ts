@@ -15,4 +15,13 @@ export class GameTimeManager {
     static getYear(elapsedSeconds: number): number {
         return this.getDate(elapsedSeconds).getUTCFullYear();
     }
+
+    /**
+     * Get elapsed seconds corresponding to the start of a specific year
+     */
+    static getSecondsFromYear(year: number): number {
+        const targetDate = new Date(`${year}-01-01T00:00:00Z`);
+        const diffMs = targetDate.getTime() - this.START_DATE.getTime();
+        return Math.max(0, diffMs / 1000);
+    }
 }

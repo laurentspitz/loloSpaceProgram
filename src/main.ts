@@ -7,4 +7,5 @@ app.innerHTML = `
   <canvas id="gameCanvas"></canvas>
 `
 
-new App();
+const gameApp = new App();
+(window as any).app = gameApp;

@@ -11,6 +11,9 @@ export class App {
     private hangar: Hangar | null = null;
     private assembly: any = null; // Store assembly from Hangar
 
+    // Persistent Game Time (Seconds elapsed since 1957)
+    public currentGameTime: number = 0;
+
     constructor() {
         this.showMenu();
 
@@ -37,11 +40,22 @@ export class App {
     startGame(state?: any) {
         this.cleanup();
 
+        // Reset time if New Game requested
+        if (state && state.newGame) {
+            this.currentGameTime = 0;
+        }
+
         console.log('Starting game...');
         this.game = new Game(this.assembly);
 
+        // Initialize with persistent time
+        this.game.elapsedGameTime = this.currentGameTime;
+
         if (state && !state.newGame) {
             this.game.deserializeState(state);
+            // If state had time, we trusting deserializeState to overwrite or we should sync?
+            // Usually deserializeState sets elapsedGameTime.
+            // Let's ensure we track it back.
         }
 
         // Start the game loop after state is restored
@@ -59,6 +73,10 @@ export class App {
             this.menu = null;
         }
         if (this.game) {
+            // BACKUP TIME from Game before destroying
+            this.currentGameTime = this.game.elapsedGameTime;
+            console.log('[App] Saved game time:', this.currentGameTime, 'Year:', new Date(1957, 0, 1).getFullYear() + Math.floor(this.currentGameTime / 31536000)); // Approx year check
+
             // this.game.dispose(); // If Game has dispose, call it
             this.game = null;
         }
