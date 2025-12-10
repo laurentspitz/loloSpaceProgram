@@ -100,7 +100,7 @@ export class OrbitRenderer {
 
             // Reduced max segments for Line2 performance (was 200k)
             // Line2 generates geometry (quads), so we need to be conservative
-            let segments = Math.min(4096, Math.max(1024, Math.ceil(circumference / targetSegmentLength)));
+            const segments = Math.min(4096, Math.max(1024, Math.ceil(circumference / targetSegmentLength)));
 
             // Safety check: ensure segments is valid
             if (!isFinite(segments) || segments <= 0) {

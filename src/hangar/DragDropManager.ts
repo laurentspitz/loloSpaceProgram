@@ -554,8 +554,8 @@ export class DragDropManager {
 
                 const minEdgeDist = Math.min(distLeft, distRight, distBottom, distTop);
 
-                let snapLocal = new THREE.Vector3(cx, cy, 0);
-                let normalLocal = new THREE.Vector3(0, 1, 0);
+                const snapLocal = new THREE.Vector3(cx, cy, 0);
+                const normalLocal = new THREE.Vector3(0, 1, 0);
 
                 if (minEdgeDist === distLeft) {
                     snapLocal.x = -w / 2;

@@ -68,10 +68,10 @@ export class NavballRenderer {
             const y = e.clientY - rect.top - this.centerY;
 
             // Calculate angle from center
-            let angle = Math.atan2(y, x);
+            const angle = Math.atan2(y, x);
 
             // Convert to gauge space (same logic as before)
-            let deg = angle * 180 / Math.PI;
+            const deg = angle * 180 / Math.PI;
 
             // Shift so -135 is 0
             let shifted = deg + 135;

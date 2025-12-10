@@ -562,7 +562,7 @@ export class UI {
 
     setTimeWarp(levelIndexOrValue: number, display?: HTMLElement) {
         // If 0 or 1 passed directly
-        let newWarp = levelIndexOrValue;
+        const newWarp = levelIndexOrValue;
 
         const targetDisplay = display || this.timeSpeedDisplay;
         if (!targetDisplay) return;
@@ -1526,7 +1526,7 @@ export class UI {
             if (targetAngle !== null) {
                 // Normalize angles to -PI to PI
                 targetAngle = ((targetAngle + Math.PI) % (2 * Math.PI)) - Math.PI;
-                let currentAngle = ((rocket.rotation + Math.PI) % (2 * Math.PI)) - Math.PI;
+                const currentAngle = ((rocket.rotation + Math.PI) % (2 * Math.PI)) - Math.PI;
 
                 // Calculate angle difference
                 let angleDiff = targetAngle - currentAngle;
@@ -1563,7 +1563,7 @@ export class UI {
 
     setTarget(body: any) {
         // Find rocket
-        let rocket = (this.renderer as any).currentRocket || this.currentRocket;
+        const rocket = (this.renderer as any).currentRocket || this.currentRocket;
         if (rocket) {
             rocket.targetBody = body;
             console.log(`Target set to ${body.name}`, rocket);

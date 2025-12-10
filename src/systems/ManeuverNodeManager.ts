@@ -355,7 +355,7 @@ export class ManeuverNodeManager {
                 // Check for SOI Entry into child bodies
                 // Use PREDICTED child positions based on elapsed time
                 const children = getChildrenWithSOI(currentBody!);
-                let enteredChild = false;
+                const enteredChild = false;
 
                 for (const child of children) {
                     const childSOI = SphereOfInfluence.calculateSOI(child);
