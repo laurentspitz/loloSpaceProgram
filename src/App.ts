@@ -19,7 +19,7 @@ export class App {
 
         // Listen for navigation events from Hangar
         window.addEventListener('navigate-menu', () => {
-            this.showMenu();
+            this.showMenu('hub');
         });
 
         window.addEventListener('launch-game', (e: any) => {
@@ -29,11 +29,12 @@ export class App {
         });
     }
 
-    showMenu() {
+    showMenu(initialScreen: 'home' | 'hub' = 'home') {
         this.cleanup();
         this.menu = new MainMenu(
             (state) => this.startGame(state),  // FIX: Accept and pass state parameter
-            () => this.showHangar()
+            () => this.showHangar(),
+            initialScreen
         );
     }
 
@@ -77,7 +78,9 @@ export class App {
             this.currentGameTime = this.game.elapsedGameTime;
             console.log('[App] Saved game time:', this.currentGameTime, 'Year:', new Date(1957, 0, 1).getFullYear() + Math.floor(this.currentGameTime / 31536000)); // Approx year check
 
-            // this.game.dispose(); // If Game has dispose, call it
+            if (typeof this.game.dispose === 'function') {
+                this.game.dispose();
+            }
             this.game = null;
         }
         (window as any).game = null; // Clear global reference

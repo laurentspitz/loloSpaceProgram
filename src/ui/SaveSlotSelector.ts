@@ -268,56 +268,9 @@ export class SaveSlotSelector {
         input.focus();
     }
 
-    private showConfirmDialog(title: string, message: string, onConfirm: () => void) {
-        const dialogOverlay = document.createElement('div');
-        dialogOverlay.style.position = 'fixed';
-        dialogOverlay.style.top = '0';
-        dialogOverlay.style.left = '0';
-        dialogOverlay.style.width = '100%';
-        dialogOverlay.style.height = '100%';
-        dialogOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-        dialogOverlay.style.display = 'flex';
-        dialogOverlay.style.justifyContent = 'center';
-        dialogOverlay.style.alignItems = 'center';
-        dialogOverlay.style.zIndex = '3001';
-
-        const dialog = document.createElement('div');
-        dialog.className = 'game-modal-content';
-        dialog.style.minWidth = '400px';
-        dialog.style.borderColor = '#ff4444'; // Override to red for danger
-        dialog.style.boxShadow = '0 0 20px rgba(255, 68, 68, 0.3)';
-
-        const titleEl = document.createElement('h3');
-        titleEl.textContent = title;
-        titleEl.style.color = '#fff';
-        titleEl.style.margin = '0 0 15px 0';
-        dialog.appendChild(titleEl);
-
-        const messageEl = document.createElement('p');
-        messageEl.textContent = message;
-        messageEl.style.color = '#ccc';
-        messageEl.style.margin = '0 0 20px 0';
-        dialog.appendChild(messageEl);
-
-        const btnContainer = document.createElement('div');
-        btnContainer.style.display = 'flex';
-        btnContainer.style.gap = '10px';
-        btnContainer.style.justifyContent = 'flex-end';
-
-        const cancelBtn = this.createButton('Cancel', '#555');
-        cancelBtn.onclick = () => dialogOverlay.remove();
-        btnContainer.appendChild(cancelBtn);
-
-        const confirmBtn = this.createButton('Confirm', '#ff4444');
-        confirmBtn.onclick = () => {
-            onConfirm();
-            dialogOverlay.remove();
-        };
-        btnContainer.appendChild(confirmBtn);
-
-        dialog.appendChild(btnContainer);
-        dialogOverlay.appendChild(dialog);
-        document.body.appendChild(dialogOverlay);
+    private async showConfirmDialog(title: string, message: string, onConfirm: () => void) {
+        const { ConfirmDialog } = await import('./ConfirmDialog');
+        ConfirmDialog.show(title, message, onConfirm);
     }
 
     private formatMissionTime(seconds: number): string {

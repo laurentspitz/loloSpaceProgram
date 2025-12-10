@@ -7,6 +7,7 @@ export interface HistoryEvent {
     country?: string; // USA, USSR, etc.
     unlockedParts?: string[]; // Names of parts unlocked
     flavorText?: string; // "Invention of..."
+    relatedMissionIds?: string[]; // IDs of missions related to this event
 }
 
 export const SpaceHistory: HistoryEvent[] = [
@@ -19,7 +20,8 @@ export const SpaceHistory: HistoryEvent[] = [
         type: "success",
         country: "USSR",
         unlockedParts: ["LV-T30 Engine", "X200 Fuel Tank"],
-        flavorText: "historyEvents.sputnik1.flavor"
+        flavorText: "historyEvents.sputnik1.flavor",
+        relatedMissionIds: ["sputnik1"]
     },
     {
         year: 1957,
@@ -29,7 +31,8 @@ export const SpaceHistory: HistoryEvent[] = [
         type: "success",
         country: "USSR",
         unlockedParts: ["Mk1 Command Pod"],
-        flavorText: "historyEvents.sputnik2.flavor"
+        flavorText: "historyEvents.sputnik2.flavor",
+        relatedMissionIds: ["sputnik2"]
     },
 
     // --- 1958: USA Joins ---

@@ -18,9 +18,10 @@ export class MainMenu {
     private currentScreen: 'home' | 'hub' = 'home';
     private buttonContainer: HTMLDivElement;
 
-    constructor(onStartGame: (state?: any) => void, onOpenHangar: () => void) {
+    constructor(onStartGame: (state?: any) => void, onOpenHangar: () => void, initialScreen: 'home' | 'hub' = 'home') {
         this.onStartGame = onStartGame;
         this.onOpenHangar = onOpenHangar;
+        this.currentScreen = initialScreen;
 
         // Initialize Auth Menu (Top Right)
         this.authMenu = new AuthMenu();
@@ -87,7 +88,8 @@ export class MainMenu {
         );
 
         // Initial render
-        this.setScreen('home');
+        // Initial render
+        this.setScreen(this.currentScreen);
 
         // Copyright Footer
         const copyright = document.createElement('div');

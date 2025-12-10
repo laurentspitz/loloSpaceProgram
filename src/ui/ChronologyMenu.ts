@@ -1,6 +1,12 @@
-import { SpaceHistory } from '../data/SpaceHistory';
+import { SpaceHistory, type HistoryEvent } from '../data/SpaceHistory';
 import i18next from 'i18next';
+import { MissionManager } from '../systems/MissionSystem';
 
+interface YearGroup {
+    year: number;
+    events: HistoryEvent[];
+    status: 'success' | 'failure' | 'discovery' | 'future' | 'mixed';
+}
 
 export class ChronologyMenu {
     container!: HTMLDivElement;
@@ -14,10 +20,13 @@ export class ChronologyMenu {
 
     onClose: () => void;
 
-    // Track current game year to highlight position
-    currentYear: number = 1957;
+    // Current game state
+    currentYear: number;
+    missionManager: MissionManager;
 
-    constructor(onClose: () => void) {
+    constructor(currentYear: number, missionManager: MissionManager, onClose: () => void) {
+        this.currentYear = currentYear;
+        this.missionManager = missionManager;
         this.onClose = onClose;
         this.createUI();
     }
@@ -31,7 +40,7 @@ export class ChronologyMenu {
         this.container.style.width = '100%';
         this.container.style.height = '100%';
         this.container.style.backgroundColor = 'rgba(10, 10, 20, 0.95)';
-        this.container.style.zIndex = '4000'; // Above everything including AuthMenu
+        this.container.style.zIndex = '4000';
         this.container.style.display = 'flex';
         this.container.style.flexDirection = 'column';
         this.container.style.fontFamily = "'Segoe UI', sans-serif";
@@ -46,34 +55,46 @@ export class ChronologyMenu {
         header.style.alignItems = 'center';
         header.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
         header.style.background = 'linear-gradient(to right, rgba(0,0,0,0.5), transparent)';
+        header.style.flexShrink = '0'; // Prevent shrinking
 
         const title = document.createElement('h1');
-        title.innerHTML = `${i18next.t('chronology.title')} <span style="font-weight:lighter; font-size: 0.6em; color: #aaa;">${i18next.t('chronology.subtitle')}</span>`;
+        title.innerHTML = `${i18next.t('chronology.title')} <span style="font-weight:lighter; font-size: 0.6em; color: #aaa;">${this.currentYear}</span>`;
         title.style.margin = '0';
         title.style.letterSpacing = '2px';
 
+        // Close Button (Harmonized)
         const closeBtn = document.createElement('button');
-        closeBtn.innerText = i18next.t('chronology.close');
-        closeBtn.className = 'game-btn'; // Assume standard game-btn class exists
-        closeBtn.style.padding = '10px 20px';
-        closeBtn.style.border = '1px solid #444';
-        closeBtn.style.background = 'transparent';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.cursor = 'pointer';
+        closeBtn.innerHTML = i18next.t('menu.back'); // Use standardized Back text
+        closeBtn.className = 'game-btn'; // Use standardized class if available, or style similar
+        Object.assign(closeBtn.style, {
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            padding: '10px 20px',
+            fontSize: '18px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            color: 'white',
+            cursor: 'pointer',
+            borderRadius: '5px',
+            backdropFilter: 'blur(5px)'
+        });
+        closeBtn.onmouseenter = () => closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        closeBtn.onmouseleave = () => closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
         closeBtn.onclick = () => {
             this.close();
             this.onClose();
         };
+        this.container.appendChild(closeBtn);
 
         header.appendChild(title);
-        header.appendChild(closeBtn);
         this.container.appendChild(header);
 
         // Content Area
         const content = document.createElement('div');
         content.style.flex = '1';
         content.style.display = 'flex';
-        content.style.flexDirection = 'column'; // Stack Timeline and Details
+        content.style.flexDirection = 'column';
         content.style.overflow = 'hidden';
         content.style.position = 'relative';
 
@@ -82,14 +103,24 @@ export class ChronologyMenu {
         this.timelineContainer.style.height = '50%';
         this.timelineContainer.style.display = 'flex';
         this.timelineContainer.style.alignItems = 'center';
-        this.timelineContainer.style.padding = '0 50px'; // Padding on sides
-        this.timelineContainer.style.overflowX = 'auto'; // Horizontal scroll
+        this.timelineContainer.style.padding = '0 50px';
+        this.timelineContainer.style.overflowX = 'auto';
         this.timelineContainer.style.overflowY = 'hidden';
         this.timelineContainer.style.whiteSpace = 'nowrap';
-        this.timelineContainer.style.gap = '80px'; // Spacing between nodes
-        this.timelineContainer.style.scrollBehavior = 'smooth';
+        this.timelineContainer.style.position = 'relative';
 
-        // Custom scrollbar styling
+        // Timeline Axis Line
+        const axisLine = document.createElement('div');
+        axisLine.style.position = 'absolute';
+        axisLine.style.top = '50%';
+        axisLine.style.left = '0';
+        axisLine.style.height = '2px';
+        axisLine.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+        axisLine.style.width = '10000px';
+        axisLine.style.zIndex = '0'; // Behind items
+        this.timelineContainer.appendChild(axisLine);
+
+        // Custom scrollbar
         const style = document.createElement('style');
         style.innerHTML = `
             ::-webkit-scrollbar {
@@ -110,34 +141,36 @@ export class ChronologyMenu {
 
         // 2. Details / Context Panel (Bottom)
         this.descriptionPanel = document.createElement('div');
-        this.descriptionPanel.style.height = '40%';
+        this.descriptionPanel.style.height = '50%';
         this.descriptionPanel.style.borderTop = '1px solid rgba(255, 255, 255, 0.1)';
         this.descriptionPanel.style.background = 'rgba(0,0,0,0.3)';
         this.descriptionPanel.style.padding = '40px';
         this.descriptionPanel.style.display = 'flex';
         this.descriptionPanel.style.justifyContent = 'center';
-        this.descriptionPanel.style.alignItems = 'center';
+        this.descriptionPanel.style.alignItems = 'flex-start'; // Align top
+        this.descriptionPanel.style.overflowY = 'auto'; // Scrollable details
 
         // Initialize Detail Container
         this.detailContainer = document.createElement('div');
-        this.detailContainer.style.maxWidth = '800px';
+        this.detailContainer.style.maxWidth = '900px';
         this.detailContainer.style.width = '100%';
         this.detailContainer.style.display = 'flex';
         this.detailContainer.style.flexDirection = 'column';
-        this.detailContainer.style.gap = '20px';
-        this.detailContainer.style.opacity = '0'; // Hidden initially
+        this.detailContainer.style.gap = '30px';
+        this.detailContainer.style.opacity = '0';
         this.detailContainer.style.transition = 'opacity 0.3s ease';
 
-        this.detailTitle = document.createElement('h2');
-        this.detailTitle.style.fontSize = '32px';
+        this.detailTitle = document.createElement('h2'); // For Year Title
+        this.detailTitle.style.fontSize = '36px';
         this.detailTitle.style.margin = '0';
         this.detailTitle.style.borderBottom = '1px solid #444';
         this.detailTitle.style.paddingBottom = '10px';
+        this.detailTitle.style.textAlign = 'center';
 
-        this.detailDesc = document.createElement('div');
-        this.detailDesc.style.fontSize = '16px';
-        this.detailDesc.style.lineHeight = '1.6';
-        this.detailDesc.style.color = '#ccc';
+        this.detailDesc = document.createElement('div'); // Container for event cards
+        this.detailDesc.style.display = 'flex';
+        this.detailDesc.style.flexDirection = 'column';
+        this.detailDesc.style.gap = '20px';
 
         this.detailContainer.appendChild(this.detailTitle);
         this.detailContainer.appendChild(this.detailDesc);
@@ -146,7 +179,9 @@ export class ChronologyMenu {
         const placeholder = document.createElement('div');
         placeholder.textContent = i18next.t('chronology.selectEvent');
         placeholder.style.color = '#666';
-        placeholder.style.position = 'absolute';
+        placeholder.style.fontSize = '18px';
+        placeholder.className = 'placeholder-text';
+        placeholder.style.marginTop = '50px';
 
         this.descriptionPanel.appendChild(placeholder);
         this.descriptionPanel.appendChild(this.detailContainer);
@@ -159,164 +194,257 @@ export class ChronologyMenu {
     }
 
     renderTimelineItems() {
-        // Line connecting items
-        // We can't easily draw a continuous line in a flex container with gaps, 
-        // so we'll use :before/:after on items or a background SVG. 
-        // For simplicity, let's just create nodes.
+        const startYear = 1957;
+        const pixelsPerYear = 200; // More spacing
 
-        SpaceHistory.forEach((event) => {
+        // Group by Year
+        const years: Map<number, YearGroup> = new Map();
+
+        SpaceHistory.forEach(event => {
+            if (!years.has(event.year)) {
+                years.set(event.year, {
+                    year: event.year,
+                    events: [],
+                    status: 'mixed'
+                });
+            }
+            years.get(event.year)!.events.push(event);
+        });
+
+        // Determine aggregated status color for the node
+        years.forEach(group => {
+            // Logic: if any failure -> mixed/failure, if all success -> success
+            // Simple logic: use type of first event or 'mixed' if multiple types
+            const types = new Set(group.events.map(e => e.type));
+            if (types.has('future')) group.status = 'future';
+            else if (types.size > 1) group.status = 'mixed';
+            else group.status = group.events[0].type;
+        });
+
+        const sortedYears = Array.from(years.values()).sort((a, b) => a.year - b.year);
+
+        sortedYears.forEach((group) => {
+            const isFuture = group.year > this.currentYear;
+            const isLocked = isFuture;
+
+            const yearDiff = group.year - startYear;
+            const positionLeft = yearDiff * pixelsPerYear + 100;
+
             const item = document.createElement('div');
             item.className = 'timeline-item';
-            item.style.display = 'inline-flex';
+            item.style.position = 'absolute';
+            item.style.left = `${positionLeft}px`;
+            item.style.top = '50%';
+            item.style.transform = 'translate(-50%, -50%)';
+            item.style.display = 'flex';
             item.style.flexDirection = 'column';
             item.style.alignItems = 'center';
-            item.style.position = 'relative';
-            item.style.cursor = 'pointer';
-            item.style.transition = 'transform 0.2s, border-color 0.2s, box-shadow 0.2s'; // Add transitions for new styles
-            item.style.border = '2px solid rgba(255,255,255,0.1)'; // Initial border
-            item.style.borderRadius = '8px'; // Rounded corners for the item card
-            item.style.padding = '15px 10px'; // Padding inside the item card
-            item.style.backgroundColor = 'rgba(0,0,0,0.2)'; // Background for the item card
+            item.style.zIndex = '10'; // Above line
+            item.style.cursor = isLocked ? 'default' : 'pointer';
+            item.style.width = '60px'; // Hit area
+            item.style.height = '100px';
+            item.style.justifyContent = 'center';
 
-            // Hover effect
-            item.onmouseenter = () => item.style.transform = 'scale(1.05)';
-            item.onmouseleave = () => item.style.transform = 'scale(1)';
-
-            // Click to show details
-            item.onclick = () => {
-                const color = this.getNodeColor(event.type);
-
-                // Remove active class from all
-                this.timelineContainer.querySelectorAll('.timeline-item').forEach((d: Element) => {
-                    const el = d as HTMLDivElement;
-                    el.style.borderColor = 'rgba(255,255,255,0.1)';
-                    el.style.transform = 'scale(1)';
-                    el.style.boxShadow = 'none';
+            // Interaction
+            if (!isLocked) {
+                // Use addEventListener for better reliability
+                item.addEventListener('mouseenter', () => {
+                    if (!item.classList.contains('active')) {
+                        const n = item.querySelector('.node-circle') as HTMLElement;
+                        if (n) n.style.transform = 'scale(1.3)';
+                    }
                 });
-                item.style.borderColor = color;
-                item.style.transform = 'scale(1.05)';
-                item.style.boxShadow = `0 0 20px ${color}40`;
-                const translatedTitle = i18next.t(event.title);
-                this.detailTitle.textContent = `${event.year}: ${translatedTitle}`;
-                this.detailTitle.style.color = color;
-
-                let descHtml = `<p>${i18next.t(event.description)}</p>`;
-                if (event.country) {
-                    const flag = this.getFlag(event.country);
-                    descHtml += `<p style="color: #aaa; margin-top: 5px; font-size: 14px;">${i18next.t('chronology.madeBy', { flag: flag, country: event.country })}</p>`;
-                }
-
-                // Flavor Text (Technology Unlocked)
-                if (event.flavorText) {
-                    descHtml += `<div style="margin-top: 15px; padding: 10px; background: rgba(0, 170, 255, 0.1); border-left: 3px solid #00aaff; border-radius: 4px;">
-                        <span style="color: #00aaff; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">${i18next.t('chronology.techBreakthrough')}</span><br>
-                        <span style="color: #fff; font-size: 16px;">${i18next.t(event.flavorText)}</span>
-                    </div>`;
-                }
-
-                // Unlocked Parts List
-                if (event.unlockedParts && event.unlockedParts.length > 0) {
-                    descHtml += `<div style="margin-top: 15px;">
-                        <span style="color: #4CAF50; font-weight: bold; font-size: 12px; text-transform: uppercase;">${i18next.t('chronology.unlockedParts')}</span>
-                        <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #ddd;">
-                            ${event.unlockedParts.map(p => `<li>${p}</li>`).join('')}
-                        </ul>
-                    </div>`;
-                }
-
-                this.detailDesc.innerHTML = descHtml;
-
-                this.detailContainer.style.opacity = '1';
-
-                // Remove placeholder if it exists
-                const placeholder = this.descriptionPanel.querySelector('div[style*="Select an event"]');
-                if (placeholder) { // Check text content slightly more robustly or just by reference if we kept it, but query works for this simple case or re-select by text content
-                    // Actually, the selector above 'style*="Select an event"' is risky if text changes.
-                    // Better to clean children or keep reference.
-                    // Since I imported i18n, the text changes.
-                    // Let's just empty the panel before adding container if we want, but detailContainer is appended.
-                    // The placeholder was appended directly.
-                    // Let's match by reference if possible? No reference stored on instance.
-                    // Let's iterate children and remove if it is the placeholder div.
-                    Array.from(this.descriptionPanel.children).forEach(child => {
-                        if (child !== this.detailContainer && child.textContent === i18next.t('chronology.selectEvent')) {
-                            child.remove();
-                        }
-                    });
-                }
-
-                // Scroll to center
-                const containerCenter = this.timelineContainer.offsetWidth / 2;
-                const cardCenter = item.offsetLeft + item.offsetWidth / 2;
-                this.timelineContainer.scrollTo({
-                    left: cardCenter - containerCenter,
-                    behavior: 'smooth'
+                item.addEventListener('mouseleave', () => {
+                    if (!item.classList.contains('active')) {
+                        const n = item.querySelector('.node-circle') as HTMLElement;
+                        if (n) n.style.transform = 'scale(1)';
+                    }
                 });
-            };
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent bubbling
+                    this.selectYear(group, item);
+                });
+            }
 
-            // Year Label
+            // Year Label (Above)
             const yearLabel = document.createElement('div');
-            yearLabel.innerText = event.year.toString();
-            yearLabel.style.fontSize = '24px';
+            yearLabel.innerText = group.year.toString();
+            yearLabel.style.fontSize = '20px';
             yearLabel.style.fontWeight = 'bold';
-            yearLabel.style.color = '#fff';
-            yearLabel.style.marginBottom = '10px';
+            yearLabel.style.color = isLocked ? '#555' : '#fff';
+            yearLabel.style.marginBottom = '15px';
             yearLabel.style.fontFamily = 'monospace';
+            yearLabel.style.pointerEvents = 'none'; // Click through
 
             // Node Circle
             const node = document.createElement('div');
-            node.style.width = '20px';
-            node.style.height = '20px';
+            node.className = 'node-circle';
+            node.style.width = '24px';
+            node.style.height = '24px';
             node.style.borderRadius = '50%';
-            node.style.border = '2px solid #fff';
-            node.style.backgroundColor = this.getNodeColor(event.type);
-            node.style.boxShadow = `0 0 10px ${this.getNodeColor(event.type)}`;
-            node.style.marginBottom = '10px';
-            node.style.zIndex = '1';
+            node.style.border = isLocked ? '2px solid #555' : '3px solid #fff';
+            node.style.backgroundColor = isLocked ? '#222' : this.getNodeColor(group.status);
+            node.style.boxShadow = isLocked ? 'none' : `0 0 15px ${this.getNodeColor(group.status)}40`;
+            node.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            node.style.pointerEvents = 'none'; // Click through to item
 
-            // Connecting Line (Horizontal) after the node
-            // Note: This is tricky with flexbox gaps. 
-            // Better visual: just nodes floating.
-
-            // Title Label
-            const titleLabel = document.createElement('div');
-            titleLabel.innerText = i18next.t(event.title);
-            titleLabel.style.fontSize = '14px';
-            titleLabel.style.color = '#ccc';
-            titleLabel.style.maxWidth = '150px';
-            titleLabel.style.whiteSpace = 'normal'; // Allow text wrap within the item width
-            titleLabel.style.textAlign = 'center';
+            // Event Count Badge (if > 1)
+            if (group.events.length > 1 && !isLocked) {
+                const badge = document.createElement('div');
+                badge.textContent = group.events.length.toString();
+                badge.style.position = 'absolute';
+                badge.style.top = '55px'; // Adjust based on layout
+                badge.style.right = '10px';
+                badge.style.backgroundColor = '#fff';
+                badge.style.color = '#000';
+                badge.style.borderRadius = '50%';
+                badge.style.width = '16px';
+                badge.style.height = '16px';
+                badge.style.fontSize = '10px';
+                badge.style.fontWeight = 'bold';
+                badge.style.display = 'flex';
+                badge.style.justifyContent = 'center';
+                badge.style.alignItems = 'center';
+                badge.style.pointerEvents = 'none';
+                item.appendChild(badge);
+            }
 
             item.appendChild(yearLabel);
             item.appendChild(node);
-            item.appendChild(titleLabel);
 
             this.timelineContainer.appendChild(item);
         });
     }
 
+    selectYear(group: YearGroup, item: HTMLDivElement) {
+        const color = this.getNodeColor(group.status);
+
+        // Reset all items
+        this.timelineContainer.querySelectorAll('.timeline-item').forEach((el: Element) => {
+            const div = el as HTMLDivElement;
+            div.classList.remove('active');
+            const n = div.querySelector('.node-circle') as HTMLElement;
+            if (n) {
+                n.style.transform = 'scale(1)';
+                n.style.boxShadow = 'none'; // Reset glow
+                // Re-apply base glow? Logic simplified
+            }
+        });
+
+        // Activate current
+        item.classList.add('active');
+        const activeNode = item.querySelector('.node-circle') as HTMLElement;
+        if (activeNode) {
+            activeNode.style.transform = 'scale(1.5)';
+            activeNode.style.boxShadow = `0 0 25px ${color}`;
+        }
+
+        // Header
+        this.detailTitle.textContent = `${group.year}`;
+        this.detailTitle.style.color = color;
+
+        // Render EVENTS list
+        this.detailDesc.innerHTML = ''; // Clear previous
+
+        // Add each event as a card
+        group.events.forEach(event => {
+            const eventCard = document.createElement('div');
+            eventCard.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+            eventCard.style.padding = '20px';
+            eventCard.style.borderRadius = '8px';
+            eventCard.style.borderLeft = `4px solid ${this.getNodeColor(event.type)}`;
+
+            // Header: Title + Flag
+            let headerHtml = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 22px; color: #fff;">${i18next.t(event.title)}</h3>`;
+
+            if (event.country) {
+                const flag = this.getFlag(event.country);
+                headerHtml += `<span style="font-size: 24px; title="${event.country}">${flag}</span>`;
+            }
+            headerHtml += `</div>`;
+
+            let contentHtml = `<p style="color: #ccc; margin: 0 0 15px 0; line-height: 1.5;">${i18next.t(event.description)}</p>`;
+
+            // Flavor Text
+            if (event.flavorText) {
+                contentHtml += `<div style="background: rgba(0, 170, 255, 0.1); padding: 8px 12px; border-radius: 4px; border-left: 2px solid #00aaff; margin-bottom: 15px;">
+                     <i style="color: #00aaff; font-size: 14px;">"${i18next.t(event.flavorText)}"</i>
+                </div>`;
+            }
+
+            // Unlocked Parts
+            if (event.unlockedParts && event.unlockedParts.length > 0) {
+                contentHtml += `<div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                    ${event.unlockedParts.map(p =>
+                    `<span style="background: #2E7D32; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">🔓 ${p}</span>`
+                ).join('')}
+                 </div>`;
+            }
+
+            // Related Missions
+            if (event.relatedMissionIds && event.relatedMissionIds.length > 0) {
+                contentHtml += `<div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <div style="font-size: 12px; text-transform: uppercase; color: #aaa; margin-bottom: 8px;">${i18next.t('chronology.relatedMissions')}</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">`;
+
+                event.relatedMissionIds.forEach(missionId => {
+                    const mission = this.missionManager.missions.find(m => m.id === missionId);
+                    if (mission) {
+                        const isCompleted = this.missionManager.completedMissionIds.has(missionId);
+                        const statusColor = isCompleted ? '#00C851' : '#ffbb33';
+                        const icon = isCompleted ? '✓' : '○';
+
+                        contentHtml += `
+                        <div style="display: flex; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+                            <span style="color: ${statusColor}; font-weight: bold; margin-right: 10px;">${icon}</span>
+                            <span style="color: #eee;">${mission.title}</span>
+                            ${isCompleted ? `<span style="margin-left: auto; color: ${statusColor}; font-size: 12px; border: 1px solid ${statusColor}; padding: 2px 6px; border-radius: 10px;">COMPLETED</span>` : ''}
+                        </div>`;
+                    }
+                });
+                contentHtml += `</div></div>`;
+            }
+
+            eventCard.innerHTML = headerHtml + contentHtml;
+            this.detailDesc.appendChild(eventCard);
+        });
+
+        this.detailContainer.style.opacity = '1';
+
+        // Remove placeholder
+        const placeholder = this.descriptionPanel.querySelector('.placeholder-text');
+        if (placeholder) placeholder.remove();
+
+        // Scroll timeline
+        const itemLeft = parseInt(item.style.left || '0');
+        const containerWidth = this.timelineContainer.clientWidth;
+        const scrollTarget = itemLeft - (containerWidth / 2);
+
+        this.timelineContainer.scrollTo({
+            left: scrollTarget,
+            behavior: 'smooth'
+        });
+    }
+
     getNodeColor(type: string) {
         switch (type) {
-            case 'success': return '#00C851'; // Green
-            case 'failure': return '#ff4444'; // Red
-            case 'discovery': return '#33b5e5'; // Blue
-            case 'future': return '#aa66cc'; // Purple
+            case 'success': return '#00C851';
+            case 'failure': return '#ff4444';
+            case 'discovery': return '#33b5e5';
+            case 'future': return '#aa66cc';
+            case 'mixed': return '#FF8800'; // Orange for mixed years
             default: return '#fff';
         }
     }
 
     getFlag(country: string): string {
         if (country.includes('USA')) return '🇺🇸';
-        if (country.includes('USSR')) return '☭'; // Or 🇷🇺
+        if (country.includes('USSR')) return '☭';
         if (country.includes('China')) return '🇨🇳';
         if (country.includes('ESA') || country.includes('Europe')) return '🇪🇺';
         if (country.includes('International')) return '🌍';
         return '🏳️';
-    }
-
-    updateCurrentYear(year: number) {
-        this.currentYear = year;
-        // Logic to scroll to year or highlight it could go here
     }
 
     close() {

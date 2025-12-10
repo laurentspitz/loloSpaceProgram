@@ -636,52 +636,10 @@ export class UI {
         parent.appendChild(themeSelect);
 
         // 6. Back to Menu
-        parent.appendChild(createBtn(i18next.t('ui.backToMenu'), async () => {
-            const { FirebaseService } = await import('../services/firebase');
-            const user = FirebaseService.auth.currentUser;
-
-            if (user) {
-                this.showConfirmDialog(
-                    i18next.t('ui.saveProgress'),
-                    i18next.t('ui.saveProgressPrompt'),
-                    async () => {
-                        const { SaveSlotSelector } = await import('./SaveSlotSelector');
-                        const { SaveSlotManager } = await import('../services/SaveSlotManager');
-                        const { NotificationManager } = await import('./NotificationManager');
-
-                        const selector = new SaveSlotSelector('save', async (slotId) => {
-                            try {
-                                if ((window as any).game) {
-                                    const state = (window as any).game.serializeState();
-                                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
-                                    NotificationManager.show(i18next.t('ui.saved') + " Exiting...", 'success');
-                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
-                                } else {
-                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
-                                }
-                            } catch (e: any) {
-                                NotificationManager.show(i18next.t('ui.saveFailed', { message: 'NOT escaping.' }), 'error');
-                            }
-                        });
-                        await selector.show();
-                    },
-                    () => {
-                        this.showConfirmDialog(
-                            i18next.t('ui.exitNoSave'),
-                            i18next.t('ui.exitNoSavePrompt'),
-                            () => window.dispatchEvent(new CustomEvent('navigate-menu')),
-                            () => { }
-                        );
-                    }
-                );
-            } else {
-                this.showConfirmDialog(
-                    i18next.t('ui.exitToMenu'),
-                    i18next.t('ui.exitToMenuPrompt'),
-                    () => window.dispatchEvent(new CustomEvent('navigate-menu')),
-                    () => { }
-                );
-            }
+        parent.appendChild(createBtn(i18next.t('menu.back'), async () => {
+            // Direct navigation to Hub (handled by App.ts)
+            window.dispatchEvent(new CustomEvent('navigate-menu'));
+            // Removed complex save logic here as we return to Hub now.
         }));
 
         // 7. Hangar Button

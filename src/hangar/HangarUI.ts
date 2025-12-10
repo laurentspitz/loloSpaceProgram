@@ -174,6 +174,12 @@ export class HangarUI {
         return btn;
     }
 
+    public setRocketName(name: string) {
+        if (this.rocketNameInput) {
+            this.rocketNameInput.value = name;
+        }
+    }
+
     private createNameInput(): HTMLInputElement {
         const input = document.createElement('input');
         input.type = 'text';
@@ -202,7 +208,7 @@ export class HangarUI {
 
     private createBackButton(): HTMLButtonElement {
         const btn = document.createElement('button');
-        btn.innerHTML = '⬅️';
+        btn.innerHTML = i18next.t('menu.back');
         btn.style.position = 'absolute';
         btn.style.top = '20px';
         btn.style.right = '20px';

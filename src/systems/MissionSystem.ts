@@ -57,6 +57,59 @@ export class MissionManager {
                 }
             },
             {
+                id: 'sputnik1',
+                title: 'Sputnik 1',
+                description: 'Launch the first artificial satellite into orbit.',
+                yearRequired: 1957,
+                reward: 'Unlock: LV-T30 Engine',
+                completed: false,
+                checkCondition: (rocket: Rocket, bodies: Body[]) => {
+                    // Orbit condition: Alt > 150km, Vel > 2000
+                    let minDist = Infinity;
+                    let nearestBody: Body | null = null;
+
+                    for (const body of bodies) {
+                        if (body === rocket.body || body.name === 'Rocket' || body.name.includes('Debris')) continue;
+                        const d = rocket.body.position.distanceTo(body.position);
+                        const visualRadius = body.radius * 3.0;
+                        const alt = d - visualRadius;
+                        if (alt < minDist && alt < 10000000) {
+                            minDist = alt;
+                            nearestBody = body;
+                        }
+                    }
+                    if (!nearestBody) return false;
+                    const velocity = rocket.body.velocity.mag();
+                    return minDist > 150000 && velocity > 2000;
+                }
+            },
+            {
+                id: 'sputnik2',
+                title: 'Sputnik 2',
+                description: 'Launch a biological payload (Laika) into orbit.',
+                yearRequired: 1957,
+                reward: 'Unlock: Mk1 Command Pod',
+                completed: false,
+                checkCondition: (rocket: Rocket, bodies: Body[]) => {
+                    // Same as orbit for now, could check for specific part if implemented
+                    let minDist = Infinity;
+                    let nearestBody: Body | null = null;
+                    for (const body of bodies) {
+                        if (body === rocket.body || body.name === 'Rocket' || body.name.includes('Debris')) continue;
+                        const d = rocket.body.position.distanceTo(body.position);
+                        const visualRadius = body.radius * 3.0;
+                        const alt = d - visualRadius;
+                        if (alt < minDist && alt < 10000000) {
+                            minDist = alt;
+                            nearestBody = body;
+                        }
+                    }
+                    if (!nearestBody) return false;
+                    const velocity = rocket.body.velocity.mag();
+                    return minDist > 150000 && velocity > 2000;
+                }
+            },
+            {
                 id: 'orbit_earth',
                 title: 'First Orbit',
                 description: 'Achieve a stable orbit around Earth.',

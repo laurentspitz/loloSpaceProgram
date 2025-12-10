@@ -71,20 +71,119 @@ export class HubScreen {
         // Chronology Button
         const chronologyBtn = this.createButton(i18next.t('menu.chronology'), '#aa00ff');
         chronologyBtn.onclick = async () => {
-            // Lazy load ChronologyMenu
+            // Lazy load ChronologyMenu and MissionManager
             const { ChronologyMenu } = await import('../ChronologyMenu');
-            new ChronologyMenu(() => {
+            const { MissionManager } = await import('../../systems/MissionSystem');
+
+            // Prepare Mission Manager with current state
+            const missionManager = new MissionManager();
+            if (this.pendingState && this.pendingState.missions) {
+                missionManager.deserialize(this.pendingState.missions);
+            } else if (this.pendingState && this.pendingState.completedMissionIds) {
+                // Handle flat format if exists, or nested
+                missionManager.deserialize({ completedIds: this.pendingState.completedMissionIds });
+            }
+
+            // Determine current year (aim for 1957 start + mission time)
+            const startYear = 1957;
+            const yearsElapsed = Math.floor((this.pendingState?.missionTime || 0) / (365 * 24 * 3600 * 1000));
+            const currentYear = startYear + yearsElapsed;
+
+            new ChronologyMenu(currentYear, missionManager, () => {
                 // On close, do nothing (stay in hub)
             });
         };
         this.container.appendChild(chronologyBtn);
 
-        // Back Button
+        // Back Button with Save Prompt
         const backBtn = this.createButton(i18next.t('menu.back'), '#ffffff');
         backBtn.style.padding = '10px 20px'; // Smaller override
         backBtn.style.fontSize = '18px';
         backBtn.style.marginTop = '20px';
-        backBtn.onclick = () => this.onBack();
+        backBtn.onclick = async () => {
+            const { FirebaseService } = await import('../../services/firebase');
+            const user = FirebaseService.auth.currentUser;
+
+            if (user) {
+                // Show Prompt using Unified ConfirmDialog
+                const { ConfirmDialog } = await import('../ConfirmDialog');
+
+                ConfirmDialog.show(
+                    i18next.t('ui.saveProgress'),
+                    i18next.t('ui.saveProgressPrompt'),
+                    async () => {
+                        // On Confirm: Open Save Selector
+                        const { SaveSlotSelector } = await import('../SaveSlotSelector');
+                        const { SaveSlotManager } = await import('../../services/SaveSlotManager');
+
+                        const selector = new SaveSlotSelector('save', async (slotId) => {
+                            try {
+                                // We need the state to save. 
+                                if (this.pendingState) {
+                                    await SaveSlotManager.saveToSlot(slotId, this.pendingState, user.uid);
+                                    // Success feedback could also be a nice toast/notification instead of alert.
+                                    // But keeping it minimal as requested.
+                                    // Let's use a non-blocking notification if possible or just proceed?
+                                    // For now, let's just proceed to back logic.
+                                    // Or maybe show a quick "Saved!" overlay? 
+                                    // UI.ts uses NotificationManager.
+                                    const { NotificationManager } = await import('../NotificationManager');
+                                    NotificationManager.show(i18next.t('ui.saved'), 'success');
+
+                                    this.onBack();
+                                } else {
+                                    const { NotificationManager } = await import('../NotificationManager');
+                                    NotificationManager.show("No state to save!", 'error');
+                                    this.onBack();
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                const { NotificationManager } = await import('../NotificationManager');
+                                NotificationManager.show(i18next.t('ui.saveFailed', { message: 'Error' }), 'error');
+                            }
+                        });
+                        await selector.show();
+                    },
+                    () => {
+                        // On Cancel (Initial Prompt): Ask if they want to exit without saving?
+                        // Or just cancel the whole action?
+                        // User expects: "Save?" -> No -> Exit without saving
+                        //               "Save?" -> Cancel -> Stay
+                        // Our ConfirmDialog has 2 buttons.
+
+                        // Let's do a nested check for safety if "No" is clicked.
+                        ConfirmDialog.show(
+                            i18next.t('ui.exitNoSave'),
+                            i18next.t('ui.exitNoSavePrompt'),
+                            () => {
+                                // Exit without saving
+                                this.onBack();
+                            },
+                            () => {
+                                // Stay in Hub
+                            },
+                            i18next.t('ui.confirm'), // "Yes, Exit"
+                            i18next.t('settings.cancel') // "Cancel, Stay"
+                        );
+                    },
+                    i18next.t('settings.save'), // Confirm Text
+                    i18next.t('ui.exitNoSave') // Cancel Text (Abused as "Don't Save"?) 
+                    // Actually, let's stick to standard Yes/No for "Do you want to save?"
+                );
+
+            } else {
+                // Formatting for Guest Mode
+                const { ConfirmDialog } = await import('../ConfirmDialog');
+                ConfirmDialog.show(
+                    i18next.t('ui.exitToMenu'),
+                    i18next.t('ui.exitToMenuPrompt'),
+                    () => this.onBack(),
+                    () => { }, // Stay
+                    i18next.t('ui.confirm'),
+                    i18next.t('settings.cancel')
+                );
+            }
+        };
         this.container.appendChild(backBtn);
     }
 
