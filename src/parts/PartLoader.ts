@@ -2,7 +2,7 @@ import type { BasePart } from './BasePart';
 import type { PartDefinition } from '../hangar/PartDefinition';
 import { Vector2 } from '../core/Vector2';
 import { ThemeRegistry } from '../ui/ThemeRegistry';
-import type { CockpitTheme } from '../ui/CockpitTheme';
+import type { CockpitTheme } from '../ui/types';
 
 /**
  * Automatic part loader using Vite's import.meta.glob

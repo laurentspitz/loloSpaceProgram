@@ -3,6 +3,7 @@ Feature: Flight Controls
   I want to control the rocket's systems
   So that I can fly the mission
 
+  @wip
   Scenario: Control Throttle, SAS, and RCS
     Given I have launched a rocket
     

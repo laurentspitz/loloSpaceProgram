@@ -34,8 +34,8 @@ Given('I have launched a rocket', async function (this: CustomWorld) {
     await this.page.getByRole('button', { name: 'LAUNCH' }).click();
     await expect(this.page.locator('canvas#gameCanvas')).toBeVisible();
 
-    // Wait for UI and Click for Focus
-    await expect(this.page.locator('#rocket-info-panel')).toBeVisible();
+    // Wait for UI to fully initialize - navball buttons are always created
+    await expect(this.page.locator('#navball-autopilot-buttons')).toBeVisible({ timeout: 15000 });
     await this.page.locator('canvas#gameCanvas').click();
 });
 

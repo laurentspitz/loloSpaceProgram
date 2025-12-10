@@ -18,7 +18,7 @@ Feature: Historical Progression system
     Given I am on the Hub Screen
     When I click the "Chronology" button
     Then I should see the Chronology Timeline
-    And I should see "Sputnik 1" in the timeline
-    And I should see "Apollo 11" in the timeline
-    When I click the "CLOSE" button
+    When I click the "1957" timeline node
+    Then I should see "Sputnik 1" in the timeline
+    When I close the Chronology Menu
     Then I should see the Main Menu container

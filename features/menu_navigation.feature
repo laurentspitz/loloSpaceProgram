@@ -23,4 +23,5 @@ Feature: Main Menu Navigation
   Scenario: Return to Home Screen (Optional Check)
     Given I am on the Hub Screen
     When I click "Back"
+    And I click "Confirm"
     Then I should be on the Main Menu

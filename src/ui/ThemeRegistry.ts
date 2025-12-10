@@ -1,4 +1,4 @@
-import type { CockpitTheme } from './CockpitTheme';
+import type { CockpitTheme } from './types';
 
 export class ThemeRegistry {
     private static themes: Map<string, CockpitTheme> = new Map();
