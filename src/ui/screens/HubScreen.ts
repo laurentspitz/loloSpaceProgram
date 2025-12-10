@@ -72,7 +72,7 @@ export class HubScreen {
         const chronologyBtn = this.createButton(i18next.t('menu.chronology'), '#aa00ff');
         chronologyBtn.onclick = async () => {
             // Lazy load ChronologyMenu and MissionManager
-            const { ChronologyMenu } = await import('../ChronologyMenu');
+            const { ChronologyMenu } = await import('../chronology');
             const { MissionManager } = await import('../../systems/MissionSystem');
 
             // Prepare Mission Manager with current state

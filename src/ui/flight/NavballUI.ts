@@ -20,13 +20,6 @@ export class NavballUI {
     private sasBtn: HTMLButtonElement | null = null;
     private onAutopilotChange?: (mode: AutopilotMode) => void;
 
-    // Button references for keyboard disable
-    private progradeBtn: HTMLButtonElement | null = null;
-    private retroBtn: HTMLButtonElement | null = null;
-    private targetBtn: HTMLButtonElement | null = null;
-    private antiTargetBtn: HTMLButtonElement | null = null;
-    private maneuverBtn: HTMLButtonElement | null = null;
-
     constructor(options: NavballUIOptions = {}) {
         this.onAutopilotChange = options.onAutopilotChange;
         this.initialize();
@@ -90,12 +83,6 @@ export class NavballUI {
         const targetBtn = createAutopilotButton('target', 'Target: Auto-align toward target');
         const antiTargetBtn = createAutopilotButton('anti-target', 'Anti-Target: Auto-align away from target');
         const maneuverBtn = createAutopilotButton('maneuver', 'Maneuver: Auto-align with maneuver node');
-
-        this.progradeBtn = progradeBtn;
-        this.retroBtn = retroBtn;
-        this.targetBtn = targetBtn;
-        this.antiTargetBtn = antiTargetBtn;
-        this.maneuverBtn = maneuverBtn;
 
         const clearAllGlow = () => {
             progradeBtn.style.boxShadow = 'none';

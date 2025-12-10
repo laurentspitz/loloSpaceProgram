@@ -2,7 +2,6 @@ import { HangarScene } from './hangar/HangarScene';
 import { HangarUI } from './hangar/HangarUI';
 import { RocketAssembly } from './hangar/RocketAssembly';
 import { DragDropManager } from './hangar/DragDropManager';
-import { RocketSaveManager } from './hangar/RocketSaveManager';
 
 /**
  * Hangar - Main class for the rocket building scene
@@ -124,8 +123,6 @@ export class Hangar {
                 // Back callback
                 if (this.isDirty) {
                     const { ConfirmDialog } = await import('./ui/ConfirmDialog');
-                    const i18next = (await import('i18next')).default; // Lazy load i18n if needed or assume available globally 
-                    // actually i18next is usually imported at top level in this project context
 
                     ConfirmDialog.show(
                         "Unsaved Changes", // i18next.t('ui.unsavedChanges')

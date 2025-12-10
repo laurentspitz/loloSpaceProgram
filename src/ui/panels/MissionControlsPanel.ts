@@ -19,13 +19,11 @@ export class MissionControlsPanel {
     private renderer: Renderer | ThreeRenderer;
     private lastTimeWarp: number = 1;
 
-    private onTimeWarpChange?: (factor: number) => void;
     private getCurrentTimeWarp?: () => number;
     private setTimeWarp?: (value: number) => void;
 
     constructor(options: MissionControlsPanelOptions) {
         this.renderer = options.renderer;
-        this.onTimeWarpChange = options.onTimeWarpChange;
         this.getCurrentTimeWarp = options.getCurrentTimeWarp;
         this.setTimeWarp = options.setTimeWarp;
         this.create();
@@ -119,7 +117,7 @@ export class MissionControlsPanel {
 
         // Chronology
         this.contentContainer.appendChild(createBtn(i18next.t('ui.chronology'), async () => {
-            const { ChronologyMenu } = await import('../ChronologyMenu');
+            const { ChronologyMenu } = await import('../chronology');
             const { GameTimeManager } = await import('../../managers/GameTimeManager');
             const game = (window as any).game;
             const currentYear = game?.elapsedGameTime ? GameTimeManager.getYear(game.elapsedGameTime) : 1957;
