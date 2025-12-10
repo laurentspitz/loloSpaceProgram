@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_lvt30": {
+            "name": "LV-T30 \"Reliant\"",
+            "description": "A powerful first-stage engine."
+        }
+    }
+}

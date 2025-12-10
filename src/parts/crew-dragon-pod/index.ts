@@ -1,6 +1,8 @@
 import { BasePart } from '../BasePart';
 import type { PartConfig } from '../PartConfig';
 import configData from './config.json';
+import en from './locales/en.json';
+import fr from './locales/fr.json';
 
 // TypeScript needs help with the JSON import type
 const config = configData as PartConfig;
@@ -12,6 +14,11 @@ const config = configData as PartConfig;
 export class CrewDragonPod extends BasePart {
     id = config.id;
     config = config;
+
+    locales = {
+        en: en,
+        fr: fr
+    };
 
     /**
      * Load texture using Vite's asset handling

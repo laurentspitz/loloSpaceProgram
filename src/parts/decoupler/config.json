@@ -1,8 +1,8 @@
 {
     "id": "decoupler",
-    "name": "Decoupler",
+    "name": "parts.decoupler.name",
     "type": "decoupler",
-    "description": "A stage separation device.",
+    "description": "parts.decoupler.description",
     "dimensions": {
         "width": 2.5,
         "height": 0.25

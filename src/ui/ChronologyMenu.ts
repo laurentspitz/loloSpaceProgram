@@ -1,5 +1,6 @@
 import { SpaceHistory } from '../data/SpaceHistory';
-import type { HistoryEvent } from '../data/SpaceHistory';
+import i18next from 'i18next';
+
 
 export class ChronologyMenu {
     container!: HTMLDivElement;
@@ -47,12 +48,12 @@ export class ChronologyMenu {
         header.style.background = 'linear-gradient(to right, rgba(0,0,0,0.5), transparent)';
 
         const title = document.createElement('h1');
-        title.innerHTML = 'SPACE CONQUEST <span style="font-weight:lighter; font-size: 0.6em; color: #aaa;">CHRONOLOGY</span>';
+        title.innerHTML = `${i18next.t('chronology.title')} <span style="font-weight:lighter; font-size: 0.6em; color: #aaa;">${i18next.t('chronology.subtitle')}</span>`;
         title.style.margin = '0';
         title.style.letterSpacing = '2px';
 
         const closeBtn = document.createElement('button');
-        closeBtn.innerText = '✕ CLOSE';
+        closeBtn.innerText = i18next.t('chronology.close');
         closeBtn.className = 'game-btn'; // Assume standard game-btn class exists
         closeBtn.style.padding = '10px 20px';
         closeBtn.style.border = '1px solid #444';
@@ -143,7 +144,7 @@ export class ChronologyMenu {
 
         // Placeholder text
         const placeholder = document.createElement('div');
-        placeholder.textContent = 'Select an event to view details';
+        placeholder.textContent = i18next.t('chronology.selectEvent');
         placeholder.style.color = '#666';
         placeholder.style.position = 'absolute';
 
@@ -195,28 +196,28 @@ export class ChronologyMenu {
                 item.style.borderColor = color;
                 item.style.transform = 'scale(1.05)';
                 item.style.boxShadow = `0 0 20px ${color}40`;
-
-                this.detailTitle.textContent = `${event.year}: ${event.title}`;
+                const translatedTitle = i18next.t(event.title);
+                this.detailTitle.textContent = `${event.year}: ${translatedTitle}`;
                 this.detailTitle.style.color = color;
 
-                let descHtml = `<p>${event.description}</p>`;
+                let descHtml = `<p>${i18next.t(event.description)}</p>`;
                 if (event.country) {
                     const flag = this.getFlag(event.country);
-                    descHtml += `<p style="color: #aaa; margin-top: 5px; font-size: 14px;">Made by: ${flag} ${event.country}</p>`;
+                    descHtml += `<p style="color: #aaa; margin-top: 5px; font-size: 14px;">${i18next.t('chronology.madeBy', { flag: flag, country: event.country })}</p>`;
                 }
 
                 // Flavor Text (Technology Unlocked)
                 if (event.flavorText) {
                     descHtml += `<div style="margin-top: 15px; padding: 10px; background: rgba(0, 170, 255, 0.1); border-left: 3px solid #00aaff; border-radius: 4px;">
-                        <span style="color: #00aaff; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Technology Breakthrough</span><br>
-                        <span style="color: #fff; font-size: 16px;">${event.flavorText}</span>
+                        <span style="color: #00aaff; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">${i18next.t('chronology.techBreakthrough')}</span><br>
+                        <span style="color: #fff; font-size: 16px;">${i18next.t(event.flavorText)}</span>
                     </div>`;
                 }
 
                 // Unlocked Parts List
                 if (event.unlockedParts && event.unlockedParts.length > 0) {
                     descHtml += `<div style="margin-top: 15px;">
-                        <span style="color: #4CAF50; font-weight: bold; font-size: 12px; text-transform: uppercase;">Unlocked Parts:</span>
+                        <span style="color: #4CAF50; font-weight: bold; font-size: 12px; text-transform: uppercase;">${i18next.t('chronology.unlockedParts')}</span>
                         <ul style="margin: 5px 0 0 0; padding-left: 20px; color: #ddd;">
                             ${event.unlockedParts.map(p => `<li>${p}</li>`).join('')}
                         </ul>
@@ -229,8 +230,19 @@ export class ChronologyMenu {
 
                 // Remove placeholder if it exists
                 const placeholder = this.descriptionPanel.querySelector('div[style*="Select an event"]');
-                if (placeholder) {
-                    placeholder.remove();
+                if (placeholder) { // Check text content slightly more robustly or just by reference if we kept it, but query works for this simple case or re-select by text content
+                    // Actually, the selector above 'style*="Select an event"' is risky if text changes.
+                    // Better to clean children or keep reference.
+                    // Since I imported i18n, the text changes.
+                    // Let's just empty the panel before adding container if we want, but detailContainer is appended.
+                    // The placeholder was appended directly.
+                    // Let's match by reference if possible? No reference stored on instance.
+                    // Let's iterate children and remove if it is the placeholder div.
+                    Array.from(this.descriptionPanel.children).forEach(child => {
+                        if (child !== this.detailContainer && child.textContent === i18next.t('chronology.selectEvent')) {
+                            child.remove();
+                        }
+                    });
                 }
 
                 // Scroll to center
@@ -268,7 +280,7 @@ export class ChronologyMenu {
 
             // Title Label
             const titleLabel = document.createElement('div');
-            titleLabel.innerText = event.title;
+            titleLabel.innerText = i18next.t(event.title);
             titleLabel.style.fontSize = '14px';
             titleLabel.style.color = '#ccc';
             titleLabel.style.maxWidth = '150px';

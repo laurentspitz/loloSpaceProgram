@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "rcs_block": {
+            "name": "Propulseur RCS RV-105",
+            "description": "Petit propulseur pour le contrôle d'attitude."
+        }
+    }
+}

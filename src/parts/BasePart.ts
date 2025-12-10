@@ -16,6 +16,12 @@ export abstract class BasePart {
     abstract config: PartConfig;
 
     /**
+     * Optional: Modular translations for this part
+     * Structure: { en: { ... }, fr: { ... } }
+     */
+    locales?: Record<string, any>;
+
+    /**
      * Load the texture for this part
      * Returns a URL or data URL
      */

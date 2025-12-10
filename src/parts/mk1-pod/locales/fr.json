@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "mk1_pod": {
+            "name": "Capsule Mk1",
+            "description": "Une capsule fiable pour un seul Kerbal."
+        }
+    }
+}

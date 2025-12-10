@@ -1,8 +1,8 @@
 {
     "id": "parachute_mk1",
-    "name": "Mk1 Parachute",
+    "name": "parts.parachute_mk1.name",
     "type": "parachute",
-    "description": "A standard parachute for safe landings.",
+    "description": "parts.parachute_mk1.description",
     "dimensions": {
         "width": 0.6,
         "height": 0.4

@@ -1,8 +1,8 @@
 {
     "id": "engine_lvt30",
-    "name": "LV-T30 \"Reliant\"",
+    "name": "parts.engine_lvt30.name",
     "type": "engine",
-    "description": "A powerful first-stage engine.",
+    "description": "parts.engine_lvt30.description",
     "dimensions": {
         "width": 2.0,
         "height": 2.5

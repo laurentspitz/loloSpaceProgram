@@ -27,6 +27,7 @@
   "dependencies": {
     "@types/three": "^0.181.0",
     "firebase": "^12.6.0",
+    "i18next": "^25.7.2",
     "matter-js": "^0.20.0",
     "three": "^0.181.2"
   }

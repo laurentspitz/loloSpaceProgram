@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "radial_node": {
+            "name": "Point d'Attache Radial",
+            "description": "Un point d'attache personnalisé plaçable n'importe où."
+        }
+    }
+}

@@ -1,0 +1,297 @@
+{
+    "menu": {
+        "newGame": "✨ New Game (Start 1957)",
+        "loadGame": "📂 Load Game",
+        "settings": "⚙️ Settings",
+        "continue": "🚀 Continue / Play",
+        "buildRocket": "🛠️ Build Rocket (Hangar)",
+        "chronology": "📅 Chronology",
+        "back": "⬅ Back"
+    },
+    "ui": {
+        "focusRocket": "🚀 Focus Rocket",
+        "trajectory": "💫 Trajectory",
+        "toggleTrajectory": "Toggle Trajectory",
+        "resetCamera": "🎥 Reset Camera",
+        "settings": "⚙️ SETTINGS",
+        "standardUI": "🖥️ Standard UI",
+        "scifiCockpit": "🛸 Sci-Fi Cockpit",
+        "apolloPanel": "🚀 Apollo Panel",
+        "crewDragon": "🐉 Crew Dragon",
+        "backToMenu": "⬅ Back to Menu",
+        "hangar": "🛠️ Hangar",
+        "goToHangar": "Go to Vehicle Assembly",
+        "chronology": "📅 Chronology",
+        "viewHistory": "View Space History",
+        "saveGame": "💾 Save Game",
+        "missionControls": "MISSION CONTROLS",
+        "timeControl": "TIME CONTROL",
+        "celestialBodies": "CELESTIAL BODIES",
+        "focus": "Focus on {{name}}",
+        "orbit": "Orbit {{name}}",
+        "setTarget": "Set {{name}} as Target",
+        "saving": "⏳ Saving...",
+        "saved": "Game Saved!",
+        "saveFailed": "Save failed: {{message}}",
+        "needLogin": "You need to be logged in to save!",
+        "noActiveGame": "No active game to save!",
+        "confirmHangar": "Go to Hangar? Current flight progress will be lost.",
+        "saveProgress": "Save Progress?",
+        "saveProgressPrompt": "Would you like to SAVE your progress before exiting to the main menu?",
+        "exitNoSave": "Exit without Saving?",
+        "exitNoSavePrompt": "Are you sure? Unsaved progress will be lost.",
+        "exitToMenu": "Exit to Menu?",
+        "exitToMenuPrompt": "Progress will NOT be saved (Guest Mode). Continue?",
+        "missionAccomplished": "MISSION ACCOMPLISHED: {{title}}",
+        "reward": "Reward: {{reward}}",
+        "date": "Date:",
+        "elapsed": "T+",
+        "currentObjective": "CURRENT OBJECTIVE",
+        "noActiveMissions": "No Active Missions"
+    },
+    "settings": {
+        "title": "SETTINGS & CONTROLS",
+        "astronautProfile": "Astronaut Profile",
+        "callsign": "Callsign (Nickname):",
+        "callsignPlaceholder": "Enter your callsign...",
+        "rocketControls": "🚀 Rocket Controls",
+        "timeWarp": "⏳ Time Warp",
+        "maneuverNodes": "📐 Maneuver Nodes",
+        "viewControls": "👀 View Controls",
+        "autopilot": "🤖 Autopilot",
+        "saveSettings": "Save Settings",
+        "resetDefaults": "Reset to Defaults",
+        "close": "Close",
+        "savedCloud": "✅ Settings saved to cloud!",
+        "savedLocal": "💾 Settings saved locally",
+        "saveConfirmTitle": "Save settings?",
+        "saveConfirmMsg": "This will update your profile and controls.",
+        "cancel": "Cancel",
+        "save": "Save",
+        "confirm": "Confirm",
+        "controls": {
+            "thrust": "Thrust (Full)",
+            "cutEngines": "Cut Engines",
+            "rotateLeft": "Rotate Left",
+            "rotateRight": "Rotate Right",
+            "increaseThrottle": "Increase Throttle",
+            "decreaseThrottle": "Decrease Throttle",
+            "timeWarpIncrease": "Increase",
+            "timeWarpDecrease": "Decrease",
+            "timeWarpReset": "Reset",
+            "createManeuverNode": "Create",
+            "deleteManeuverNode": "Delete",
+            "toggleTrajectory": "Toggle Trajectory",
+            "zoomIn": "Zoom In",
+            "zoomOut": "Zoom Out",
+            "togglePrograde": "Prograde",
+            "toggleRetrograde": "Retrograde",
+            "toggleTarget": "Target",
+            "toggleAntiTarget": "Anti-Target",
+            "toggleManeuver": "Maneuver"
+        }
+    },
+    "hangar": {
+        "mirrorMode": "🪞 Mirror Mode (M)",
+        "showCoG": "⊕ Show CoG (C)",
+        "untitledRocket": "Untitled Rocket",
+        "partsYear": "Parts ({{year}})",
+        "noParts": "No parts available yet!",
+        "dropToDelete": "🗑️ Drop here to Delete",
+        "rocketStats": "Rocket Stats",
+        "mass": "Mass:",
+        "cost": "Cost:",
+        "deltaV": "Delta V:",
+        "twr": "TWR (Earth):",
+        "new": "🆕 NEW",
+        "load": "📂 LOAD",
+        "launch": "LAUNCH",
+        "saveRocket": "Save Rocket",
+        "enterName": "Enter rocket name...",
+        "loadRocket": "Load Rocket",
+        "noSavedRockets": "No saved rockets found",
+        "deletePrompt": "Delete \"{{name}}\"?",
+        "overridePrompt": "Override \"{{name}}\"?",
+        "startNewPrompt": "Start a new rocket? Current rocket will be lost if not saved.",
+        "pleaseEnterName": "Please enter a name for your rocket"
+    },
+    "chronology": {
+        "title": "SPACE CONQUEST",
+        "subtitle": "CHRONOLOGY",
+        "close": "✕ CLOSE",
+        "selectEvent": "Select an event to view details",
+        "madeBy": "Made by: {{flag}} {{country}}",
+        "techBreakthrough": "Technology Breakthrough",
+        "unlockedParts": "Unlocked Parts:"
+    },
+    "historyEvents": {
+        "sputnik1": {
+            "title": "Sputnik 1",
+            "desc": "The Soviet Union launches the first artificial satellite, marking the start of the Space Age.",
+            "flavor": "Basic Rocketry & Liquid Fuel Engines"
+        },
+        "sputnik2": {
+            "title": "Sputnik 2",
+            "desc": "First animal in orbit (Laika). Proved living passengers could survive launch.",
+            "flavor": "Life Support Systems"
+        },
+        "explorer1": {
+            "title": "Explorer 1",
+            "desc": "First US satellite. Discovered the Van Allen radiation belts.",
+            "flavor": "Radiation Hardening"
+        },
+        "nasaFormed": {
+            "title": "NASA Formed",
+            "desc": "The National Aeronautics and Space Administration is established."
+        },
+        "luna2": {
+            "title": "Luna 2",
+            "desc": "First human-made object to impact the Moon.",
+            "flavor": "Guidance Systems V1"
+        },
+        "luna3": {
+            "title": "Luna 3",
+            "desc": "First photographs of the far side of the Moon."
+        },
+        "vostok1": {
+            "title": "Vostok 1",
+            "desc": "Yuri Gagarin becomes the first human in space (Orbit).",
+            "flavor": "Manned Orbital Flight"
+        },
+        "freedom7": {
+            "title": "Freedom 7",
+            "desc": "Alan Shepard becomes the first American in space (Suborbital).",
+            "flavor": "Solid Rocket Motors"
+        },
+        "friendship7": {
+            "title": "Friendship 7",
+            "desc": "John Glenn orbits Earth. First US orbital flight.",
+            "flavor": "Re-entry Thermal Protection"
+        },
+        "vostok6": {
+            "title": "Vostok 6",
+            "desc": "Valentina Tereshkova becomes the first woman in space."
+        },
+        "voskhod2": {
+            "title": "Voskhod 2",
+            "desc": "Alexei Leonov performs the first Spacewalk (EVA).",
+            "flavor": "Extravehicular Mobility Units"
+        },
+        "gemini4": {
+            "title": "Gemini 4",
+            "desc": "First US Spacewalk by Ed White."
+        },
+        "gemini8": {
+            "title": "Gemini 8",
+            "desc": "First docking of two spacecraft in orbit.",
+            "flavor": "Orbital Rendezvous & Docking"
+        },
+        "saturnv": {
+            "title": "Saturn V",
+            "desc": "First all-up launch of the massive Saturn V rocket (Apollo 4).",
+            "flavor": "Heavy Lift rocketry"
+        },
+        "apollo1": {
+            "title": "Apollo 1 Fire",
+            "desc": "Tragedy strikes the Apollo program. Three astronauts lost.",
+            "flavor": "Safety Protocols Overhaul"
+        },
+        "apollo8": {
+            "title": "Apollo 8",
+            "desc": "First crewed spacecraft to orbit the Moon.",
+            "flavor": "Lunar Trajectory Navigation"
+        },
+        "apollo11": {
+            "title": "Apollo 11",
+            "desc": "Humans walk on the Moon. 'One giant leap for mankind'.",
+            "flavor": "Lunar Surface Operations"
+        },
+        "salyut1": {
+            "title": "Salyut 1",
+            "desc": "First space station launched.",
+            "flavor": "Long-duration Habitation"
+        },
+        "viking1": {
+            "title": "Viking 1",
+            "desc": "First successful landing on Mars.",
+            "flavor": "Interplanetary Communications"
+        },
+        "voyager1": {
+            "title": "Voyager 1",
+            "desc": "Launch of the probe that would leave the solar system.",
+            "flavor": "Deep Space Power Systems"
+        },
+        "sts1": {
+            "title": "STS-1 Columbia",
+            "desc": "First flight of the reusable Space Shuttle.",
+            "flavor": "Reusable Spacecraft"
+        },
+        "challenger": {
+            "title": "Challenger",
+            "desc": "Shuttle Challenger disaster during launch."
+        },
+        "hubble": {
+            "title": "Hubble",
+            "desc": "Deployment of the Hubble Space Telescope.",
+            "flavor": "Advanced Optics"
+        },
+        "issZarya": {
+            "title": "ISS Zarya",
+            "desc": "First module of the International Space Station.",
+            "flavor": "Modular Station Construction"
+        },
+        "spaceshipone": {
+            "title": "SpaceShipOne",
+            "desc": "First privately funded human spaceflight.",
+            "flavor": "Commercial Spaceflight"
+        },
+        "curiosity": {
+            "title": "Curiosity Rover",
+            "desc": "Landing of the massive rover on Mars via Skycrane."
+        },
+        "falcon9": {
+            "title": "Falcon 9 Landing",
+            "desc": "SpaceX lands an orbital booster for the first time.",
+            "flavor": "Propulsive Landing"
+        },
+        "crewDragon": {
+            "title": "Crew Dragon",
+            "desc": "First commercial crew launch to ISS.",
+            "flavor": "Touchscreen Cockpits"
+        },
+        "jamesWebb": {
+            "title": "James Webb",
+            "desc": "Launch of the most advanced space telescope.",
+            "flavor": "Infrared Astronomy"
+        },
+        "artemis3": {
+            "title": "Artemis III",
+            "desc": "Return of humans to the Lunar surface.",
+            "flavor": "Deep Space Logistics"
+        },
+        "marsSample": {
+            "title": "Mars Sample Return",
+            "desc": "Robotic return of soil samples from Mars."
+        },
+        "marsHumans": {
+            "title": "First Humans on Mars",
+            "desc": "Human footprint on the Red Planet.",
+            "flavor": "In-Situ Resource Utilization"
+        },
+        "marsCity": {
+            "title": "Mars City Alpha",
+            "desc": "First permanent settlement reaches 1,000 residents.",
+            "flavor": "Self-sustaining Ecosystems"
+        },
+        "titanColony": {
+            "title": "Titan Colony",
+            "desc": "Outpost established on Saturn's moon Titan.",
+            "flavor": "Cryo-Engineering"
+        },
+        "proxima": {
+            "title": "Proxima Centauri",
+            "desc": "Launch of the first relativistic lightsail probe.",
+            "flavor": "Interstellar Propulsion"
+        }
+    }
+}

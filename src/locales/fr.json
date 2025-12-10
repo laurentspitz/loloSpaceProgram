@@ -1,0 +1,297 @@
+{
+    "menu": {
+        "newGame": "✨ Nouvelle Partie (Début 1957)",
+        "loadGame": "📂 Charger Partie",
+        "settings": "⚙️ Paramètres",
+        "continue": "🚀 Continuer / Jouer",
+        "buildRocket": "🛠️ Construire (Hangar)",
+        "chronology": "📅 Chronologie",
+        "back": "⬅ Retour"
+    },
+    "ui": {
+        "focusRocket": "🚀 Voir Fusée",
+        "trajectory": "💫 Trajectoire",
+        "toggleTrajectory": "Afficher Trajectoire",
+        "resetCamera": "🎥 Réinit. Caméra",
+        "settings": "⚙️ PARAMÈTRES",
+        "standardUI": "🖥️ UI Standard",
+        "scifiCockpit": "🛸 Cockpit Sci-Fi",
+        "apolloPanel": "🚀 Panneau Apollo",
+        "crewDragon": "🐉 Crew Dragon",
+        "backToMenu": "⬅ Menu Principal",
+        "hangar": "🛠️ Hangar",
+        "goToHangar": "Aller à l'Assemblage (VAB)",
+        "chronology": "📅 Chronologie",
+        "viewHistory": "Voir l'Histoire Spatiale",
+        "saveGame": "💾 Sauvegarder",
+        "missionControls": "CONTRÔLES MISSION",
+        "timeControl": "CONTRÔLE TEMPOREL",
+        "celestialBodies": "CORPS CÉLESTES",
+        "focus": "Voir {{name}}",
+        "orbit": "Orbite {{name}}",
+        "setTarget": "Cibler {{name}}",
+        "saving": "⏳ Sauvegarde...",
+        "saved": "Jeu Sauvegardé !",
+        "saveFailed": "Échec sauvegarde : {{message}}",
+        "needLogin": "Vous devez être connecté pour sauvegarder !",
+        "noActiveGame": "Aucune partie active à sauvegarder !",
+        "confirmHangar": "Aller au Hangar ? La progression actuelle du vol sera perdue.",
+        "saveProgress": "Sauvegarder la progression ?",
+        "saveProgressPrompt": "Voulez-vous SAUVEGARDER votre progression avant de quitter ?",
+        "exitNoSave": "Quitter sans sauvegarder ?",
+        "exitNoSavePrompt": "Êtes-vous sûr ? La progression non sauvegardée sera perdue.",
+        "exitToMenu": "Quitter vers le Menu ?",
+        "exitToMenuPrompt": "La progression ne sera PAS sauvegardée (Mode Invité). Continuer ?",
+        "missionAccomplished": "MISSION ACCOMPLIE : {{title}}",
+        "reward": "Récompense : {{reward}}",
+        "date": "Date :",
+        "elapsed": "T+",
+        "currentObjective": "OBJECTIF ACTUEL",
+        "noActiveMissions": "Aucune Mission Active"
+    },
+    "settings": {
+        "title": "PARAMÈTRES & CONTRÔLES",
+        "astronautProfile": "Profil Astronaute",
+        "callsign": "Indicatif (Pseudo) :",
+        "callsignPlaceholder": "Entrez votre pseudo...",
+        "rocketControls": "🚀 Contrôles Fusée",
+        "timeWarp": "⏳Accélération Temporelle",
+        "maneuverNodes": "📐 Noeuds de Manoeuvre",
+        "viewControls": "👀 Contrôles Vue",
+        "autopilot": "🤖 Pilote Automatique",
+        "saveSettings": "Sauvegarder",
+        "resetDefaults": "Réinitialiser",
+        "close": "Fermer",
+        "savedCloud": "✅ Paramètres sauvegardés (Cloud) !",
+        "savedLocal": "💾 Paramètres sauvegardés (Local)",
+        "saveConfirmTitle": "Sauvegarder ?",
+        "saveConfirmMsg": "Cela mettra à jour votre profil et vos contrôles.",
+        "cancel": "Annuler",
+        "save": "Sauvegarder",
+        "confirm": "Confirmer",
+        "controls": {
+            "thrust": "Poussée Max",
+            "cutEngines": "Couper Moteurs",
+            "rotateLeft": "Rotation Gauche",
+            "rotateRight": "Rotation Droite",
+            "increaseThrottle": "Augmenter Gaz",
+            "decreaseThrottle": "Réduire Gaz",
+            "timeWarpIncrease": "Accélérer",
+            "timeWarpDecrease": "Ralentir",
+            "timeWarpReset": "Temps Réel",
+            "createManeuverNode": "Créer",
+            "deleteManeuverNode": "Supprimer",
+            "toggleTrajectory": "Trajectoire",
+            "zoomIn": "Zoom Avant",
+            "zoomOut": "Zoom Arrière",
+            "togglePrograde": "Prograde",
+            "toggleRetrograde": "Rétrograde",
+            "toggleTarget": "Cible",
+            "toggleAntiTarget": "Anti-Cible",
+            "toggleManeuver": "Manoeuvre"
+        }
+    },
+    "hangar": {
+        "mirrorMode": "🪞 Mode Miroir (M)",
+        "showCoG": "⊕ Afficher CdG (C)",
+        "untitledRocket": "Fusée Sans Nom",
+        "partsYear": "Pièces ({{year}})",
+        "noParts": "Aucune pièce disponible !",
+        "dropToDelete": "🗑️ Déposer ici pour Supprimer",
+        "rocketStats": "Stats Fusée",
+        "mass": "Masse :",
+        "cost": "Coût :",
+        "deltaV": "Delta V :",
+        "twr": "Rapport Poussée/Poids (Terre) :",
+        "new": "🆕 NOUVEAU",
+        "load": "📂 CHARGER",
+        "launch": "LANCER",
+        "saveRocket": "Sauvegarder Fusée",
+        "enterName": "Entrez le nom de la fusée...",
+        "loadRocket": "Charger Fusée",
+        "noSavedRockets": "Aucune fusée sauvegardée trouvée",
+        "deletePrompt": "Supprimer \"{{name}}\" ?",
+        "overridePrompt": "Écraser \"{{name}}\" ?",
+        "startNewPrompt": "Commencer une nouvelle fusée ? La fusée actuelle sera perdue si non sauvegardée.",
+        "pleaseEnterName": "Veuillez entrer un nom pour votre fusée"
+    },
+    "chronology": {
+        "title": "CONQUÊTE SPATIALE",
+        "subtitle": "CHRONOLOGIE",
+        "close": "✕ FERMER",
+        "selectEvent": "Sélectionnez un événement pour voir les détails",
+        "madeBy": "Réalisé par : {{flag}} {{country}}",
+        "techBreakthrough": "Percée Technologique",
+        "unlockedParts": "Pièces Débloquées :"
+    },
+    "historyEvents": {
+        "sputnik1": {
+            "title": "Spoutnik 1",
+            "desc": "L'Union Soviétique lance le premier satellite artificiel, marquant le début de l'ère spatiale.",
+            "flavor": "Fuséologie Basique & Moteurs Liquides"
+        },
+        "sputnik2": {
+            "title": "Spoutnik 2",
+            "desc": "Premier animal en orbite (Laika). Preuve que les êtres vivants peuvent survivre au lancement.",
+            "flavor": "Systèmes de Support de Vie"
+        },
+        "explorer1": {
+            "title": "Explorer 1",
+            "desc": "Premier satellite US. Découverte des ceintures de radiation Van Allen.",
+            "flavor": "Durcissement aux Radiations"
+        },
+        "nasaFormed": {
+            "title": "Création NASA",
+            "desc": "La National Aeronautics and Space Administration est établie."
+        },
+        "luna2": {
+            "title": "Luna 2",
+            "desc": "Premier objet humain à impacter la Lune.",
+            "flavor": "Systèmes de Guidage V1"
+        },
+        "luna3": {
+            "title": "Luna 3",
+            "desc": "Premières photos de la face cachée de la Lune."
+        },
+        "vostok1": {
+            "title": "Vostok 1",
+            "desc": "Yuri Gagarine devient le premier humain dans l'espace (Orbite).",
+            "flavor": "Vol Orbital Habité"
+        },
+        "freedom7": {
+            "title": "Freedom 7",
+            "desc": "Alan Shepard devient le premier Américain dans l'espace (Suborbital).",
+            "flavor": "Moteurs à Propergol Solide"
+        },
+        "friendship7": {
+            "title": "Friendship 7",
+            "desc": "John Glenn en orbite. Premier vol orbital US.",
+            "flavor": "Protection Thermique de Rentrée"
+        },
+        "vostok6": {
+            "title": "Vostok 6",
+            "desc": "Valentina Terechkova devient la première femme dans l'espace."
+        },
+        "voskhod2": {
+            "title": "Voskhod 2",
+            "desc": "Alexei Leonov effectue la première sortie extravéhiculaire (EVA).",
+            "flavor": "Unités Mobiles Extravéhiculaires"
+        },
+        "gemini4": {
+            "title": "Gemini 4",
+            "desc": "Première sortie extravéhiculaire US par Ed White."
+        },
+        "gemini8": {
+            "title": "Gemini 8",
+            "desc": "Premier amarrage de deux engins spatiaux en orbite.",
+            "flavor": "Rendez-vous Orbital & Amarrage"
+        },
+        "saturnv": {
+            "title": "Saturn V",
+            "desc": "Premier lancement complet de la massive fusée Saturn V (Apollo 4).",
+            "flavor": "Fusées de Levage Lourd"
+        },
+        "apollo1": {
+            "title": "Incendie Apollo 1",
+            "desc": "Tragédie dans le programme Apollo. Trois astronautes perdus.",
+            "flavor": "Révision Protocoles Sécurité"
+        },
+        "apollo8": {
+            "title": "Apollo 8",
+            "desc": "Premier vaisseau habité en orbite lunaire.",
+            "flavor": "Navigation Trajectoire Lunaire"
+        },
+        "apollo11": {
+            "title": "Apollo 11",
+            "desc": "L'Homme marche sur la Lune. 'Un petit pas pour l'homme'.",
+            "flavor": "Opérations Surface Lunaire"
+        },
+        "salyut1": {
+            "title": "Salyut 1",
+            "desc": "Première station spatiale lancée.",
+            "flavor": "Habitation Longue Durée"
+        },
+        "viking1": {
+            "title": "Viking 1",
+            "desc": "Premier atterrissage réussi sur Mars.",
+            "flavor": "Communications Interplanétaires"
+        },
+        "voyager1": {
+            "title": "Voyager 1",
+            "desc": "Lancement de la sonde qui quittera le système solaire.",
+            "flavor": "Systèmes Énergie Espace Lointain"
+        },
+        "sts1": {
+            "title": "STS-1 Columbia",
+            "desc": "Premier vol de la Navette Spatiale réutilisable.",
+            "flavor": "Vaisseau Réutilisable"
+        },
+        "challenger": {
+            "title": "Challenger",
+            "desc": "Désastre de la navette Challenger au lancement."
+        },
+        "hubble": {
+            "title": "Hubble",
+            "desc": "Déploiement du Télescope Spatial Hubble.",
+            "flavor": "Optique Avancée"
+        },
+        "issZarya": {
+            "title": "ISS Zarya",
+            "desc": "Premier module de la Station Spatiale Internationale.",
+            "flavor": "Construction Station Modulaire"
+        },
+        "spaceshipone": {
+            "title": "SpaceShipOne",
+            "desc": "Premier vol spatial humain financé par le privé.",
+            "flavor": "Vol Spatial Commercial"
+        },
+        "curiosity": {
+            "title": "Curiosity Rover",
+            "desc": "Atterrissage du rover massif sur Mars via Skycrane."
+        },
+        "falcon9": {
+            "title": "Atterrissage Falcon 9",
+            "desc": "SpaceX fait atterrir un booster orbital pour la première fois.",
+            "flavor": "Atterrissage Propulsif"
+        },
+        "crewDragon": {
+            "title": "Crew Dragon",
+            "desc": "Premier lancement commercial habité vers l'ISS.",
+            "flavor": "Cockpits Tactiles"
+        },
+        "jamesWebb": {
+            "title": "James Webb",
+            "desc": "Lancement du télescope spatial le plus avancé.",
+            "flavor": "Astronomie Infrarouge"
+        },
+        "artemis3": {
+            "title": "Artemis III",
+            "desc": "Retour des humains sur la surface lunaire.",
+            "flavor": "Logistique Espace Lointain"
+        },
+        "marsSample": {
+            "title": "Retour Échantillons Mars",
+            "desc": "Retour robotique d'échantillons du sol martien."
+        },
+        "marsHumans": {
+            "title": "Premiers Humains sur Mars",
+            "desc": "Empreinte humaine sur la Planète Rouge.",
+            "flavor": "Utilisation Ressources In-Situ"
+        },
+        "marsCity": {
+            "title": "Cité Mars Alpha",
+            "desc": "Première colonie permanente atteint 1 000 résidents.",
+            "flavor": "Écosystèmes Autonomes"
+        },
+        "titanColony": {
+            "title": "Colonie Titan",
+            "desc": "Avant-poste établi sur Titan, lune de Saturne.",
+            "flavor": "Cryo-Ingénierie"
+        },
+        "proxima": {
+            "title": "Proxima Centauri",
+            "desc": "Lancement de la première sonde à voile solaire relativiste.",
+            "flavor": "Propulsion Interstellaire"
+        }
+    }
+}

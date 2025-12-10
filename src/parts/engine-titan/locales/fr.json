@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_titan": {
+            "name": "KS-25 \"Titan\"",
+            "description": "Un moteur haute performance avec un échappement bleu distinctif."
+        }
+    }
+}

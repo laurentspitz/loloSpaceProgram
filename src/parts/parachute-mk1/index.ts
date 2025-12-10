@@ -1,12 +1,19 @@
 import { BasePart } from '../BasePart';
 import type { PartConfig, PartContext } from '../PartConfig';
 import configData from './config.json';
+import en from './locales/en.json';
+import fr from './locales/fr.json';
 
 const config = configData as PartConfig;
 
 export class ParachuteMk1 extends BasePart {
     id = config.id;
     config = config;
+
+    locales = {
+        en: en,
+        fr: fr
+    };
 
     // State
     isDeployed: boolean = false;

@@ -3,6 +3,7 @@ import { RocketAssembly } from './RocketAssembly';
 import type { PartDefinition } from './PartDefinition';
 import { RocketSaveManager } from './RocketSaveManager';
 import { GameTimeManager } from '../managers/GameTimeManager';
+import i18next from 'i18next';
 
 
 export class HangarUI {
@@ -31,6 +32,8 @@ export class HangarUI {
 
     onToggleMirror: (active: boolean) => void;
     onToggleCoG: (active: boolean) => void;
+
+    private languageChangeListener: (() => void) | null = null;
 
     constructor(
         assembly: RocketAssembly,
@@ -89,6 +92,32 @@ export class HangarUI {
 
         // Initial stats update
         this.updateStats();
+
+        // Listen for language changes
+        this.languageChangeListener = () => {
+            this.refreshUI();
+        };
+        i18next.on('languageChanged', this.languageChangeListener);
+    }
+
+    private refreshUI() {
+        // Update Name Input Placeholder
+        if (this.rocketNameInput) {
+            this.rocketNameInput.placeholder = i18next.t('hangar.untitledRocket');
+        }
+
+        // Re-render Palette
+        if (this.palette) {
+            this.palette.innerHTML = ''; // Clear existing
+            this.renderPaletteContent(this.palette); // Re-populate
+        }
+
+        // Re-render Stats Panel
+        if (this.statsPanel) {
+            this.statsPanel.innerHTML = '';
+            this.renderStatsPanelContent(this.statsPanel);
+            this.updateStats(); // Re-bind values
+        }
     }
 
     private toggleMirror() {
@@ -105,7 +134,7 @@ export class HangarUI {
 
     private createMirrorButton(): HTMLButtonElement {
         const btn = document.createElement('button');
-        btn.innerHTML = '🪞 Mirror Mode (M)';
+        btn.innerHTML = i18next.t('hangar.mirrorMode');
         btn.style.position = 'absolute';
         btn.style.top = '60px'; // Below name input
         btn.style.left = '50%';
@@ -126,7 +155,7 @@ export class HangarUI {
 
     private createCoGButton(): HTMLButtonElement {
         const btn = document.createElement('button');
-        btn.innerHTML = '⊕ Show CoG (C)';
+        btn.innerHTML = i18next.t('hangar.showCoG');
         btn.style.position = 'absolute';
         btn.style.top = '100px'; // Below mirror button
         btn.style.left = '50%';
@@ -149,7 +178,7 @@ export class HangarUI {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = this.assembly.name;
-        input.placeholder = 'Untitled Rocket';
+        input.placeholder = i18next.t('hangar.untitledRocket');
         input.style.position = 'absolute';
         input.style.top = '20px';
         input.style.left = '50%';
@@ -209,6 +238,13 @@ export class HangarUI {
         palette.style.flexDirection = 'column';
         palette.style.gap = '10px';
 
+        this.renderPaletteContent(palette);
+
+        return palette;
+    }
+
+    private renderPaletteContent(palette: HTMLDivElement) {
+
         const gameTime = (window as any).game?.elapsedGameTime;
         const appTime = (window as any).app?.currentGameTime;
         console.log('[HangarUI] Reading time - Game:', gameTime, 'App:', appTime);
@@ -216,7 +252,7 @@ export class HangarUI {
 
         // Show year in title
         const title = document.createElement('h3');
-        title.textContent = `Parts (${currentYear})`;
+        title.textContent = i18next.t('hangar.partsYear', { year: currentYear });
         title.style.color = '#fff';
         title.style.margin = '0 0 10px 0';
         title.style.textAlign = 'center';
@@ -229,7 +265,7 @@ export class HangarUI {
 
         if (parts.length === 0) {
             const empty = document.createElement('div');
-            empty.textContent = "No parts available yet!";
+            empty.textContent = i18next.t('hangar.noParts');
             empty.style.color = "#888";
             empty.style.textAlign = "center";
             palette.appendChild(empty);
@@ -259,7 +295,7 @@ export class HangarUI {
 
             // Name
             const name = document.createElement('span');
-            name.textContent = part.name;
+            name.textContent = i18next.t(part.name);
             name.style.color = '#ddd';
             name.style.fontSize = '14px';
             item.appendChild(name);
@@ -301,7 +337,7 @@ export class HangarUI {
         trash.style.color = '#ff4444';
         trash.style.textAlign = 'center';
         trash.style.fontWeight = 'bold';
-        trash.textContent = '🗑️ Drop here to Delete';
+        trash.textContent = i18next.t('hangar.dropToDelete');
         palette.appendChild(trash);
 
         return palette;
@@ -320,11 +356,11 @@ export class HangarUI {
         tooltip.style.minWidth = '200px';
         tooltip.style.pointerEvents = 'none';
 
-        let content = `<strong>${part.name}</strong><br>`;
-        content += `<em>${part.description}</em><br><br>`;
+        let content = `<strong>${i18next.t(part.name)}</strong><br>`;
+        content += `<em>${i18next.t(part.description)}</em><br><br>`;
 
         if (part.stats.mass !== undefined) {
-            content += `Mass: ${part.stats.mass} kg<br>`;
+            content += `${i18next.t('hangar.mass')} ${part.stats.mass} kg<br>`;
         }
         if (part.stats.fuel !== undefined) {
             content += `Fuel: ${part.stats.fuel} kg<br>`;
@@ -336,7 +372,7 @@ export class HangarUI {
             content += `ISP: ${part.stats.isp}s<br>`;
         }
         if (part.stats.cost !== undefined) {
-            content += `Cost: $${part.stats.cost}<br>`;
+            content += `${i18next.t('hangar.cost')} $${part.stats.cost}<br>`;
         }
         if (part.stats.electricity !== undefined) {
             content += `Electricity: ${part.stats.electricity} EC<br>`;
@@ -345,7 +381,7 @@ export class HangarUI {
             content += `SAS Consume: ${part.stats.sasConsumption} EC/s<br>`;
         }
         if (part.stats.chargeRate !== undefined) {
-            content += `Charge Rate: ${part.stats.chargeRate} EC/s<br>`;
+            content += `${i18next.t('hangar.chargeRate', { defaultValue: 'Charge Rate:' })} ${part.stats.chargeRate} EC/s<br>`;
         }
 
         tooltip.innerHTML = content;
@@ -362,13 +398,20 @@ export class HangarUI {
         panel.style.position = 'absolute';
         panel.style.bottom = '20px';
         panel.style.right = '20px';
-        panel.style.width = '250px';
+        // panel.style.left = '20px'; // old position
+        panel.style.width = '200px';
         panel.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
         panel.style.border = '1px solid #444';
         panel.style.borderRadius = '8px';
-        panel.style.padding = '15px';
-        panel.style.pointerEvents = 'auto';
+        panel.style.padding = '10px';
         panel.style.color = '#fff';
+        panel.style.pointerEvents = 'auto';
+
+        this.renderStatsPanelContent(panel);
+        return panel;
+    }
+
+    private renderStatsPanelContent(panel: HTMLDivElement) {
         panel.style.fontFamily = 'monospace';
 
         const createStatRow = (label: string, valueSpan: HTMLSpanElement, color?: string) => {
@@ -389,20 +432,20 @@ export class HangarUI {
         title.style.margin = '0 0 10px 0';
         title.style.textAlign = 'center';
         title.style.color = '#00aaff';
-        title.textContent = 'Rocket Stats';
+        title.textContent = i18next.t('hangar.rocketStats');
         panel.appendChild(title);
 
         this.massValue = document.createElement('span');
-        panel.appendChild(createStatRow('Mass:', this.massValue));
+        panel.appendChild(createStatRow(i18next.t('hangar.mass'), this.massValue));
 
         this.costValue = document.createElement('span');
-        panel.appendChild(createStatRow('Cost:', this.costValue));
+        panel.appendChild(createStatRow(i18next.t('hangar.cost'), this.costValue));
 
         this.deltaVValue = document.createElement('span');
-        panel.appendChild(createStatRow('Delta V:', this.deltaVValue, '#00ff00'));
+        panel.appendChild(createStatRow(i18next.t('hangar.deltaV'), this.deltaVValue, '#00ff00'));
 
         this.twrValue = document.createElement('span');
-        panel.appendChild(createStatRow('TWR (Earth):', this.twrValue));
+        panel.appendChild(createStatRow(i18next.t('hangar.twr'), this.twrValue));
 
         // New Button
         const newButton = document.createElement('button');
@@ -415,11 +458,11 @@ export class HangarUI {
         newButton.style.borderRadius = '4px';
         newButton.style.cursor = 'pointer';
         newButton.style.fontWeight = 'bold';
-        newButton.textContent = '🆕 NEW';
+        newButton.textContent = i18next.t('hangar.new');
         newButton.onclick = () => {
             if (this.assembly.parts.length > 0) {
                 this.showConfirmDialog(
-                    'Start a new rocket? Current rocket will be lost if not saved.',
+                    i18next.t('hangar.startNewPrompt'),
                     () => this.onNew()
                 );
             } else {
@@ -439,7 +482,7 @@ export class HangarUI {
         loadButton.style.borderRadius = '4px';
         loadButton.style.cursor = 'pointer';
         loadButton.style.fontWeight = 'bold';
-        loadButton.textContent = '📂 LOAD';
+        loadButton.textContent = i18next.t('hangar.load');
         loadButton.onclick = () => this.showLoadDialog();
         panel.appendChild(loadButton);
 
@@ -454,7 +497,16 @@ export class HangarUI {
         saveButton.style.borderRadius = '4px';
         saveButton.style.cursor = 'pointer';
         saveButton.style.fontWeight = 'bold';
-        saveButton.textContent = '💾 SAVE';
+        saveButton.textContent = i18next.t('lib.save', { defaultValue: '💾 SAVE' }); // Using generic save if available, or just keeping emoji
+        saveButton.textContent = '💾 SAVE'; // Actually keep it simple or add to 'hangar'
+        saveButton.textContent = i18next.t('hangar.saveRocket'); // Wait, label button is SAVE
+        saveButton.textContent = '💾 SAVE'; // I dont have a clean key for this button label in my json plan, I used saveRocket for title. I'll stick to English emoji or add key.
+        // Actually, I missed adding a specific key for 'SAVE' button in Hangar. I have 'saveRocket' which is title.
+        // I'll add 'save' to hangar or use 'ui.saveGame' (but that's SAVE GAME).
+        // I used 'settings.save' for Settings.
+        // I'll just use literal '💾 SAVE' as it's universal enough or use i18next.t('settings.save') but preserving emoji?
+        // Let's use i18next.t('settings.save') which is 'Save' and prepend emoji.
+        saveButton.textContent = '💾 ' + i18next.t('settings.save');
         saveButton.onclick = () => this.showSaveDialog();
         panel.appendChild(saveButton);
 
@@ -470,11 +522,13 @@ export class HangarUI {
         launchButton.style.cursor = 'pointer';
         launchButton.style.fontWeight = 'bold';
         launchButton.style.fontSize = '16px';
-        launchButton.textContent = 'LAUNCH';
+        launchButton.textContent = i18next.t('hangar.launch');
         launchButton.onclick = () => this.onLaunch();
         panel.appendChild(launchButton);
 
-        return panel;
+        // Since we are returning panel but the method signature asks for it, 
+        // the original createStatsPanel returns the panel.
+        // renderStatsPanelContent just appends to it.
     }
 
     updateStats() {
@@ -509,7 +563,7 @@ export class HangarUI {
         dialog.style.maxWidth = '400px';
 
         const title = document.createElement('h3');
-        title.textContent = 'Save Rocket';
+        title.textContent = i18next.t('hangar.saveRocket');
         title.style.color = '#fff';
         title.style.margin = '0 0 15px 0';
         dialog.appendChild(title);
@@ -517,7 +571,7 @@ export class HangarUI {
         const input = document.createElement('input');
         input.type = 'text';
         input.value = this.assembly.name;
-        input.placeholder = 'Enter rocket name...';
+        input.placeholder = i18next.t('hangar.enterName');
         input.style.width = '100%';
         input.style.padding = '8px';
         input.style.marginBottom = '15px';
@@ -534,7 +588,7 @@ export class HangarUI {
         buttonContainer.style.gap = '10px';
 
         const saveBtn = document.createElement('button');
-        saveBtn.textContent = 'Save';
+        saveBtn.textContent = i18next.t('settings.save');
         saveBtn.style.flex = '1';
         saveBtn.style.padding = '8px';
         saveBtn.style.backgroundColor = '#00aaff';
@@ -546,7 +600,7 @@ export class HangarUI {
         saveBtn.onclick = async () => {
             const name = input.value.trim();
             if (!name) {
-                alert('Please enter a name for your rocket');
+                alert(i18next.t('hangar.pleaseEnterName'));
                 return;
             }
 
@@ -557,7 +611,7 @@ export class HangarUI {
             // Check if rocket already exists
             if (await RocketSaveManager.exists(name, user?.uid)) {
                 this.showConfirmDialog(
-                    `Override "${name}"?`,
+                    i18next.t('hangar.overridePrompt', { name: name }),
                     () => {
                         this.onSave(name);
                         overlay.remove();
@@ -571,7 +625,7 @@ export class HangarUI {
         buttonContainer.appendChild(saveBtn);
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'Cancel';
+        cancelBtn.textContent = i18next.t('settings.cancel');
         cancelBtn.style.flex = '1';
         cancelBtn.style.padding = '8px';
         cancelBtn.style.backgroundColor = '#5a5a5a';
@@ -616,14 +670,14 @@ export class HangarUI {
         dialog.style.overflowY = 'auto';
 
         const title = document.createElement('h3');
-        title.textContent = 'Load Rocket';
+        title.textContent = i18next.t('hangar.loadRocket');
         title.style.color = '#fff';
         title.style.margin = '0 0 15px 0';
         dialog.appendChild(title);
 
         if (savedRockets.length === 0) {
             const empty = document.createElement('p');
-            empty.textContent = 'No saved rockets found';
+            empty.textContent = i18next.t('hangar.noSavedRockets');
             empty.style.color = '#999';
             empty.style.textAlign = 'center';
             empty.style.padding = '20px';
@@ -673,7 +727,7 @@ export class HangarUI {
                 deleteBtn.onclick = async (e) => {
                     e.stopPropagation();
                     this.showConfirmDialog(
-                        `Delete "${rocket.name}"?`,
+                        i18next.t('hangar.deletePrompt', { name: rocket.name }),
                         async () => {
                             const { FirebaseService } = await import('../services/firebase');
                             const user = FirebaseService.auth.currentUser;
@@ -706,7 +760,7 @@ export class HangarUI {
         }
 
         const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'Close';
+        closeBtn.textContent = i18next.t('settings.close');
         closeBtn.style.marginTop = '15px';
         closeBtn.style.width = '100%';
         closeBtn.style.padding = '8px';
@@ -749,7 +803,7 @@ export class HangarUI {
         buttonContainer.style.justifyContent = 'center';
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = 'Confirm';
+        confirmBtn.textContent = i18next.t('settings.confirm');
         confirmBtn.style.padding = '8px 20px';
         confirmBtn.style.backgroundColor = '#ff4444';
         confirmBtn.style.color = 'white';
@@ -763,7 +817,7 @@ export class HangarUI {
         };
 
         const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'Cancel';
+        cancelBtn.textContent = i18next.t('settings.cancel');
         cancelBtn.style.padding = '8px 20px';
         cancelBtn.style.backgroundColor = '#5a5a5a';
         cancelBtn.style.color = 'white';

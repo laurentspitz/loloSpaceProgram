@@ -1,8 +1,8 @@
 {
     "id": "rcs_block",
-    "name": "RV-105 RCS",
+    "name": "parts.rcs_block.name",
     "type": "rcs",
-    "description": "Small thruster for attitude control.",
+    "description": "parts.rcs_block.description",
     "dimensions": {
         "width": 0.6,
         "height": 0.6

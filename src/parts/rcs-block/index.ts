@@ -1,14 +1,23 @@
+
 import { BasePart } from '../BasePart';
 import type { PartConfig, ParticleEffectConfig } from '../PartConfig';
 import configData from './config.json';
-import { RCSEffect } from '../behaviors/RCSEffect';
+import en from './locales/en.json';
+import fr from './locales/fr.json';
+import { StandardFlameEffect } from '../behaviors/StandardFlameEffect';
 
 const config = configData as PartConfig;
 
 export class RCSBlock extends BasePart {
     id = config.id;
     config = config;
-    private effect = new RCSEffect();
+
+    locales = {
+        en: en,
+        fr: fr
+    };
+
+    private effect = new StandardFlameEffect();
 
     loadTexture(): string {
         return new URL('./texture.png', import.meta.url).href;

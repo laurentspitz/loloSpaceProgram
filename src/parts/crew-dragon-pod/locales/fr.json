@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "crew_dragon_pod": {
+            "name": "Capsule Crew Dragon",
+            "description": "Une capsule futuriste de SpaceX. Fiable, réutilisable et élégante."
+        }
+    }
+}

@@ -1,8 +1,8 @@
 {
     "id": "radial_node",
-    "name": "Radial Node",
+    "name": "parts.radial_node.name",
     "type": "structure",
-    "description": "A custom attachment point that can be placed anywhere.",
+    "description": "parts.radial_node.description",
     "dimensions": {
         "width": 0.5,
         "height": 0.5

@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "apollo_capsule": {
+            "name": "Apollo Command Module",
+            "description": "Legacy command module from the Apollo era. Proven reliability."
+        }
+    }
+}

@@ -1,9 +1,7 @@
 
 import { Renderer } from '../Renderer';
 import { ThreeRenderer } from '../rendering/ThreeRenderer';
-import { Config } from '../Config';
 import { GameTimeManager } from '../managers/GameTimeManager';
-import type { RocketConfig } from '../Config';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { NavballRenderer } from './NavballRenderer';
@@ -18,7 +16,8 @@ import { Rocket } from '../entities/Rocket';
 
 import { ThemeRegistry } from './ThemeRegistry';
 import type { CockpitTheme } from './CockpitTheme';
-import { MissionManager } from '../systems/MissionSystem'; // NEW import
+import { MissionManager } from '../systems/MissionSystem';
+import i18next from 'i18next';
 
 export class UI {
     renderer: Renderer | ThreeRenderer;
@@ -90,7 +89,7 @@ export class UI {
         window.addEventListener('mission-completed', async (e: any) => {
             const { NotificationManager } = await import('./NotificationManager');
             const mission = e.detail.mission;
-            NotificationManager.show(`MISSION ACCOMPLISHED: ${mission.title}\nReward: ${mission.reward}`, 'success', 5000);
+            NotificationManager.show(i18next.t('ui.missionAccomplished', { title: mission.title }) + '\n' + i18next.t('ui.reward', { reward: mission.reward }), 'success', 5000);
             // Maybe play a sound?
             console.log('UI received mission completion:', mission);
             // Re-render Log if open
@@ -98,6 +97,11 @@ export class UI {
                 document.body.removeChild(document.getElementById('mission-log-overlay')!);
                 this.toggleMissionLog();
             }
+        });
+
+        // Listen for language changes
+        i18next.on('languageChanged', () => {
+            this.updateTexts();
         });
     }
 
@@ -205,194 +209,14 @@ export class UI {
         controlsContent.style.flexDirection = 'column';
         controlsContent.style.gap = '5px';
 
-        const createBtn = (text: string, onClick: () => void, title?: string) => {
-            const btn = document.createElement('button');
-            btn.innerText = text;
-            if (title) btn.title = title;
-            btn.className = 'game-btn'; // Use global class
-            btn.style.width = '100%';
-            btn.onclick = onClick;
-            return btn;
-        };
+        this.renderMissionControlsContent(controlsContent);
 
-        // 1. Focus Rocket
-        const focusRocketBtn = createBtn('🚀 Focus Rocket', () => {
-            if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
-                this.renderer.followedBody = this.renderer.currentRocket.body;
-                this.renderer.autoZoomToBody(this.renderer.currentRocket.body);
-                const select = document.getElementById('planet-select') as HTMLSelectElement;
-                if (select) select.value = "";
-            }
-        });
-        controlsContent.appendChild(focusRocketBtn);
 
-        // 2. Trajectory Toggle
-        const trajectoryBtn = createBtn('💫 Trajectory', () => {
-            if (this.renderer instanceof ThreeRenderer) {
-                this.renderer.showTrajectory = !this.renderer.showTrajectory;
-                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : '';
-            }
-        }, 'Toggle Trajectory');
-        controlsContent.appendChild(trajectoryBtn);
-
-        // 3. Reset Camera
-        const resetCamBtn = createBtn('🎥 Reset Camera', () => {
-            if (this.renderer instanceof ThreeRenderer) {
-                this.renderer.resetCamera();
-            }
-        });
-        controlsContent.appendChild(resetCamBtn);
-
-        // 4. Settings
-        const settingsBtn = createBtn('⚙️ SETTINGS', async () => {
-            this.lastTimeWarp = this.currentTimeWarp;
-            if (this.currentTimeWarp !== 0) {
-                this.setTimeWarp(0);
-            }
-            const { SettingsPanel } = await import('./SettingsPanel');
-            const panel = new SettingsPanel(() => {
-                panel.dispose();
-                const resumeSpeed = (this as any).lastTimeWarp || 1;
-                if (resumeSpeed > 0) {
-                    this.setTimeWarp(resumeSpeed);
-                }
-            });
-        });
-        controlsContent.appendChild(settingsBtn);
-
-        // 5. Theme Selector
-        const themeSelect = document.createElement('select');
-        themeSelect.className = 'game-btn';
-        themeSelect.style.width = '100%';
-        themeSelect.style.marginBottom = '5px';
-        themeSelect.innerHTML = `
-    < option value = "standard" >🖥️ Standard UI </option>
-        < option value = "scifi" >🛸 Sci - Fi Cockpit </option>
-            < option value = "apollo" >🚀 Apollo Panel </option>
-                < option value = "dragon" >🐉 Crew Dragon </option>
-                    `;
-        themeSelect.onchange = (e) => {
-            const val = (e.target as HTMLSelectElement).value as 'standard' | 'scifi' | 'apollo' | 'dragon';
-            this.setTheme(val);
-            (e.target as HTMLSelectElement).blur();
-        };
-        controlsContent.appendChild(themeSelect);
-
-        // 6. Back to Menu
-        const backBtn = createBtn('⬅ Back to Menu', async () => {
-            const { FirebaseService } = await import('../services/firebase');
-            const user = FirebaseService.auth.currentUser;
-
-            if (user) {
-                this.showConfirmDialog(
-                    "Save Progress?",
-                    "Would you like to SAVE your progress before exiting to the main menu?",
-                    async () => {
-                        const { SaveSlotSelector } = await import('./SaveSlotSelector');
-                        const { SaveSlotManager } = await import('../services/SaveSlotManager');
-                        const { NotificationManager } = await import('./NotificationManager'); // Dynamic import
-
-                        const selector = new SaveSlotSelector('save', async (slotId) => {
-                            try {
-                                if ((window as any).game) {
-                                    const state = (window as any).game.serializeState();
-                                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
-                                    NotificationManager.show("Game Saved! Exiting...", 'success');
-                                    // Navigate without reload
-                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
-                                } else {
-                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
-                                }
-                            } catch (e: any) {
-                                console.error("Save failed", e);
-                                NotificationManager.show("Save failed! NOT escaping.", 'error');
-                            }
-                        });
-                        await selector.show();
-                    },
-                    () => {
-                        this.showConfirmDialog(
-                            "Exit without Saving?",
-                            "Are you sure? Unsaved progress will be lost.",
-                            () => window.dispatchEvent(new CustomEvent('navigate-menu')),
-                            () => { }
-                        );
-                    }
-                );
-            } else {
-                this.showConfirmDialog(
-                    "Exit to Menu?",
-                    "Progress will NOT be saved (Guest Mode). Continue?",
-                    () => window.dispatchEvent(new CustomEvent('navigate-menu')),
-                    () => { }
-                );
-            }
-        });
-        controlsContent.appendChild(backBtn);
-
-        // 7. Hangar Button
-        const hangarBtn = createBtn('🛠️ Hangar', () => {
-            if (confirm('Go to Hangar? Current flight progress will be lost.')) {
-                // Dispatch event instead of reload (requires App to listen for 'navigate-menu' then user clicks Hangar, or add 'navigate-hangar' to App)
-                // For now, let's send to menu to be safe and consistent with backBtn
-                window.dispatchEvent(new CustomEvent('navigate-menu'));
-
-                // Ideally we'd have a 'navigate-hangar' event in App.ts
-            }
-        }, 'Go to Vehicle Assembly');
-        controlsContent.appendChild(hangarBtn);
-
-        // 8. Chronology Button
-        const chronologyBtn = createBtn('📅 Chronology', async () => {
-            const { ChronologyMenu } = await import('./ChronologyMenu');
-            new ChronologyMenu(() => {
-                // On close callback
-            });
-        }, 'View Space History');
-        controlsContent.appendChild(chronologyBtn);
-
-        // 9. Save Game Button
-        const saveBtn = createBtn('💾 Save Game', async () => {
-            const { FirebaseService } = await import('../services/firebase');
-            const { NotificationManager } = await import('./NotificationManager');
-            const { SaveSlotSelector } = await import('./SaveSlotSelector');
-
-            const user = FirebaseService.auth.currentUser;
-
-            if (!user) {
-                NotificationManager.show("You need to be logged in to save!", 'error');
-                return;
-            }
-            if (!this.currentRocket || !(window as any).game) {
-                NotificationManager.show("No active game to save!", 'error');
-                return;
-            }
-
-            const selector = new SaveSlotSelector('save', async (slotId) => {
-                saveBtn.disabled = true;
-                const originalText = saveBtn.innerText;
-                saveBtn.innerText = "⏳ Saving...";
-                try {
-                    const state = (window as any).game.serializeState();
-                    const { SaveSlotManager } = await import('../services/SaveSlotManager');
-                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
-                    NotificationManager.show("Game Saved!", 'success');
-                } catch (e: any) {
-                    console.error("Save failed", e);
-                    NotificationManager.show("Save failed: " + e.message, 'error');
-                } finally {
-                    saveBtn.disabled = false;
-                    saveBtn.innerText = originalText;
-                }
-            });
-            await selector.show();
-        });
-        controlsContent.appendChild(saveBtn);
 
         // --- Create Collapsible Panel & Append ---
         // Create Collapsible Panel DIRECTLY (No nested wrapper)
         // Default to Collapsed (true) as requested.
-        const { container } = this.createCollapsiblePanel('MISSION CONTROLS', controlsContent, true, '200px');
+        const { container } = this.createCollapsiblePanel(i18next.t('ui.missionControls'), controlsContent, true, '200px');
         container.id = 'mission-controls-panel';
         container.style.position = 'absolute';
         container.style.top = '10px';
@@ -419,7 +243,7 @@ export class UI {
         dateDisplay.style.display = 'flex';
         dateDisplay.style.justifyContent = 'space-between';
         // Initial content
-        dateDisplay.innerHTML = '<span style="color:#aaa">Date:</span> <span id="game-date-val">2025-12-07 00:00:00</span>';
+        dateDisplay.innerHTML = `<span style="color:#aaa">${i18next.t('ui.date')}</span> <span id="game-date-val">2025-12-07 00:00:00</span>`;
         content.appendChild(dateDisplay);
 
 
@@ -430,7 +254,7 @@ export class UI {
         elapsedDisplay.style.fontFamily = 'monospace';
         elapsedDisplay.style.fontSize = '11px';
         elapsedDisplay.style.textAlign = 'right';
-        elapsedDisplay.innerText = 'T+ 00:00:00';
+        elapsedDisplay.innerText = i18next.t('ui.elapsed') + ' 00:00:00';
         content.appendChild(elapsedDisplay);
 
         // Divider
@@ -494,7 +318,7 @@ export class UI {
 
 
         // Create Collapsible Panel
-        const { container } = this.createCollapsiblePanel('TIME CONTROL', content, false, '160px');
+        const { container } = this.createCollapsiblePanel(i18next.t('ui.timeControl'), content, false, '160px');
         container.style.position = 'absolute';
         container.style.top = '10px';
         container.style.right = '10px';
@@ -526,7 +350,7 @@ export class UI {
         container.style.pointerEvents = 'auto'; // Changed from 'none' to 'auto' to allow clicks
         container.style.border = '1px solid #444';
 
-        container.innerHTML = `<span style="color:#aaa; font-size:10px">CURRENT OBJECTIVE</span><br><span id="mission-title">Loading...</span>`;
+        container.innerHTML = `<span style="color:#aaa; font-size:10px">${i18next.t('ui.currentObjective')}</span><br><span id="mission-title">Loading...</span>`;
 
         document.body.appendChild(container);
 
@@ -541,7 +365,7 @@ export class UI {
                         titleEl.textContent = nextMission.title;
                         (titleEl as HTMLElement).style.color = '#fff';
                     } else {
-                        titleEl.textContent = 'No Active Missions';
+                        titleEl.textContent = i18next.t('ui.noActiveMissions');
                         (titleEl as HTMLElement).style.color = '#888';
                     }
                 }
@@ -629,7 +453,7 @@ export class UI {
         const roots = this.bodies.filter(b => !b.parent);
         buildHierarchy(roots, bodyList, 0);
 
-        const { container } = this.createCollapsiblePanel('CELESTIAL BODIES', bodyList, true); // Default collapsed
+        const { container } = this.createCollapsiblePanel(i18next.t('ui.celestialBodies'), bodyList, true); // Default collapsed
 
         if (this.leftPanelContainer) {
             this.leftPanelContainer.appendChild(container);
@@ -643,6 +467,272 @@ export class UI {
             wrapper.appendChild(container);
             document.body.appendChild(wrapper);
         }
+    }
+
+
+    private updateTexts() {
+        // Update Panel Titles
+        const missionControlsPanel = document.getElementById('mission-controls-panel');
+        if (missionControlsPanel) {
+            const title = missionControlsPanel.querySelector('.panel-title');
+            if (title) title.textContent = i18next.t('ui.missionControls');
+        }
+
+        const timeControlsPanel = document.getElementById('time-controls-panel');
+        if (timeControlsPanel) {
+            const title = timeControlsPanel.querySelector('.panel-title');
+            if (title) title.textContent = i18next.t('ui.timeControl');
+        }
+
+        const celestialBodiesPanel = document.getElementById('celestial-bodies-panel')?.querySelector('.game-panel');
+        if (celestialBodiesPanel) {
+            const title = celestialBodiesPanel.querySelector('.panel-title');
+            if (title) title.textContent = i18next.t('ui.celestialBodies');
+        }
+
+        // Update Buttons in Mission Controls - we need ref to buttons or re-render
+        // Re-rendering is easier for dynamic content, but might reset state.
+        // Let's try to update known elements if possible, or just re-create the controls content.
+        // Re-creating controlsContent is viable if we clear the panel content.
+
+        // Actually, updating innerText of existing buttons is better if we can select them.
+        // Since we didn't store refs, let's re-render the controls list.
+        const missionPanelContent = missionControlsPanel?.querySelector('div[style*="max-height"] > div');
+        if (missionPanelContent) {
+            missionPanelContent.innerHTML = '';
+            // We need to re-run createControls logic but just for the content part?
+            // The createControls method does too much (creates panels).
+            // Let's extract the button creation logic or just accept that we need to query and update.
+            // Querying by index or class is brittle. 
+            // Best approach: Clear panel and re-append buttons.
+
+            // Refactored approach:
+            // 1. Clear existing buttons in the container
+            // 2. Re-create them using the same logic as createControls (but only the buttons)
+
+            this.renderMissionControlsContent(missionPanelContent as HTMLElement);
+        }
+
+        // Update Date/Time labels
+        const dateDisplay = document.getElementById('game-date-display');
+        if (dateDisplay) {
+            // Keep the value span, update label
+            const valSpan = dateDisplay.querySelector('#game-date-val');
+            const valText = valSpan ? valSpan.textContent : '';
+            dateDisplay.innerHTML = `<span style="color:#aaa">${i18next.t('ui.date')}</span> <span id="game-date-val">${valText}</span>`;
+        }
+
+        const elapsedDisplay = document.getElementById('game-elapsed-display');
+        if (elapsedDisplay) {
+            const currentText = elapsedDisplay.innerText;
+            const timePart = currentText.split(' ').pop();
+            elapsedDisplay.innerText = i18next.t('ui.elapsed') + ' ' + timePart;
+        }
+
+        // Update Theme Selector options
+        const themeSelect = missionPanelContent?.querySelector('select');
+        if (themeSelect) {
+            const val = themeSelect.value;
+            themeSelect.innerHTML = `
+                <option value="standard" ${val === 'standard' ? 'selected' : ''}>${i18next.t('ui.standardUI')}</option>
+                <option value="scifi" ${val === 'scifi' ? 'selected' : ''}>${i18next.t('ui.scifiCockpit')}</option>
+                <option value="apollo" ${val === 'apollo' ? 'selected' : ''}>${i18next.t('ui.apolloPanel')}</option>
+                <option value="dragon" ${val === 'dragon' ? 'selected' : ''}>${i18next.t('ui.crewDragon')}</option>
+            `;
+        }
+
+        // Re-render celestial bodies list to update tooltips/labels
+        const celestialPanelContent = document.getElementById('body-list');
+        if (celestialPanelContent) {
+            celestialPanelContent.innerHTML = '';
+            // Re-build hierarchy
+            const buildHierarchy = (bodies: Body[], parentElement: HTMLElement, indent: number) => {
+                bodies.forEach(body => {
+                    this.addBodyRow(parentElement, body, indent);
+                    if (body.children && body.children.length > 0) {
+                        const childrenContainer = document.createElement('div');
+                        childrenContainer.style.display = 'block';
+                        parentElement.appendChild(childrenContainer);
+                        buildHierarchy(body.children, childrenContainer, indent + 1);
+                    }
+                });
+            };
+            const roots = this.bodies.filter(b => !b.parent);
+            buildHierarchy(roots, celestialPanelContent as HTMLElement, 0);
+        }
+    }
+
+    private renderMissionControlsContent(parent: HTMLElement) {
+        parent.innerHTML = ''; // Clear
+
+        const createBtn = (text: string, onClick: () => void, title?: string) => {
+            const btn = document.createElement('button');
+            btn.innerText = text;
+            if (title) btn.title = title;
+            btn.className = 'game-btn';
+            btn.style.width = '100%';
+            btn.onclick = onClick;
+            return btn;
+        };
+
+        // 1. Focus Rocket
+        parent.appendChild(createBtn(i18next.t('ui.focusRocket'), () => {
+            if (this.renderer instanceof ThreeRenderer && this.renderer.currentRocket) {
+                this.renderer.followedBody = this.renderer.currentRocket.body;
+                this.renderer.autoZoomToBody(this.renderer.currentRocket.body);
+                const select = document.getElementById('planet-select') as HTMLSelectElement;
+                if (select) select.value = "";
+            }
+        }));
+
+        // 2. Trajectory Toggle
+        const trajectoryBtn = createBtn(i18next.t('ui.trajectory'), () => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.showTrajectory = !this.renderer.showTrajectory;
+                trajectoryBtn.style.backgroundColor = this.renderer.showTrajectory ? '#4a9eff' : '';
+            }
+        }, i18next.t('ui.toggleTrajectory'));
+        parent.appendChild(trajectoryBtn);
+
+        // 3. Reset Camera
+        parent.appendChild(createBtn(i18next.t('ui.resetCamera'), () => {
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.resetCamera();
+            }
+        }));
+
+        // 4. Settings
+        parent.appendChild(createBtn(i18next.t('ui.settings'), async () => {
+            this.lastTimeWarp = this.currentTimeWarp;
+            if (this.currentTimeWarp !== 0) {
+                this.setTimeWarp(0);
+            }
+            const { SettingsPanel } = await import('./SettingsPanel');
+            const panel = new SettingsPanel(() => {
+                panel.dispose();
+                const resumeSpeed = (this as any).lastTimeWarp || 1;
+                if (resumeSpeed > 0) {
+                    this.setTimeWarp(resumeSpeed);
+                }
+            });
+        }));
+
+        // 5. Theme Selector
+        const themeSelect = document.createElement('select');
+        themeSelect.className = 'game-btn';
+        themeSelect.style.width = '100%';
+        themeSelect.style.marginBottom = '5px';
+        themeSelect.innerHTML = `
+            <option value="standard" ${this.currentTheme === 'standard' ? 'selected' : ''}>${i18next.t('ui.standardUI')}</option>
+            <option value="scifi" ${this.currentTheme === 'scifi' ? 'selected' : ''}>${i18next.t('ui.scifiCockpit')}</option>
+            <option value="apollo" ${this.currentTheme === 'apollo' ? 'selected' : ''}>${i18next.t('ui.apolloPanel')}</option>
+            <option value="dragon" ${this.currentTheme === 'dragon' ? 'selected' : ''}>${i18next.t('ui.crewDragon')}</option>
+        `;
+        themeSelect.onchange = (e) => {
+            const val = (e.target as HTMLSelectElement).value as 'standard' | 'scifi' | 'apollo' | 'dragon';
+            this.setTheme(val);
+            (e.target as HTMLSelectElement).blur();
+        };
+        parent.appendChild(themeSelect);
+
+        // 6. Back to Menu
+        parent.appendChild(createBtn(i18next.t('ui.backToMenu'), async () => {
+            const { FirebaseService } = await import('../services/firebase');
+            const user = FirebaseService.auth.currentUser;
+
+            if (user) {
+                this.showConfirmDialog(
+                    i18next.t('ui.saveProgress'),
+                    i18next.t('ui.saveProgressPrompt'),
+                    async () => {
+                        const { SaveSlotSelector } = await import('./SaveSlotSelector');
+                        const { SaveSlotManager } = await import('../services/SaveSlotManager');
+                        const { NotificationManager } = await import('./NotificationManager');
+
+                        const selector = new SaveSlotSelector('save', async (slotId) => {
+                            try {
+                                if ((window as any).game) {
+                                    const state = (window as any).game.serializeState();
+                                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
+                                    NotificationManager.show(i18next.t('ui.saved') + " Exiting...", 'success');
+                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
+                                } else {
+                                    window.dispatchEvent(new CustomEvent('navigate-menu'));
+                                }
+                            } catch (e: any) {
+                                NotificationManager.show(i18next.t('ui.saveFailed', { message: 'NOT escaping.' }), 'error');
+                            }
+                        });
+                        await selector.show();
+                    },
+                    () => {
+                        this.showConfirmDialog(
+                            i18next.t('ui.exitNoSave'),
+                            i18next.t('ui.exitNoSavePrompt'),
+                            () => window.dispatchEvent(new CustomEvent('navigate-menu')),
+                            () => { }
+                        );
+                    }
+                );
+            } else {
+                this.showConfirmDialog(
+                    i18next.t('ui.exitToMenu'),
+                    i18next.t('ui.exitToMenuPrompt'),
+                    () => window.dispatchEvent(new CustomEvent('navigate-menu')),
+                    () => { }
+                );
+            }
+        }));
+
+        // 7. Hangar Button
+        parent.appendChild(createBtn(i18next.t('ui.hangar'), () => {
+            if (confirm(i18next.t('ui.confirmHangar'))) {
+                window.dispatchEvent(new CustomEvent('navigate-menu'));
+            }
+        }, i18next.t('ui.goToHangar')));
+
+        // 8. Chronology Button
+        parent.appendChild(createBtn(i18next.t('ui.chronology'), async () => {
+            const { ChronologyMenu } = await import('./ChronologyMenu');
+            new ChronologyMenu(() => { });
+        }, i18next.t('ui.viewHistory')));
+
+        // 9. Save Game Button
+        const saveBtn = createBtn('💾 Save Game', async () => {
+            const { FirebaseService } = await import('../services/firebase');
+            const { NotificationManager } = await import('./NotificationManager');
+            const { SaveSlotSelector } = await import('./SaveSlotSelector');
+
+            const user = FirebaseService.auth.currentUser;
+
+            if (!user) {
+                NotificationManager.show(i18next.t('ui.needLogin'), 'error');
+                return;
+            }
+            if (!this.currentRocket || !(window as any).game) {
+                NotificationManager.show(i18next.t('ui.noActiveGame'), 'error');
+                return;
+            }
+
+            const selector = new SaveSlotSelector('save', async (slotId) => {
+                saveBtn.disabled = true;
+                const originalText = saveBtn.innerText;
+                saveBtn.innerText = i18next.t('ui.saving');
+                try {
+                    const state = (window as any).game.serializeState();
+                    const { SaveSlotManager } = await import('../services/SaveSlotManager');
+                    await SaveSlotManager.saveToSlot(slotId, state, user.uid);
+                    NotificationManager.show(i18next.t('ui.saved'), 'success');
+                } catch (e: any) {
+                    NotificationManager.show(i18next.t('ui.saveFailed', { message: e.message }), 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerText = originalText;
+                }
+            });
+            await selector.show();
+        });
+        parent.appendChild(saveBtn);
     }
 
     /**
@@ -689,7 +779,7 @@ export class UI {
         // Focus button
         const focusBtn = document.createElement('button');
         focusBtn.innerText = '👁️';
-        focusBtn.title = `Focus on ${body.name} `;
+        focusBtn.title = i18next.t('ui.focus', { name: body.name });
         focusBtn.style.padding = '2px 6px';
         focusBtn.style.fontSize = '10px';
         focusBtn.style.backgroundColor = '#333';
@@ -707,7 +797,7 @@ export class UI {
         // Orbit button
         const orbitBtn = document.createElement('button');
         orbitBtn.innerText = '🛸';
-        orbitBtn.title = `Orbit ${body.name} `;
+        orbitBtn.title = i18next.t('ui.orbit', { name: body.name });
         orbitBtn.style.padding = '2px 6px';
         orbitBtn.style.fontSize = '10px';
         orbitBtn.style.backgroundColor = '#333';
@@ -723,7 +813,7 @@ export class UI {
         // Target button
         const targetBtn = document.createElement('button');
         targetBtn.innerText = '🎯';
-        targetBtn.title = `Set ${body.name} as Target`;
+        targetBtn.title = i18next.t('ui.setTarget', { name: body.name });
         targetBtn.style.padding = '2px 6px';
         targetBtn.style.fontSize = '10px';
         targetBtn.style.backgroundColor = '#333';
@@ -2060,6 +2150,8 @@ export class UI {
                 el.style.transform = 'none';
                 el.style.top = top || '';
                 el.style.bottom = bottom || '';
+                el.style.left = left || '';
+                el.style.right = right || '';
             }
         };
 

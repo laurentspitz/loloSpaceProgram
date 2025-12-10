@@ -1,4 +1,5 @@
 import { controls, type ControlConfig } from '../config/Controls';
+import i18next from 'i18next';
 
 /**
  * SettingsPanel - UI for configuring keyboard controls
@@ -9,6 +10,7 @@ export class SettingsPanel {
     private nicknameInput: HTMLInputElement | null = null;
     private activeBinding: { action: keyof ControlConfig; element: HTMLSpanElement } | null = null;
     settings: any = {};
+    private languageChangeListener: (() => void) | null = null;
 
     constructor(onClose: () => void) {
         this.onClose = onClose;
@@ -28,6 +30,29 @@ export class SettingsPanel {
         this.container.style.zIndex = '2001';
         this.container.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
 
+        document.body.appendChild(this.container);
+
+        // Listen for keypresses globally
+        this.handleKeyPress = this.handleKeyPress.bind(this);
+        document.addEventListener('keydown', this.handleKeyPress);
+
+        // Initial Render
+        this.render();
+
+        // Listen for language changes
+        this.languageChangeListener = () => {
+            // Preserve ongoing nickname input
+            if (this.nicknameInput) {
+                this.settings.nickname = this.nicknameInput.value;
+            }
+            this.render();
+        };
+        i18next.on('languageChanged', this.languageChangeListener);
+    }
+
+    private render() {
+        this.container.innerHTML = '';
+
         // Create panel
         const panel = document.createElement('div');
         panel.className = 'game-modal-content';
@@ -39,7 +64,7 @@ export class SettingsPanel {
 
         // Title
         const title = document.createElement('h2');
-        title.textContent = 'SETTINGS & CONTROLS';
+        title.textContent = i18next.t('settings.title');
         title.style.color = '#00aaff';
         title.style.margin = '0 0 25px 0';
         title.style.fontSize = '28px';
@@ -56,7 +81,7 @@ export class SettingsPanel {
         nicknameSection.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
 
         const nicknameLegend = document.createElement('legend');
-        nicknameLegend.textContent = 'Astronaut Profile';
+        nicknameLegend.textContent = i18next.t('settings.astronautProfile');
         nicknameLegend.style.color = '#00aaff';
         nicknameLegend.style.padding = '0 10px';
         nicknameLegend.style.fontWeight = 'bold';
@@ -68,13 +93,13 @@ export class SettingsPanel {
         nicknameRow.style.alignItems = 'center';
 
         const label = document.createElement('label');
-        label.textContent = 'Callsign (Nickname):';
+        label.textContent = i18next.t('settings.callsign');
         label.style.color = '#ccc';
         nicknameRow.appendChild(label);
 
         this.nicknameInput = document.createElement('input');
         this.nicknameInput.type = 'text';
-        this.nicknameInput.placeholder = 'Enter your callsign...';
+        this.nicknameInput.placeholder = i18next.t('settings.callsignPlaceholder');
         this.nicknameInput.value = this.settings.nickname || '';
         this.nicknameInput.style.backgroundColor = '#333';
         this.nicknameInput.style.border = '1px solid #555';
@@ -90,38 +115,38 @@ export class SettingsPanel {
         // ------------------------
 
         // Controls sections
-        this.addControlSection(panel, '🚀 Rocket Controls', [
-            ['thrust', 'Thrust (Full)'],
-            ['cutEngines', 'Cut Engines'],
-            ['rotateLeft', 'Rotate Left'],
-            ['rotateRight', 'Rotate Right'],
-            ['increaseThrottle', 'Increase Throttle'],
-            ['decreaseThrottle', 'Decrease Throttle'],
+        this.addControlSection(panel, i18next.t('settings.rocketControls'), [
+            ['thrust', i18next.t('settings.controls.thrust')],
+            ['cutEngines', i18next.t('settings.controls.cutEngines')],
+            ['rotateLeft', i18next.t('settings.controls.rotateLeft')],
+            ['rotateRight', i18next.t('settings.controls.rotateRight')],
+            ['increaseThrottle', i18next.t('settings.controls.increaseThrottle')],
+            ['decreaseThrottle', i18next.t('settings.controls.decreaseThrottle')],
         ]);
 
-        this.addControlSection(panel, '⏳ Time Warp', [
-            ['timeWarpIncrease', 'Increase'],
-            ['timeWarpDecrease', 'Decrease'],
-            ['timeWarpReset', 'Reset'],
+        this.addControlSection(panel, i18next.t('settings.timeWarp'), [
+            ['timeWarpIncrease', i18next.t('settings.controls.timeWarpIncrease')],
+            ['timeWarpDecrease', i18next.t('settings.controls.timeWarpDecrease')],
+            ['timeWarpReset', i18next.t('settings.controls.timeWarpReset')],
         ]);
 
-        this.addControlSection(panel, '📐 Maneuver Nodes', [
-            ['createManeuverNode', 'Create'],
-            ['deleteManeuverNode', 'Delete'],
+        this.addControlSection(panel, i18next.t('settings.maneuverNodes'), [
+            ['createManeuverNode', i18next.t('settings.controls.createManeuverNode')],
+            ['deleteManeuverNode', i18next.t('settings.controls.deleteManeuverNode')],
         ]);
 
-        this.addControlSection(panel, '👀 View Controls', [
-            ['toggleTrajectory', 'Toggle Trajectory'],
-            ['zoomIn', 'Zoom In'],
-            ['zoomOut', 'Zoom Out'],
+        this.addControlSection(panel, i18next.t('settings.viewControls'), [
+            ['toggleTrajectory', i18next.t('settings.controls.toggleTrajectory')],
+            ['zoomIn', i18next.t('settings.controls.zoomIn')],
+            ['zoomOut', i18next.t('settings.controls.zoomOut')],
         ]);
 
-        this.addControlSection(panel, '🤖 Autopilot', [
-            ['togglePrograde', 'Prograde'],
-            ['toggleRetrograde', 'Retrograde'],
-            ['toggleTarget', 'Target'],
-            ['toggleAntiTarget', 'Anti-Target'],
-            ['toggleManeuver', 'Maneuver'],
+        this.addControlSection(panel, i18next.t('settings.autopilot'), [
+            ['togglePrograde', i18next.t('settings.controls.togglePrograde')],
+            ['toggleRetrograde', i18next.t('settings.controls.toggleRetrograde')],
+            ['toggleTarget', i18next.t('settings.controls.toggleTarget')],
+            ['toggleAntiTarget', i18next.t('settings.controls.toggleAntiTarget')],
+            ['toggleManeuver', i18next.t('settings.controls.toggleManeuver')],
         ]);
 
         // Buttons container
@@ -133,26 +158,19 @@ export class SettingsPanel {
         panel.appendChild(btnContainer);
 
         // Save button
-        const saveBtn = this.createButton('Save Settings', '#4CAF50');
+        const saveBtn = this.createButton(i18next.t('settings.saveSettings'), '#4CAF50');
         saveBtn.onclick = () => this.saveSettings();
         btnContainer.appendChild(saveBtn);
 
         // Reset button
-        const resetBtn = this.createButton('Reset to Defaults', '#ff8800');
+        const resetBtn = this.createButton(i18next.t('settings.resetDefaults'), '#ff8800');
         resetBtn.onclick = () => this.resetControls();
         btnContainer.appendChild(resetBtn);
 
         // Close button
-        const closeBtn = this.createButton('Close', '#00aaff');
+        const closeBtn = this.createButton(i18next.t('settings.close'), '#00aaff');
         closeBtn.onclick = () => this.close();
         btnContainer.appendChild(closeBtn);
-
-        // Listen for keypresses globally
-        this.handleKeyPress = this.handleKeyPress.bind(this);
-        document.addEventListener('keydown', this.handleKeyPress);
-
-        document.body.appendChild(this.container);
-
     }
 
     private addControlSection(parent: HTMLElement, title: string, controlsList: [keyof ControlConfig, string][]) {
@@ -310,8 +328,8 @@ export class SettingsPanel {
     private async saveSettings() {
         // Show styled confirmation dialog
         this.showConfirmDialog(
-            'Save settings?',
-            'This will update your profile and controls.',
+            i18next.t('settings.saveConfirmTitle'),
+            i18next.t('settings.saveConfirmMsg'),
             async () => {
                 try {
                     // Import Firebase and NotificationManager
@@ -336,9 +354,9 @@ export class SettingsPanel {
                     if (user) {
                         // Save to Firebase
                         await FirebaseService.saveUserSettings(user.uid, this.settings);
-                        NotificationManager.show('✅ Settings saved to cloud!', 'success');
+                        NotificationManager.show(i18next.t('settings.savedCloud'), 'success');
                     } else {
-                        NotificationManager.show('💾 Settings saved locally', 'success');
+                        NotificationManager.show(i18next.t('settings.savedLocal'), 'success');
                     }
                 } catch (error) {
                     const { NotificationManager } = await import('./NotificationManager');
@@ -394,7 +412,7 @@ export class SettingsPanel {
 
         // Cancel button
         const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = 'Cancel';
+        cancelBtn.textContent = i18next.t('settings.cancel');
         cancelBtn.style.padding = '8px 20px';
         cancelBtn.style.backgroundColor = '#555';
         cancelBtn.style.color = '#fff';
@@ -407,7 +425,7 @@ export class SettingsPanel {
 
         // Confirm button
         const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = 'Save';
+        confirmBtn.textContent = i18next.t('settings.save');
         confirmBtn.style.padding = '8px 20px';
         confirmBtn.style.backgroundColor = '#4CAF50';
         confirmBtn.style.color = '#fff';
@@ -460,6 +478,9 @@ export class SettingsPanel {
 
     dispose() {
         document.removeEventListener('keydown', this.handleKeyPress);
+        if (this.languageChangeListener) {
+            i18next.off('languageChanged', this.languageChangeListener);
+        }
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

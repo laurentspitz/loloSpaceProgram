@@ -1,6 +1,8 @@
 import { BasePart } from '../BasePart';
 import type { PartConfig } from '../PartConfig';
 import configData from './config.json';
+import en from './locales/en.json';
+import fr from './locales/fr.json';
 
 const config = configData as PartConfig;
 
@@ -11,6 +13,11 @@ const config = configData as PartConfig;
 export class RadialNode extends BasePart {
     id = config.id;
     config = config;
+
+    locales = {
+        en: en,
+        fr: fr
+    };
 
     /**
      * Generate the texture procedurally (same as PartRegistry.createNodeTexture)

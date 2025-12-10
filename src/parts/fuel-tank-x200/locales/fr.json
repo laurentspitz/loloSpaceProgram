@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "fuel_tank_x200_32": {
+            "name": "Réservoir X200-32",
+            "description": "Un grand réservoir de carburant pour les charges lourdes."
+        }
+    }
+}

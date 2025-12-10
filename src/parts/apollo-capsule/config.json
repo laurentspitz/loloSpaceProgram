@@ -1,8 +1,8 @@
 {
     "id": "apollo_capsule",
-    "name": "Apollo Command Module",
+    "name": "parts.apollo_capsule.name",
     "type": "capsule",
-    "description": "Legacy command module from the Apollo era. Proven reliability.",
+    "description": "parts.apollo_capsule.description",
     "dimensions": {
         "width": 3.9,
         "height": 3.5

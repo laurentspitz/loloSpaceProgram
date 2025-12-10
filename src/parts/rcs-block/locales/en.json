@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "rcs_block": {
+            "name": "RV-105 RCS",
+            "description": "Small thruster for attitude control."
+        }
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "decoupler": {
+            "name": "Découpleur",
+            "description": "Un dispositif de séparation d'étage."
+        }
+    }
+}

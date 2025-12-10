@@ -1,8 +1,8 @@
 {
     "id": "engine_titan",
-    "name": "KS-25 \"Titan\"",
+    "name": "parts.engine_titan.name",
     "type": "engine",
-    "description": "A high-performance engine with a distinctive blue exhaust.",
+    "description": "parts.engine_titan.description",
     "dimensions": {
         "width": 2.5,
         "height": 3.889

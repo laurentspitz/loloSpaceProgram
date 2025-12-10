@@ -1,8 +1,8 @@
 {
     "id": "crew_dragon_pod",
-    "name": "Crew Dragon Pod",
+    "name": "parts.crew_dragon_pod.name",
     "type": "capsule",
-    "description": "A futuristic capsule from SpaceX. Reliable, reusable, and stylish.",
+    "description": "parts.crew_dragon_pod.description",
     "dimensions": {
         "width": 4.0,
         "height": 5.0

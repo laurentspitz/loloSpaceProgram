@@ -1,8 +1,8 @@
 {
     "id": "fuel_tank_x200_32",
-    "name": "Fuel Tank X200-32",
+    "name": "parts.fuel_tank_x200_32.name",
     "type": "tank",
-    "description": "A large fuel tank for heavy lifting.",
+    "description": "parts.fuel_tank_x200_32.description",
     "dimensions": {
         "width": 2.5,
         "height": 3.75

@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "apollo_capsule": {
+            "name": "Module de Commande Apollo",
+            "description": "Module de commande historique de l'ère Apollo. Fiabilité éprouvée."
+        }
+    }
+}

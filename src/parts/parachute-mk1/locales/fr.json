@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "parachute_mk1": {
+            "name": "Parachute Mk1",
+            "description": "Un parachute standard pour des atterrissages en douceur."
+        }
+    }
+}

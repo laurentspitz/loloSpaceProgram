@@ -1,6 +1,7 @@
 import type { PartDefinition } from './PartDefinition';
 import { PartLoader } from '../parts/PartLoader';
 import type { BasePart } from '../parts/BasePart';
+import i18next from 'i18next';
 
 export class PartRegistry {
     private static parts: Map<string, PartDefinition> = new Map();
@@ -36,6 +37,13 @@ export class PartRegistry {
             // Convert modular parts to PartDefinition format for backward compatibility
             for (const [id, part] of this.moduleParts.entries()) {
                 try {
+                    // Register modular translations if available
+                    if (part.locales) {
+                        for (const [lang, resources] of Object.entries(part.locales)) {
+                            i18next.addResourceBundle(lang, 'translation', resources, true, true);
+                        }
+                    }
+
                     // Await the conversion since it's now async
                     const definition = await PartLoader.convertToDefinition(part);
                     this.parts.set(id, definition);

@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "decoupler": {
+            "name": "Decoupler",
+            "description": "A stage separation device."
+        }
+    }
+}
