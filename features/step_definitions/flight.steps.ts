@@ -11,6 +11,7 @@ import type { CustomWorld } from '../support/world';
 Given('I have launched a rocket', async function (this: CustomWorld) {
     // 1. Go to Hangar
     await this.page.goto('http://localhost:5174');
+    await this.page.getByRole('button', { name: 'New Game' }).click();
     await this.page.getByText('Build Rocket (Hangar)').click();
     await expect(this.page.locator('#hangar-ui')).toBeVisible();
 

@@ -57,6 +57,7 @@ When('I add a {string} to the assembly', async function (this: CustomWorld, part
 
 Then('I am in the Hangar', async function (this: CustomWorld) {
     await this.page.goto('http://localhost:5174');
+    await this.page.getByRole('button', { name: 'New Game' }).click();
     await this.page.getByText('Build Rocket (Hangar)').click();
     await expect(this.page.locator('#hangar-ui')).toBeVisible();
 });

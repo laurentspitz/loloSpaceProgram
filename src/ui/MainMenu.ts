@@ -1,7 +1,8 @@
 import { SettingsPanel } from './SettingsPanel';
 import { AuthMenu } from './AuthMenu';
-import * as THREE from 'three';
-import { Background } from '../rendering/Background';
+import { MenuScene } from './MenuScene';
+import { HomeScreen } from './screens/HomeScreen';
+import { HubScreen } from './screens/HubScreen';
 
 export class MainMenu {
     container: HTMLDivElement;
@@ -9,11 +10,13 @@ export class MainMenu {
     onOpenHangar: () => void;
     authMenu: AuthMenu;
 
-    // Background Three.js
-    private scene: THREE.Scene;
-    private camera: THREE.OrthographicCamera;
-    private renderer: THREE.WebGLRenderer;
-    private animationId: number | null = null;
+    // Components
+    private menuScene: MenuScene;
+    private homeScreen: HomeScreen;
+    private hubScreen: HubScreen;
+
+    private currentScreen: 'home' | 'hub' = 'home';
+    private buttonContainer: HTMLDivElement;
 
     constructor(onStartGame: (state?: any) => void, onOpenHangar: () => void) {
         this.onStartGame = onStartGame;
@@ -24,65 +27,33 @@ export class MainMenu {
 
         this.container = document.createElement('div');
         this.container.id = 'main-menu';
+        this.container.dataset.screen = this.currentScreen;
         this.container.style.position = 'absolute';
         this.container.style.top = '0';
         this.container.style.left = '0';
         this.container.style.width = '100%';
         this.container.style.height = '100%';
-        // Transparent background to show stars
         this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.0)';
         this.container.style.display = 'flex';
         this.container.style.flexDirection = 'column';
         this.container.style.justifyContent = 'center';
         this.container.style.alignItems = 'center';
         this.container.style.zIndex = '2000';
-        this.container.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        this.container.style.fontFamily = "'Segoe UI', sans-serif";
 
-        // Setup 3D Background
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x000508);
-
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        const aspect = width / height;
-        const frustumSize = 1000;
-
-        this.camera = new THREE.OrthographicCamera(
-            frustumSize * aspect / -2,
-            frustumSize * aspect / 2,
-            frustumSize / 2,
-            frustumSize / -2,
-            0.1,
-            2000
-        );
-        this.camera.position.z = 1000;
-
-        this.renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: false
-        });
-        this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-
-        // Add canvas to container at the bottom
-        this.renderer.domElement.style.position = 'absolute';
-        this.renderer.domElement.style.top = '0';
-        this.renderer.domElement.style.left = '0';
-        this.renderer.domElement.style.zIndex = '-1';
-        this.container.appendChild(this.renderer.domElement);
-
-        this.initBackground();
+        // Setup 3D Scene
+        this.menuScene = new MenuScene();
+        this.container.appendChild(this.menuScene.domElement);
 
         // Title
         const title = document.createElement('h1');
-        // A.I.E highlighted
         title.innerHTML = '<span style="color: #00aaff">A</span>rtificial <span style="color: #00aaff">I</span>ntelligence <span style="color: #00aaff">E</span>xpedition';
         title.style.color = '#ffffff';
         title.style.fontSize = '48px';
-        title.style.margin = '0'; // Adjusted for layout
+        title.style.margin = '0';
         title.style.marginBottom = '5px';
         title.style.textShadow = '0 0 10px #00aaff';
-        title.style.zIndex = '1'; // Ensure on top of canvas
+        title.style.zIndex = '1';
         this.container.appendChild(title);
 
         // Alpha Badge
@@ -96,127 +67,87 @@ export class MainMenu {
         alphaBadge.style.zIndex = '1';
         this.container.appendChild(alphaBadge);
 
-        // Buttons Container
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.flexDirection = 'column';
-        buttonContainer.style.gap = '20px';
-        buttonContainer.style.zIndex = '1';
-        this.container.appendChild(buttonContainer);
+        // Buttons Container (managed by screens)
+        this.buttonContainer = document.createElement('div');
+        this.buttonContainer.style.zIndex = '1';
+        this.container.appendChild(this.buttonContainer);
 
-        // Solar System Button (Resume/Play)
-        const solarSystemBtn = this.createButton('🚀 Continue / Play', '#00aaff');
-        solarSystemBtn.onclick = () => this.onStartGame();
-        buttonContainer.appendChild(solarSystemBtn);
+        // Initialize Screen Controllers
+        this.homeScreen = new HomeScreen(
+            () => this.handleNewGame(),
+            () => this.handleLoadGame(),
+            () => this.openSettings()
+        );
 
-        // New Game Button
-        const newGameBtn = this.createButton('✨ New Game (Start 1957)', '#00ffaa');
-        newGameBtn.onclick = () => {
-            // Reset logic effectively handled by starting with clean state if we control it
-            // But here we rely on onStartGame. We might need to pass a flag or handle reset in Game.ts
-            // For now, let's assume onStartGame can take a 'reset' param or we send a dummy state that forces reset
-            // Actually, the user says "je vois toute les part des le depart", implying persistent state or default incorrect.
-            // Let's pass a specific state object that implies "New Game".
-            this.onStartGame({ newGame: true });
-        };
-        buttonContainer.appendChild(newGameBtn);
+        this.hubScreen = new HubScreen(
+            (state) => this.onStartGame(state),
+            () => this.onOpenHangar(),
+            () => { /* Chronology handled inside HubScreen currently or we can delegate here if needed */ },
+            () => this.setScreen('home')
+        );
 
-        // Build Rocket Button
-        const hangarBtn = this.createButton('🛠️ Build Rocket (Hangar)', '#ffaa00');
-        hangarBtn.onclick = () => this.onOpenHangar();
-        buttonContainer.appendChild(hangarBtn);
-
-        // Chronology Button
-        const chronologyBtn = this.createButton('📅 Chronology', '#aa00ff');
-        chronologyBtn.onclick = async () => {
-            const { ChronologyMenu } = await import('./ChronologyMenu');
-            new ChronologyMenu(() => {
-                // On close, do nothing (stay in main menu)
-            });
-        };
-        buttonContainer.appendChild(chronologyBtn);
-
-        // Load Game Button
-        const loadBtn = this.createButton('📂 Load Game', '#FF9800');
-        loadBtn.onclick = () => this.handleLoadGame(loadBtn);
-        buttonContainer.appendChild(loadBtn);
-
-        // Settings Button
-        const settingsBtn = this.createButton('⚙️ Settings', '#aaaaaa');
-        settingsBtn.onclick = () => this.openSettings();
-        buttonContainer.appendChild(settingsBtn);
+        // Initial render
+        this.setScreen('home');
 
         // Copyright Footer
         const copyright = document.createElement('div');
         copyright.innerHTML = '© 2025 Artificial Intelligence Expedition. All Rights Reserved.';
         copyright.style.position = 'absolute';
         copyright.style.bottom = '20px';
-        copyright.style.color = '#666'; // Subtle gray
+        copyright.style.color = '#666';
         copyright.style.fontSize = '14px';
         copyright.style.fontFamily = 'monospace';
         copyright.style.zIndex = '1';
         this.container.appendChild(copyright);
 
         document.body.appendChild(this.container);
-
-        // Resize handler
-        window.addEventListener('resize', this.onResize);
-
-        // Start Loop
-        this.animate();
     }
 
-    private initBackground() {
-        const bg = Background.createBackground();
-        this.scene.add(bg);
+    private setScreen(screen: 'home' | 'hub') {
+        this.currentScreen = screen;
+        this.container.dataset.screen = screen;
+
+        // Unmount current (simple clear for now)
+        this.buttonContainer.innerHTML = '';
+
+        if (screen === 'home') {
+            this.homeScreen.mount(this.buttonContainer);
+        } else {
+            this.hubScreen.mount(this.buttonContainer);
+        }
     }
 
-    private onResize = () => {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        this.renderer.setSize(width, height);
+    private handleNewGame() {
+        this.hubScreen.setPendingState({ newGame: true });
+        this.setScreen('hub');
+    }
 
-        const aspect = width / height;
-        const frustumSize = 1000;
-        this.camera.left = frustumSize * aspect / -2;
-        this.camera.right = frustumSize * aspect / 2;
-        this.camera.top = frustumSize / 2;
-        this.camera.bottom = frustumSize / -2;
-        this.camera.updateProjectionMatrix();
-    };
-
-    private animate = () => {
-        this.animationId = requestAnimationFrame(this.animate);
-        // Slowly rotate or move camera if desired, for now static
-        // this.scene.rotation.z += 0.0001; 
-        this.renderer.render(this.scene, this.camera);
-    };
-
-    private async handleLoadGame(btn?: HTMLButtonElement) {
-        // Show save slot selector in load mode
+    private async handleLoadGame() {
         const { SaveSlotSelector } = await import('./SaveSlotSelector');
-        const selector = new SaveSlotSelector('load', async (_slotId, slotData) => {
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = "📂 Loading...";
-            }
+        // Hack: loadBtn reference is lost in this abstraction layer if we don't pass it back
+        // But HomeScreen handles the UI click. 
+        // We can pass a callback that takes a 'setLoading' function?
+        // For now simplifying:
 
+        // We need to show "Loading..." on the button. 
+        // Ideally HomeScreen exposes method `setLoading(true/false)`.
+        // Let's implement basic loading flow without blocking button visual update for now, or assume quick load.
+        // Actually the SaveSelector is async UI.
+
+        const selector = new SaveSlotSelector('load', async (_slotId, slotData) => {
             try {
-                this.onStartGame(slotData);
                 const { NotificationManager } = await import('./NotificationManager');
-                NotificationManager.show("Game Loaded!", 'success');
+                NotificationManager.show("Game Loaded! Ready to launch.", 'success');
+
+                this.hubScreen.setPendingState(slotData);
+                this.setScreen('hub');
+
             } catch (e: any) {
                 console.error(e);
                 const { NotificationManager } = await import('./NotificationManager');
                 NotificationManager.show("Failed to load: " + e.message, 'error');
-            } finally {
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = "📂 Load Game";
-                }
             }
         });
-
         await selector.show();
     }
 
@@ -226,46 +157,8 @@ export class MainMenu {
         });
     }
 
-    private createButton(text: string, color: string): HTMLButtonElement {
-        const btn = document.createElement('button');
-        btn.innerHTML = text; // Use innerHTML to support emoji if needed, though textContent works
-        btn.style.padding = '15px 30px';
-        btn.style.fontSize = '24px';
-        btn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent for legibility over stars
-        btn.style.color = color;
-        btn.style.border = `2px solid ${color}`;
-        btn.style.borderRadius = '8px';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'all 0.3s ease';
-        btn.style.minWidth = '300px';
-        btn.style.backdropFilter = 'blur(5px)'; // Blur effect behind button
-
-        btn.onmouseover = () => {
-            btn.style.backgroundColor = color;
-            btn.style.color = '#000';
-            btn.style.boxShadow = `0 0 15px ${color}`;
-        };
-
-        btn.onmouseout = () => {
-            btn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            btn.style.color = color;
-            btn.style.boxShadow = 'none';
-        };
-
-        return btn;
-    }
-
     dispose() {
-        if (this.animationId !== null) {
-            cancelAnimationFrame(this.animationId);
-            this.animationId = null;
-        }
-
-        window.removeEventListener('resize', this.onResize);
-
-        if (this.renderer) {
-            this.renderer.dispose();
-        }
+        this.menuScene.dispose();
 
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);

@@ -1,7 +1,7 @@
 Feature: Hangar Assembly
 
   Scenario: Build and Launch Rocket
-    Given I am on the Main Menu
+    Given I am on the Hub Screen
     When I click "Build Rocket (Hangar)"
     Then I should see the Hangar UI
     

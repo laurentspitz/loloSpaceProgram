@@ -30,7 +30,7 @@ export class ChronologyMenu {
         this.container.style.width = '100%';
         this.container.style.height = '100%';
         this.container.style.backgroundColor = 'rgba(10, 10, 20, 0.95)';
-        this.container.style.zIndex = '2000'; // Above everything
+        this.container.style.zIndex = '4000'; // Above everything including AuthMenu
         this.container.style.display = 'flex';
         this.container.style.flexDirection = 'column';
         this.container.style.fontFamily = "'Segoe UI', sans-serif";
