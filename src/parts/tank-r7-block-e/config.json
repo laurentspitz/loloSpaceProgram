@@ -1,0 +1,44 @@
+{
+    "id": "tank_block_e",
+    "name": "parts.tank_block_e.name",
+    "type": "tank",
+    "description": "parts.tank_block_e.description",
+    "dimensions": {
+        "width": 2.5,
+        "height": 3.0
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "agency": "okb1",
+    "stats": {
+        "mass": 1000,
+        "cost": 100000,
+        "fuel": 7000
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 1.5
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -1.5
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}

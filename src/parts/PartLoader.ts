@@ -102,7 +102,8 @@ export class PartLoader {
             effect: part.config.visual?.effect,
             cockpit: part.config.cockpit,
             creationYear: part.config.creationYear,
-            country: part.config.country
+            country: part.config.country,
+            agency: part.config.agency
         };
     }
 }

@@ -126,8 +126,8 @@ export class Rocket {
                 // Reset active state
                 part.active = false;
 
-                // Main Engines
-                if (part.definition.type === 'engine' && part.definition.stats.thrust) {
+                // Main Engines & Boosters
+                if ((part.definition.type === 'engine' || part.definition.type === 'booster') && part.definition.stats.thrust) {
                     if (input.throttle > 0 && this.engine.hasFuel()) {
                         const maxThrust = part.definition.stats.thrust;
                         const thrustMag = maxThrust * input.throttle;
@@ -228,7 +228,14 @@ export class Rocket {
 
         // Only apply reaction wheel torque and damping if SAS is enabled and wheels exist
         // AND we have electricity
-        if (hasReactionWheels && input.sasEnabled) {
+        // AND the wheels are actually capable (sasConsumption > 0 or explicit stats)
+        // Currently assuming sasConsumption > 0 implies capability.
+        const canApplyTorque = this.partStack?.some(p =>
+            p.definition.type === 'capsule' &&
+            (p.definition.stats.sasConsumption && p.definition.stats.sasConsumption > 0)
+        );
+
+        if (hasReactionWheels && canApplyTorque && input.sasEnabled) {
             // Check if SAS is actually doing work ( User Input OR Angular Velocity to damp)
             const isWorking = Math.abs(input.rotation) > 0.01 || Math.abs(this.angularVelocity) > 0.01;
 
@@ -554,7 +561,7 @@ export class Rocket {
                 newDryMass += def.stats.mass;
                 newFuelMass += def.stats.fuel || 0;
 
-                if (def.type === 'engine' && def.stats.thrust) {
+                if ((def.type === 'engine' || def.type === 'booster') && def.stats.thrust) {
                     newThrust += def.stats.thrust;
                     totalIspWeighted += (def.stats.isp || 0) * def.stats.thrust;
                 }

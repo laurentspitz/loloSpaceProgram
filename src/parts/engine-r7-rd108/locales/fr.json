@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_rd108": {
+            "name": "RD-108",
+            "description": "Moteur principal du noyau central (Blok A) de la R7. Equipé de 4 chambres de combustion principales et 4 verniers pour le contrôle d'attitude."
+        }
+    }
+}

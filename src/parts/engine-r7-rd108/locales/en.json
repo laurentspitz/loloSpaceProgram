@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_rd108": {
+            "name": "RD-108",
+            "description": "Main engine for the central core (Blok A) of the R7. Features 4 main combustion chambers and 4 verniers for attitude control."
+        }
+    }
+}

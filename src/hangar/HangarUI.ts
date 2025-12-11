@@ -4,6 +4,7 @@ import type { PartDefinition } from './PartDefinition';
 import { RocketSaveManager } from './RocketSaveManager';
 import { GameTimeManager } from '../managers/GameTimeManager';
 import i18next from 'i18next';
+import { Agencies } from '../config/Agencies';
 
 
 export class HangarUI {
@@ -364,6 +365,15 @@ export class HangarUI {
 
         let content = `<strong>${i18next.t(part.name)}</strong><br>`;
         content += `<em>${i18next.t(part.description)}</em><br><br>`;
+
+        if (part.country) {
+            content += `${i18next.t('hangar.country', { defaultValue: 'Country' })}: ${part.country}<br>`;
+        }
+        if (part.agency && Agencies[part.agency]) {
+            content += `${i18next.t('hangar.agency', { defaultValue: 'Agency' })}: ${Agencies[part.agency].name}<br>`;
+        } else if (part.agency) {
+            content += `${i18next.t('hangar.agency', { defaultValue: 'Agency' })}: ${part.agency}<br>`;
+        }
 
         if (part.stats.mass !== undefined) {
             content += `${i18next.t('hangar.mass')} ${part.stats.mass} kg<br>`;

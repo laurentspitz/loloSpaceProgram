@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "tank_block_a": {
+            "name": "Block A",
+            "description": "Etage central de la fusée R7. Contient les réservoirs de kérosène et d'oxygène liquide pour le moteur RD-108."
+        }
+    }
+}

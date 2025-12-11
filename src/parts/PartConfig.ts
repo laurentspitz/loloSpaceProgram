@@ -6,7 +6,7 @@ import { Vector2 } from '../core/Vector2';
 export interface PartConfig {
     id: string;
     name: string;
-    type: 'capsule' | 'tank' | 'engine' | 'rcs' | 'decoupler' | 'structure' | 'parachute';
+    type: 'capsule' | 'tank' | 'engine' | 'booster' | 'rcs' | 'decoupler' | 'structure' | 'parachute';
     description: string;
     dimensions: {
         width: number;    // meters
@@ -14,6 +14,7 @@ export interface PartConfig {
     };
     creationYear?: number; // Historical year part becomes available
     country?: string;      // USA, USSR, etc.
+    agency?: string;       // Agency ID (e.g., 'nasa', 'okb1')
     stats: {
         mass: number;     // kg
         cost: number;     // credits

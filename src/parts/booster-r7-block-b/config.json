@@ -1,0 +1,49 @@
+{
+    "id": "booster_block_b",
+    "name": "parts.booster_block_b.name",
+    "type": "booster",
+    "description": "parts.booster_block_b.description",
+    "dimensions": {
+        "width": 2.5,
+        "height": 10.0
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "agency": "okb1",
+    "stats": {
+        "mass": 3000,
+        "cost": 300000,
+        "fuel": 40000,
+        "thrust": 800000,
+        "isp": 260
+    },
+    "nodes": [
+        {
+            "id": "side",
+            "position": {
+                "x": 1.25,
+                "y": 0
+            },
+            "direction": {
+                "x": 1,
+                "y": 0
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -5.0
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ],
+    "visual": {
+        "effect": "standard"
+    }
+}

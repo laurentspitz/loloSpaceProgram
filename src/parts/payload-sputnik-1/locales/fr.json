@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "sputnik": {
+            "name": "Sputnik 1",
+            "description": "Premier satellite artificiel de la Terre. Sphère métallique polie de 58 cm avec quatre antennes externes. BIP BIP BIP."
+        }
+    }
+}

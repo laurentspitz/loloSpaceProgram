@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_rd0110": {
+            "name": "RD-0110",
+            "description": "Moteur du troisième étage (Blok I) de la fusée Soyouz. Quatre chambres de combustion."
+        }
+    }
+}

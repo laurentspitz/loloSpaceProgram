@@ -1,0 +1,34 @@
+{
+    "id": "sputnik_1",
+    "name": "parts.sputnik.name",
+    "type": "capsule",
+    "description": "parts.sputnik.description",
+    "dimensions": {
+        "width": 0.58,
+        "height": 0.58
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "agency": "okb1",
+    "stats": {
+        "mass": 83,
+        "cost": 10000,
+        "electricity": 100,
+        "chargeRate": 0,
+        "sasConsumption": 0
+    },
+    "nodes": [
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -0.29
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ]
+}

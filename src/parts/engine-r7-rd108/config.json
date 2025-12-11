@@ -1,0 +1,48 @@
+{
+    "id": "engine_rd108",
+    "name": "parts.engine_rd108.name",
+    "type": "engine",
+    "description": "parts.engine_rd108.description",
+    "dimensions": {
+        "width": 2.6,
+        "height": 2.0
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "agency": "okb1",
+    "stats": {
+        "mass": 1200,
+        "cost": 150000,
+        "thrust": 900000,
+        "isp": 280
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 1.0
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -1.0
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ],
+    "visual": {
+        "effect": "standard"
+    }
+}

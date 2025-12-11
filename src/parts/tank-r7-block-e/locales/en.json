@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "tank_block_e": {
+            "name": "Blok E",
+            "description": "Upper stage used for Vostok and Luna missions. Small but reliable."
+        }
+    }
+}

@@ -1,0 +1,48 @@
+{
+    "id": "engine_rd0110",
+    "name": "parts.engine_rd0110.name",
+    "type": "engine",
+    "description": "parts.engine_rd0110.description",
+    "dimensions": {
+        "width": 2.4,
+        "height": 1.5
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "agency": "okb1",
+    "stats": {
+        "mass": 400,
+        "cost": 100000,
+        "thrust": 300000,
+        "isp": 330
+    },
+    "nodes": [
+        {
+            "id": "top",
+            "position": {
+                "x": 0,
+                "y": 0.75
+            },
+            "direction": {
+                "x": 0,
+                "y": 1
+            },
+            "type": "top"
+        },
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -0.75
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ],
+    "visual": {
+        "effect": "standard"
+    }
+}

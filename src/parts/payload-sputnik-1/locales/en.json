@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "sputnik": {
+            "name": "Sputnik 1",
+            "description": "First artificial Earth satellite. A 58cm polished metal sphere with four external antennas. BEEP BEEP BEEP."
+        }
+    }
+}

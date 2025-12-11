@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "engine_rd0110": {
+            "name": "RD-0110",
+            "description": "Third stage engine (Blok I) of the Soyuz rocket. Four combustion chambers."
+        }
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "tank_block_e": {
+            "name": "Blok E",
+            "description": "Etage supérieur utilisé pour les missions Vostok et Luna. Petit mais fiable."
+        }
+    }
+}

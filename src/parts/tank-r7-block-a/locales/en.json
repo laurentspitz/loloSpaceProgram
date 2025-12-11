@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "tank_block_a": {
+            "name": "Blok A",
+            "description": "Central core stage of the R7 rocket. Contains Kerosene and LOX tanks for the RD-108 engine."
+        }
+    }
+}
