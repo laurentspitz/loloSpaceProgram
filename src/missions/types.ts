@@ -31,7 +31,8 @@ export interface MissionConfig {
     flavorText?: string;
 
     // Origin
-    country?: string;          // USA, USSR, ESA, China, etc.
+    country?: string | string[];          // USA, USSR, ESA, China, etc.
+    agency?: string | string[];           // ID from Agencies config
 
     // Mission behavior
     type: MissionType;

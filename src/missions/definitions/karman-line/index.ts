@@ -14,7 +14,8 @@ const config: MissionConfig = {
     conditionLabel: 'mission.karman_line.conditionLabel',
 
     type: 'objective',
-    country: 'ALL',
+    country: 'German Reich', // Historical accuracy for V-2
+    agency: 'mw',
 
     checkCondition: (rocket, bodies) => getAltitude(rocket, bodies) >= 100000,
 

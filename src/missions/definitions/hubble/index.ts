@@ -13,7 +13,8 @@ const config: MissionConfig = {
     flavorText: 'mission.hubble.flavorText',
 
     type: 'objective',
-    country: 'USA',
+    country: ['USA', 'Europe'],
+    agency: ['nasa', 'esa'],
 
     conditionLabel: 'mission.hubble.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 500000, 3500),

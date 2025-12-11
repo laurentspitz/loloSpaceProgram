@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USA',
+    agency: 'nasa',
 
     unlockedParts: ['Solar Panel (Large)', 'Station Core']
 };

@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.starlink.flavorText',
 
     type: 'event',
-    country: 'USA (SpaceX)',
+    country: 'USA',
+    agency: 'spacex',
 
     unlockedParts: ['Phased Array Antenna', 'Krypton Ion Thruster']
 };

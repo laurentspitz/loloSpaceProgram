@@ -2,6 +2,7 @@ import i18next from 'i18next';
 import type { MissionManager, Mission } from '../../missions';
 import type { YearGroup } from './types';
 import { getNodeColor, getFlag } from './ChronologyUtils';
+import { Agencies } from '../../config';
 
 export interface EventDetailPanelOptions {
     detailContainer: HTMLDivElement;
@@ -94,7 +95,8 @@ export class EventDetailPanel {
         let html = `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <h3 style="margin: 0; font-size: 20px; color: #fff;">${i18next.t(mission.title)}</h3>
-                ${mission.country ? `<span style="font-size: 20px;" title="${mission.country}">${getFlag(mission.country)}</span>` : ''}
+                ${this.renderAgencyBadge(mission.agency)}
+                ${this.renderFlags(mission.country)}
             </div>`;
 
         // Status badge
@@ -161,5 +163,23 @@ export class EventDetailPanel {
 
         card.innerHTML = html;
         return card;
+    }
+
+    private renderAgencyBadge(agencyId?: string | string[]): string {
+        if (!agencyId) return '';
+
+        const ids = Array.isArray(agencyId) ? agencyId : [agencyId];
+
+        return ids.map(id => {
+            const agency = Agencies[id];
+            if (!agency) return '';
+            return `<span style="background-color: ${agency.logoColor}; color: ${agency.textColor}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); margin-right: 4px;" title="${agency.name}">${agency.name}</span>`;
+        }).join('');
+    }
+
+    private renderFlags(country?: string | string[]): string {
+        if (!country) return '';
+        const countries = Array.isArray(country) ? country : [country];
+        return countries.map(c => `<span style="font-size: 20px;" title="${c}">${getFlag(c)}</span>`).join(' ');
     }
 }

@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.artemis1.flavorText',
 
     type: 'event',
-    country: 'USA',
+    country: ['USA', 'Europe'],
+    agency: ['nasa', 'esa'],
 
     unlockedParts: ['Orion Capsule', 'SLS Core Stage']
 };

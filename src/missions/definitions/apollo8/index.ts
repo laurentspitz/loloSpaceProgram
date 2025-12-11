@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USA',
+    agency: 'nasa',
 
     conditionLabel: 'mission.apollo8.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbitAroundBody(rocket, bodies, 'Moon', 200000, 500),

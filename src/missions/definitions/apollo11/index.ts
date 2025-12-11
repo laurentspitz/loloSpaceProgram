@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USA',
+    agency: 'nasa',
 
     conditionLabel: 'mission.apollo11.conditionLabel',
     checkCondition: (rocket, bodies) => isLandedOnBody(rocket, bodies, 'Moon'),

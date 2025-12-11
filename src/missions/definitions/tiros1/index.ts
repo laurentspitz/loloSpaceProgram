@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USA',
+    agency: 'nasa',
 
     unlockedParts: ['Weather Sensors', 'Solar Panel (Small)']
 };

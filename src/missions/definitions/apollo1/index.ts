@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.apollo1.flavorText',
 
     type: 'event',
-    country: 'USA'
+    country: 'USA',
+    agency: 'nasa',
 };
 
 export const locales = { en, fr };

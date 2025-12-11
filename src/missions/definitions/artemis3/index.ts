@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USA',
+    agency: ['nasa', 'spacex'],
 
     unlockedParts: ['Starship HLS', 'Lunar EVA Suit']
 };

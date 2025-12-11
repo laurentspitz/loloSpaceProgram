@@ -13,7 +13,8 @@ const config: MissionConfig = {
     flavorText: 'mission.issZarya.flavorText',
 
     type: 'objective',
-    country: 'International',
+    country: ['USA', 'USSR', 'Europe', 'Japan', 'Canada'],
+    agency: ['nasa', 'rsa', 'esa', 'jaxa', 'csa'],
 
     conditionLabel: 'mission.issZarya.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 400000, 3000),

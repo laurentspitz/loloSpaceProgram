@@ -11,9 +11,9 @@ const config: MissionConfig = {
     description: 'mission.falcon1.description',
     flavorText: 'mission.falcon1.flavorText',
 
-    type: 'event',
-    country: 'USA (SpaceX)',
-
+    type: 'objective',
+    country: 'USA',
+    agency: 'spacex',
     unlockedParts: ['Merlin Engine', 'Falcon Fuel Tank']
 };
 

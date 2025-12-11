@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USA',
+    agency: 'nasa',
 
     conditionLabel: 'mission.voyager1.conditionLabel',
     checkCondition: (rocket, _bodies) => rocket.body.velocity.mag() > 40000,

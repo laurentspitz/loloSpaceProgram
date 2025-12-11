@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USA',
+    agency: 'nasa',
 
     unlockedParts: ['Rover Wheels', 'Airbag Landing System']
 };

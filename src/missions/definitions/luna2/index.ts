@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USSR',
+    agency: 'okb1',
 
     conditionLabel: 'mission.luna2.conditionLabel',
     checkCondition: (rocket, bodies) => isNearBody(rocket, bodies, 'Moon', 5000),

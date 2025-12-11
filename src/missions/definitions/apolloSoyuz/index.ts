@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.apolloSoyuz.flavorText',
 
     type: 'event',
-    country: 'USA/USSR',
+    country: ['USA', 'USSR'],
+    agency: ['nasa', 'okb1'],
 
     unlockedParts: ['Universal Docking Adapter']
 };

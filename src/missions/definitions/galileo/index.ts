@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.galileo.flavorText',
 
     type: 'event',
-    country: 'USA',
+    country: 'Europe',
+    agency: 'esa',
 
     unlockedParts: ['Reinforced Solar Panels', 'Jupiter Probe']
 };

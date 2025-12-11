@@ -11,7 +11,8 @@ const config: MissionConfig = {
     description: 'mission.gemini4.description',
 
     type: 'event',
-    country: 'USA'
+    country: 'USA',
+    agency: 'nasa',
 };
 
 export const locales = { en, fr };

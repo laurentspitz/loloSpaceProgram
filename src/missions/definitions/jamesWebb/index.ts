@@ -12,7 +12,8 @@ const config: MissionConfig = {
     flavorText: 'mission.jamesWebb.flavorText',
 
     type: 'event',
-    country: 'USA/ESA/CSA',
+    country: ['USA', 'Europe', 'Canada'],
+    agency: ['nasa', 'esa', 'csa'],
 
     unlockedParts: ['Sunshield', 'Cryogenic Mirror']
 };

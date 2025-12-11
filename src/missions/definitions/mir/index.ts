@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USSR',
+    agency: 'okb1',
 
     unlockedParts: ['Long-Term Habitat Module', 'Progress Cargo']
 };

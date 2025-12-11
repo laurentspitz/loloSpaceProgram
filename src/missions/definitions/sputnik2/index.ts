@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USSR',
+    agency: 'okb1',
 
     conditionLabel: 'mission.sputnik2.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 150000, 2000),

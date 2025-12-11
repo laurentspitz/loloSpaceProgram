@@ -13,6 +13,7 @@ const config: MissionConfig = {
 
     type: 'event',
     country: 'USA (SpaceX)',
+    agency: 'spacex',
 
     unlockedParts: ['Cargo Dragon Pod', 'PICA-X Heat Shield']
 };

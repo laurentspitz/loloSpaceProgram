@@ -11,8 +11,9 @@ const config: MissionConfig = {
     description: 'mission.mariner4.description',
     flavorText: 'mission.mariner4.flavorText',
 
-    type: 'event',
+    type: 'objective',
     country: 'USA',
+    agency: 'nasa',
 
     unlockedParts: ['High-Gain Antenna']
 };

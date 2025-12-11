@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USSR',
+    agency: 'okb1',
 
     conditionLabel: 'mission.salyut1.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 250000, 2500),

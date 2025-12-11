@@ -14,6 +14,7 @@ const config: MissionConfig = {
 
     type: 'objective',
     country: 'USA',
+    agency: 'nasa',
 
     conditionLabel: 'mission.gemini8.conditionLabel',
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 300000, 3000),
