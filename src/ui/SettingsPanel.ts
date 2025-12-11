@@ -114,6 +114,68 @@ export class SettingsPanel {
         panel.appendChild(nicknameSection);
         // ------------------------
 
+        // --- Language Section ---
+        const languageSection = document.createElement('fieldset');
+        languageSection.style.border = '1px solid #444';
+        languageSection.style.borderRadius = '8px';
+        languageSection.style.padding = '15px';
+        languageSection.style.marginBottom = '20px';
+        languageSection.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
+
+        const languageLegend = document.createElement('legend');
+        languageLegend.textContent = i18next.t('settings.language', { defaultValue: '🌍 Language' });
+        languageLegend.style.color = '#00aaff';
+        languageLegend.style.padding = '0 10px';
+        languageLegend.style.fontWeight = 'bold';
+        languageSection.appendChild(languageLegend);
+
+        const languageRow = document.createElement('div');
+        languageRow.style.display = 'flex';
+        languageRow.style.justifyContent = 'space-between';
+        languageRow.style.alignItems = 'center';
+
+        const languageLabel = document.createElement('label');
+        languageLabel.textContent = i18next.t('settings.selectLanguage', { defaultValue: 'Select Language' });
+        languageLabel.style.color = '#ccc';
+        languageRow.appendChild(languageLabel);
+
+        const languageSelect = document.createElement('select');
+        languageSelect.id = 'language-select';
+        languageSelect.style.backgroundColor = '#333';
+        languageSelect.style.border = '1px solid #555';
+        languageSelect.style.color = '#fff';
+        languageSelect.style.padding = '8px 12px';
+        languageSelect.style.borderRadius = '4px';
+        languageSelect.style.fontSize = '16px';
+        languageSelect.style.cursor = 'pointer';
+
+        const languages = [
+            { code: 'en', name: '🇬🇧 English' },
+            { code: 'fr', name: '🇫🇷 Français' }
+        ];
+
+        languages.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.code;
+            option.textContent = lang.name;
+            if (i18next.language === lang.code) {
+                option.selected = true;
+            }
+            languageSelect.appendChild(option);
+        });
+
+        languageSelect.onchange = () => {
+            i18next.changeLanguage(languageSelect.value);
+            this.settings.language = languageSelect.value;
+            // Save immediately to localStorage
+            localStorage.setItem('user_settings', JSON.stringify(this.settings));
+        };
+
+        languageRow.appendChild(languageSelect);
+        languageSection.appendChild(languageRow);
+        panel.appendChild(languageSection);
+        // ------------------------
+
         // Controls sections
         this.addControlSection(panel, i18next.t('settings.rocketControls'), [
             ['thrust', i18next.t('settings.controls.thrust')],

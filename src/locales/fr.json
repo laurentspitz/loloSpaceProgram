@@ -1,12 +1,17 @@
 {
     "menu": {
-        "newGame": "✨ Nouvelle Partie (Début 1957)",
+        "newGame": "✨ Nouvelle Partie",
         "loadGame": "📂 Charger Partie",
         "settings": "⚙️ Paramètres",
         "continue": "🚀 Continuer / Jouer",
         "buildRocket": "🛠️ Construire (Hangar)",
         "chronology": "📅 Chronologie",
-        "back": "⬅ Retour"
+        "back": "⬅ Retour",
+        "selectMode": "Choisissez le Mode de Jeu",
+        "missionMode": "🎯 Mode Mission",
+        "missionModeDesc": "Progression historique débutant en 1957. Débloquez pièces et technologies au fil de l'histoire spatiale.",
+        "sandboxMode": "🔓 Mode Sandbox",
+        "sandboxModeDesc": "Toutes les pièces débloquées ! Démarrez en 2100 avec accès à toutes les technologies."
     },
     "ui": {
         "focusRocket": "🚀 Voir Fusée",
@@ -69,6 +74,8 @@
         "cancel": "Annuler",
         "save": "Sauvegarder",
         "confirm": "Confirmer",
+        "language": "🌍 Langue",
+        "selectLanguage": "Choisir la langue",
         "controls": {
             "thrust": "Poussée Max",
             "cutEngines": "Couper Moteurs",

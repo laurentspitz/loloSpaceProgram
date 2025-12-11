@@ -3,6 +3,8 @@ import { AuthMenu } from './AuthMenu';
 import { MenuScene } from './MenuScene';
 import { HomeScreen } from './screens/HomeScreen';
 import { HubScreen } from './screens/HubScreen';
+import { GameModeScreen } from './screens/GameModeScreen';
+import type { GameModeSelection } from './screens/GameModeScreen';
 
 export class MainMenu {
     container: HTMLDivElement;
@@ -14,8 +16,9 @@ export class MainMenu {
     private menuScene: MenuScene;
     private homeScreen: HomeScreen;
     private hubScreen: HubScreen;
+    private gameModeScreen: GameModeScreen;
 
-    private currentScreen: 'home' | 'hub' = 'home';
+    private currentScreen: 'home' | 'hub' | 'gameMode' = 'home';
     private buttonContainer: HTMLDivElement;
 
     constructor(onStartGame: (state?: any) => void, onOpenHangar: () => void, initialScreen: 'home' | 'hub' = 'home') {
@@ -87,6 +90,11 @@ export class MainMenu {
             () => this.setScreen('home')
         );
 
+        this.gameModeScreen = new GameModeScreen(
+            (selection: GameModeSelection) => this.handleModeSelected(selection),
+            () => this.setScreen('home')
+        );
+
         // Initial render
         // Initial render
         this.setScreen(this.currentScreen);
@@ -105,7 +113,7 @@ export class MainMenu {
         document.body.appendChild(this.container);
     }
 
-    private setScreen(screen: 'home' | 'hub') {
+    private setScreen(screen: 'home' | 'hub' | 'gameMode') {
         this.currentScreen = screen;
         this.container.dataset.screen = screen;
 
@@ -114,13 +122,34 @@ export class MainMenu {
 
         if (screen === 'home') {
             this.homeScreen.mount(this.buttonContainer);
-        } else {
+        } else if (screen === 'hub') {
             this.hubScreen.mount(this.buttonContainer);
+        } else if (screen === 'gameMode') {
+            this.gameModeScreen.mount(this.buttonContainer);
         }
     }
 
     private handleNewGame() {
-        this.hubScreen.setPendingState({ newGame: true });
+        // Navigate to game mode selection instead of directly to hub
+        this.setScreen('gameMode');
+    }
+
+    private async handleModeSelected(selection: GameModeSelection) {
+        // Set pending state with game mode and start year
+        this.hubScreen.setPendingState({
+            newGame: true,
+            gameMode: selection.mode,
+            startYear: selection.startYear
+        });
+
+        // Immediately update App's currentGameTime so Hangar can use it
+        const app = (window as any).app;
+        if (app) {
+            const { GameTimeManager } = await import('../managers/GameTimeManager');
+            app.currentGameTime = GameTimeManager.getSecondsFromYear(selection.startYear);
+            console.log(`[MainMenu] Set app.currentGameTime for year ${selection.startYear}: ${app.currentGameTime}s`);
+        }
+
         this.setScreen('hub');
     }
 

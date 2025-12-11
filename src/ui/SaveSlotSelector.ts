@@ -139,7 +139,11 @@ export class SaveSlotSelector {
 
         const date = new Date(slot.timestamp).toLocaleString();
         const missionTime = this.formatMissionTime(slot.missionTime);
+        const gameModeLabel = slot.gameMode === 'sandbox'
+            ? '<span style="color: #ffaa00;">🔓 Sandbox</span>'
+            : '<span style="color: #00ffaa;">🎯 Mission</span>';
         detailsEl.innerHTML = `
+            <div>${gameModeLabel}</div>
             <div>🚀 ${slot.rocketName}</div>
             <div>📍 ${slot.location}</div>
             <div>⏱️ Mission Time: ${missionTime}</div>

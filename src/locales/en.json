@@ -1,12 +1,17 @@
 {
     "menu": {
-        "newGame": "✨ New Game (Start 1957)",
+        "newGame": "✨ New Game",
         "loadGame": "📂 Load Game",
         "settings": "⚙️ Settings",
         "continue": "🚀 Continue / Play",
         "buildRocket": "🛠️ Build Rocket (Hangar)",
         "chronology": "📅 Chronology",
-        "back": "⬅ Back"
+        "back": "⬅ Back",
+        "selectMode": "Select Game Mode",
+        "missionMode": "🎯 Mission Mode",
+        "missionModeDesc": "Historical progression starting in 1957. Unlock parts and technology as you advance through space history.",
+        "sandboxMode": "🔓 Sandbox Mode",
+        "sandboxModeDesc": "All parts unlocked! Start in 2100 with full access to every technology."
     },
     "ui": {
         "focusRocket": "🚀 Focus Rocket",
@@ -69,6 +74,8 @@
         "cancel": "Cancel",
         "save": "Save",
         "confirm": "Confirm",
+        "language": "🌍 Language",
+        "selectLanguage": "Select Language",
         "controls": {
             "thrust": "Thrust (Full)",
             "cutEngines": "Cut Engines",

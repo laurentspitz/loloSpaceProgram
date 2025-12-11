@@ -11,6 +11,7 @@ export interface SaveSlot {
     missionTime: number;
     rocketName: string;
     location: string; // e.g., "Orbiting Earth"
+    gameMode?: 'mission' | 'sandbox'; // Game mode: mission (1957 start) or sandbox (2100 start)
     data: any; // Full game state
 }
 
@@ -33,6 +34,7 @@ export class SaveSlotManager {
                 missionTime: save.elapsedGameTime || 0,
                 rocketName: save.rocket?.name || 'Unknown',
                 location: this.getLocationDescription(save),
+                gameMode: save.gameMode || this.detectGameMode(save.elapsedGameTime), // Use stored, fallback to detection for old saves
                 data: save
             }));
         } catch (error) {
@@ -130,6 +132,7 @@ export class SaveSlotManager {
                 missionTime: data.elapsedGameTime || 0,
                 rocketName: data.rocket?.name || 'Unknown',
                 location: this.getLocationDescription(data),
+                gameMode: data.gameMode || this.detectGameMode(data.elapsedGameTime), // Use stored, fallback to detection for old saves
                 data
             }));
         } catch (error) {
@@ -233,5 +236,19 @@ export class SaveSlotManager {
         } else {
             return `Orbiting ${closestBody}`;
         }
+    }
+
+    /**
+     * Detect game mode based on elapsed game time.
+     * If elapsed time corresponds to year 2050 or later (93 years from 1957),
+     * it's likely sandbox mode (which starts at 2100).
+     */
+    private static detectGameMode(elapsedGameTime: number | undefined): 'mission' | 'sandbox' {
+        if (!elapsedGameTime) return 'mission';
+
+        // 2050 threshold: 93 years * 365.25 days * 24 hours * 3600 seconds ≈ 2.93 billion seconds
+        const SANDBOX_THRESHOLD_SECONDS = 93 * 365.25 * 24 * 3600;
+
+        return elapsedGameTime >= SANDBOX_THRESHOLD_SECONDS ? 'sandbox' : 'mission';
     }
 }

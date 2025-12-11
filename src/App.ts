@@ -1,6 +1,7 @@
 import { Game } from './Game';
 import { MainMenu } from './ui/MainMenu';
 import { Hangar, createHangar } from './Hangar';
+import { GameTimeManager } from './managers/GameTimeManager';
 
 /**
  * App - Main entry point and state manager
@@ -43,7 +44,10 @@ export class App {
 
         // Reset time if New Game requested
         if (state && state.newGame) {
-            this.currentGameTime = 0;
+            // Use startYear from game mode selection, default to 1957 for mission mode
+            const startYear = state.startYear || 1957;
+            this.currentGameTime = GameTimeManager.getSecondsFromYear(startYear);
+            console.log(`[App] Starting new game in year ${startYear}, elapsed time: ${this.currentGameTime}s`);
         }
 
         console.log('Starting game...');
@@ -51,6 +55,11 @@ export class App {
 
         // Initialize with persistent time
         this.game.elapsedGameTime = this.currentGameTime;
+
+        // Set game mode if provided (for new games)
+        if (state && state.gameMode) {
+            this.game.gameMode = state.gameMode;
+        }
 
         if (state && !state.newGame) {
             this.game.deserializeState(state);

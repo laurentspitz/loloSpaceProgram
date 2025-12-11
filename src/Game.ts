@@ -15,6 +15,7 @@ import { ManeuverNodeManager } from './systems/ManeuverNodeManager';
 import { Config } from './Config';
 import { GameTimeManager } from './managers/GameTimeManager';
 import type { RocketConfig } from './Config';
+import i18next from './services/i18n';
 
 import { MissionManager } from './systems/MissionSystem';
 
@@ -48,6 +49,9 @@ export class Game {
 
     // Track total elapsed game time for date display
     elapsedGameTime: number = 0;
+
+    // Game mode: 'mission' (historical progression) or 'sandbox' (all unlocked)
+    gameMode: 'mission' | 'sandbox' = 'mission';
 
     constructor(assembly?: RocketConfig) {
         this.sceneSetup = SceneSetup;
@@ -511,6 +515,8 @@ export class Game {
             version: 1,
             timestamp: Date.now(),
             elapsedGameTime: this.elapsedGameTime,
+            gameMode: this.gameMode,
+            language: i18next.language,
             rocket: rocketData,
             camera: {
                 position: { x: this.renderer.camera.position.x, y: this.renderer.camera.position.y, z: this.renderer.camera.position.z },
@@ -541,6 +547,16 @@ export class Game {
         this.elapsedGameTime = state.elapsedGameTime || 0;
         this.timeWarp = state.simulation.timeWarp;
         // Don't auto-pause or set timeScale yet, user might want to start paused
+
+        // Restore Game Mode
+        if (state.gameMode) {
+            this.gameMode = state.gameMode;
+        }
+
+        // Restore Language
+        if (state.language && i18next.language !== state.language) {
+            i18next.changeLanguage(state.language);
+        }
 
         // Restore Missions
         if (state.missions) {

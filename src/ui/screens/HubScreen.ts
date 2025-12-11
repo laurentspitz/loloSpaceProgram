@@ -84,10 +84,10 @@ export class HubScreen {
                 missionManager.deserialize({ completedIds: this.pendingState.completedMissionIds });
             }
 
-            // Determine current year (aim for 1957 start + mission time)
-            const startYear = 1957;
+            // Determine current year - use startYear from state (sandbox mode uses 2100)
+            const baseYear = this.pendingState?.startYear || 1957;
             const yearsElapsed = Math.floor((this.pendingState?.missionTime || 0) / (365 * 24 * 3600 * 1000));
-            const currentYear = startYear + yearsElapsed;
+            const currentYear = baseYear + yearsElapsed;
 
             new ChronologyMenu(currentYear, missionManager, () => {
                 // On close, do nothing (stay in hub)
