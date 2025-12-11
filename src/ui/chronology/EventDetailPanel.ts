@@ -129,7 +129,7 @@ export class EventDetailPanel {
                     🎯 ${i18next.t('mission.condition', 'Success Condition')}
                 </div>
                 <div style="color: #fff; font-size: 13px; font-family: 'Courier New', monospace; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 4px;">
-                    ${mission.conditionLabel}
+                    ${i18next.t(mission.conditionLabel)}
                 </div>
             </div>`;
         }
