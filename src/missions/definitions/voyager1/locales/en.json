@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "voyager1": {
+            "title": "Voyager 1",
+            "description": "Launched September 5, 1977, Voyager 1 used gravity assists to visit Jupiter and Saturn before heading toward interstellar space. Its Golden Record carries greetings in 55 languages and music from around the world. In 2012, it became the first human-made object to enter interstellar space.",
+            "flavorText": "Deep Space Power Systems",
+            "conditionLabel": "Velocity > 40 km/s (Solar escape velocity)"
+        }
+    }
+}

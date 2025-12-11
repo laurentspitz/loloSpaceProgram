@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "issZarya": {
+            "title": "Module ISS Zarya",
+            "description": "Le premier composant de la Station Spatiale Internationale fut lancé le 20 novembre 1998. Ce module de fabrication russe fut suivi du nœud américain Unity quelques semaines plus tard. L'ISS deviendrait la plus grande structure jamais construite dans l'espace, accueillant des astronautes de 19 pays.",
+            "flavorText": "Construction Station Modulaire",
+            "conditionLabel": "Altitude > 400 km, Vitesse > 3000 m/s"
+        }
+    }
+}

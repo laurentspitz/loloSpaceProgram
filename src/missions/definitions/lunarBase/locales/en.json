@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "lunarBase": {
+            "title": "Artemis Base Camp",
+            "description": "The first permanent lunar base is established near the south pole's Shackleton Crater, where water ice exists in permanently shadowed regions. ISRU systems extract water for life support and rocket fuel. Crews stay for 60-day rotations, conducting science and testing Mars technologies.",
+            "flavorText": "Permanent Lunar Presence"
+        }
+    }
+}

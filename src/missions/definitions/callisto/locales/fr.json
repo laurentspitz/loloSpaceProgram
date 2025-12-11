@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "callisto": {
+            "title": "Base Callisto",
+            "description": "Un avant-poste de recherche est établi sur Callisto, juste à l'extérieur des ceintures de radiation les plus intenses de Jupiter. Depuis ce havre relativement sûr, les scientifiques opèrent des sondes explorant le système jovien et préparent les technologies pour l'exploration éventuelle de l'océan d'Europa.",
+            "flavorText": "Opérations Système Jupiter"
+        }
+    }
+}

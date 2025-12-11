@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "viking1": {
+            "title": "Viking 1",
+            "description": "Le 20 juillet 1976—exactement sept ans après Apollo 11—Viking 1 devint le premier vaisseau américain à atterrir sur Mars. Il transmit les premières photos couleur de la surface martienne et rechercha des signes de vie. Les résultats furent ambigus mais fascinants.",
+            "flavorText": "Opérations Surface Interplanétaire",
+            "conditionLabel": "Atterrir sur Mars : Alt < 500 m, Vitesse < 50 m/s"
+        }
+    }
+}

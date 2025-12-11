@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "voyager1": {
+            "title": "Voyager 1",
+            "description": "Lancée le 5 septembre 1977, Voyager 1 utilisa des assistances gravitationnelles pour visiter Jupiter et Saturne avant de se diriger vers l'espace interstellaire. Son Disque d'Or porte des salutations en 55 langues et de la musique du monde entier. En 2012, elle devint le premier objet humain à entrer dans l'espace interstellaire.",
+            "flavorText": "Systèmes Énergie Espace Lointain",
+            "conditionLabel": "Vitesse > 40 km/s (Vitesse de libération solaire)"
+        }
+    }
+}

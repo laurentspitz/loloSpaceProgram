@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "salyut1": {
+            "title": "Saliout 1",
+            "description": "La première station spatiale fut lancée le 19 avril 1971. Bien que le premier équipage ne put y entrer à cause d'un problème de trappe, le second (Soyouz 11) y passa 23 jours. Tragiquement, ils moururent lors de la rentrée à cause d'une valve défaillante. Leur sacrifice mena aux combinaisons pressurisées obligatoires.",
+            "flavorText": "Habitation Longue Durée",
+            "conditionLabel": "Altitude > 250 km, Vitesse > 2500 m/s"
+        }
+    }
+}

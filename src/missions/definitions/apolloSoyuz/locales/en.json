@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "apolloSoyuz": {
+            "title": "Apollo-Soyuz",
+            "description": "In July 1975, American astronauts and Soviet cosmonauts rendezvoused and docked in orbit—the first international crewed space mission. Tom Stafford and Alexei Leonov shook hands through the hatch, symbolizing detente during the Cold War. This mission pioneered techniques used on the ISS.",
+            "flavorText": "International Cooperation"
+        }
+    }
+}

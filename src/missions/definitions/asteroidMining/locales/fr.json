@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "asteroidMining": {
+            "title": "Début du Minage d'Astéroïdes",
+            "description": "Des opérations minières robotisées commencent sur les astéroïdes géocroiseurs, récoltant eau, métaux du groupe platine et matières premières. Ces ressources alimentent une économie spatiale, réduisant drastiquement le coût de la construction spatiale.",
+            "flavorText": "Extraction Ressources Spatiales"
+        }
+    }
+}

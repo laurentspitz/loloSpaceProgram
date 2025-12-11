@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsSample": {
+            "title": "Retour d'Échantillons Mars",
+            "description": "Une collaboration NASA-ESA récupère des échantillons mis en cache par le rover Perseverance et les lance depuis Mars en utilisant la première fusée jamais lancée d'une autre planète. Ces échantillons vierges sont analysés dans des laboratoires terrestres, révélant potentiellement une vie martienne ancienne.",
+            "flavorText": "Retour Échantillons Interplanétaire"
+        }
+    }
+}

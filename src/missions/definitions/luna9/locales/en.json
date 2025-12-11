@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "luna9": {
+            "title": "Luna 9",
+            "description": "On February 3, 1966, Luna 9 became the first spacecraft to achieve a soft landing on the Moon. The 99 kg lander transmitted the first panoramic photos from the lunar surface, proving the surface was solid—not the deep dust some had feared would swallow landers.",
+            "flavorText": "Soft Landing Technology"
+        }
+    }
+}

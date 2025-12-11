@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "crewDragon": {
+            "title": "Crew Dragon",
+            "description": "Le 30 mai 2020, les astronautes NASA Bob Behnken et Doug Hurley décollèrent à bord du Crew Dragon de SpaceX—le premier vol spatial commercial habité vers l'orbite. Cela mit fin à la dépendance de la NASA envers le Soyouz russe et inaugura une nouvelle ère de transport d'équipage commercial vers l'ISS.",
+            "flavorText": "Systèmes Équipage Commercial"
+        }
+    }
+}

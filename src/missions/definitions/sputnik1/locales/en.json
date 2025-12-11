@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sputnik1": {
+            "title": "Sputnik 1",
+            "description": "The first artificial satellite. Launch a spacecraft into orbit around Earth.",
+            "flavor": "Beep... Beep... Beep...",
+            "conditionLabel": "Altitude > 150 km, Velocity > 2000 m/s"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "galileo": {
+            "title": "Galileo",
+            "description": "Lancée en 1989, Galileo arriva à Jupiter en 1995 et passa 8 ans à étudier la planète géante et ses lunes. Sa sonde atmosphérique survécut 58 minutes dans l'atmosphère jovienne. Plus important encore, elle trouva de solides preuves d'un océan souterrain sur Europe.",
+            "flavorText": "Exploration des Planètes Géantes"
+        }
+    }
+}

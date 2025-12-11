@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "jamesWebb": {
+            "title": "Télescope Spatial James Webb",
+            "description": "Lancé le 25 décembre 2021, le JWST déploya son miroir doré de 6,5 mètres et son pare-soleil de la taille d'un court de tennis sans accroc. Opérant au point L2, il a révélé les premières galaxies, détecté des atmosphères d'exoplanètes et capturé des images stupéfiantes de régions de formation d'étoiles.",
+            "flavorText": "Astronomie Spatiale Infrarouge"
+        }
+    }
+}

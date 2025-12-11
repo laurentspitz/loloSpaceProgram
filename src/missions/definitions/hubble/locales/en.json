@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "hubble": {
+            "title": "Hubble Space Telescope",
+            "description": "Launched April 24, 1990, Hubble was initially hampered by a flawed mirror. After a dramatic repair mission in 1993, it became arguably the most important telescope in history, transforming our understanding of the universe from exoplanets to the age of the cosmos.",
+            "flavorText": "Advanced Space Optics",
+            "conditionLabel": "Altitude > 500 km, Velocity > 3500 m/s"
+        }
+    }
+}

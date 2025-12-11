@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "interstellarProbe": {
+            "title": "Sonde Interstellaire",
+            "description": "La première sonde interstellaire accélère vers Alpha du Centaure utilisant un puissant réseau laser terrestre poussant une voile lumineuse. Bien qu'il faudra des décennies pour arriver et transmettre des données, l'humanité a enfin atteint les étoiles.",
+            "flavorText": "Technologie Interstellaire"
+        }
+    }
+}

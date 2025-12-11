@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "dragonCargo": {
+            "title": "Dragon Cargo",
+            "description": "On December 8, 2010, SpaceX's Dragon capsule became the first commercial spacecraft to be recovered from orbit. In 2012, it became the first commercial craft to dock with the ISS. The PICA-X heat shield and cargo capability marked a new era in space logistics.",
+            "flavorText": "Commercial Cargo Systems"
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sts1": {
+            "title": "STS-1 Columbia",
+            "description": "On April 12, 1981—exactly 20 years after Gagarin—John Young and Bob Crippen launched aboard Columbia, the first Space Shuttle. Unlike all previous spacecraft, the Shuttle was designed to be reusable, landing like an airplane. This began a 30-year era of Shuttle operations.",
+            "flavorText": "Reusable Spacecraft",
+            "conditionLabel": "Altitude > 300 km, Velocity > 3000 m/s"
+        }
+    }
+}

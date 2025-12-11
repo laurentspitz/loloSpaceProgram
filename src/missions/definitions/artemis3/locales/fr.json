@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "artemis3": {
+            "title": "Artemis III",
+            "description": "Le premier alunissage habité depuis 1972, Artemis III posera des astronautes près du pôle sud lunaire en utilisant le Starship HLS de SpaceX. Pour la première fois, une femme et une personne de couleur marcheront sur la Lune. Cette mission établit l'exploration lunaire durable.",
+            "flavorText": "Retour Surface Lunaire"
+        }
+    }
+}

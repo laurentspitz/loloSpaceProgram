@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "friendship7": {
+            "title": "Friendship 7",
+            "description": "John Glenn became the first American to orbit Earth on February 20, 1962. During his three orbits, a faulty sensor indicated his heat shield might be loose—Glenn was told to leave the retrorocket pack attached during reentry. He survived, and the sensor turned out to be faulty.",
+            "flavorText": "Re-entry Thermal Protection"
+        }
+    }
+}

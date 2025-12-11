@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "mir": {
+            "title": "Mir Space Station",
+            "description": "The Soviet Union launched the Mir core module on February 19, 1986, beginning a 15-year mission. Mir pioneered modular station construction and hosted international astronauts. Despite fires, collisions, and aging systems, it proved humanity could maintain a permanent presence in space.",
+            "flavorText": "Long-Duration Space Habitation"
+        }
+    }
+}

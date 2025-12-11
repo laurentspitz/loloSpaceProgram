@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "viking1": {
+            "title": "Viking 1",
+            "description": "On July 20, 1976—exactly seven years after Apollo 11—Viking 1 became the first US spacecraft to land on Mars. It transmitted the first color photos from the Martian surface and searched for signs of life. The results were ambiguous but tantalizing.",
+            "flavorText": "Interplanetary Surface Operations",
+            "conditionLabel": "Land on Mars: Alt < 500 m, Velocity < 50 m/s"
+        }
+    }
+}

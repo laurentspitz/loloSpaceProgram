@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "tiros1": {
+            "title": "TIROS-1",
+            "description": "Launched April 1, 1960, TIROS-1 was the first successful weather satellite. During its 78 days of operation, it transmitted nearly 23,000 cloud cover images, revolutionizing weather forecasting. Meteorologists could now track hurricanes from space for the first time.",
+            "flavorText": "Earth Observation Systems"
+        }
+    }
+}

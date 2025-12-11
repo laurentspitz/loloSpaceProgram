@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "gemini8": {
+            "title": "Gemini 8",
+            "description": "Neil Armstrong and David Scott achieved the first docking of two spacecraft on March 16, 1966, connecting with an Agena target vehicle. When a stuck thruster sent them into a dangerous spin, Armstrong coolly used reentry thrusters to regain control. This presaged his calm under pressure on Apollo 11.",
+            "flavorText": "Orbital Rendezvous & Docking",
+            "conditionLabel": "Altitude > 300 km, Velocity > 3000 m/s"
+        }
+    }
+}

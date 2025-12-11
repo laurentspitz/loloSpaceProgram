@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "pathfinder": {
+            "title": "Mars Pathfinder",
+            "description": "On July 4, 1997, Pathfinder bounced to a landing on Mars using innovative airbags. Its tiny rover Sojourner—the first Mars rover—explored nearby rocks for 83 days. The mission proved low-cost planetary exploration was possible and captivated the public.",
+            "flavorText": "Rover Technology"
+        }
+    }
+}

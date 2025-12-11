@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "dragonCargo": {
+            "title": "Dragon Cargo",
+            "description": "Le 8 décembre 2010, la capsule Dragon de SpaceX devint le premier vaisseau commercial récupéré de l'orbite. En 2012, il devint le premier vaisseau commercial à s'amarrer à l'ISS. Le bouclier thermique PICA-X et la capacité cargo marquèrent une nouvelle ère dans la logistique spatiale.",
+            "flavorText": "Systèmes Cargo Commercial"
+        }
+    }
+}

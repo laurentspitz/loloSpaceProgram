@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "lunarCity": {
+            "title": "Lunar City",
+            "description": "The lunar base expands to support 1,000 permanent residents. Lava tubes provide radiation protection for agriculture domes. Mass drivers launch construction materials to orbital facilities. The Moon becomes humanity's first off-world industrial hub.",
+            "flavorText": "Lunar Industrial Development"
+        }
+    }
+}

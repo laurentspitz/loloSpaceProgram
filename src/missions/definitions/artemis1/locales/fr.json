@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "artemis1": {
+            "title": "Artemis I",
+            "description": "Le 16 novembre 2022, la fusée SLS de la NASA lança la capsule Orion pour une mission de 25 jours autour de la Lune. Ce test non habité prouva la fusée la plus puissante depuis Saturn V et le bouclier thermique pour les vitesses de retour lunaire. Artemis marque le retour de l'humanité dans l'espace lointain.",
+            "flavorText": "Systèmes Exploration Espace Lointain"
+        }
+    }
+}

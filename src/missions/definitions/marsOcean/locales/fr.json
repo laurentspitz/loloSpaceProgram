@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsOcean": {
+            "title": "Début de la Terraformation Mars",
+            "description": "Après des décennies d'activité industrielle, l'atmosphère de Mars commence à s'épaissir de façon mesurable. Des miroirs orbitaux concentrent la lumière solaire sur les pôles, libérant du CO2. C'est un projet mesuré en siècles, mais les premiers pas vers un second monde bleu-vert ont commencé.",
+            "flavorText": "Ingénierie Planétaire"
+        }
+    }
+}

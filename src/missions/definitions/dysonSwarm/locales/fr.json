@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "dysonSwarm": {
+            "title": "Construction Essaim de Dyson",
+            "description": "Des milliers de collecteurs solaires commencent à orbiter le Soleil, transmettant de l'énergie à des récepteurs dans tout le système solaire. Bien que loin d'une sphère complète, cet essaim de Dyson partiel marque la transition de l'humanité vers une civilisation de Type I.",
+            "flavorText": "Capture Énergie Stellaire"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsSample": {
+            "title": "Mars Sample Return",
+            "description": "A NASA-ESA collaboration retrieves samples cached by the Perseverance rover and launches them from Mars using the first rocket ever launched from another planet. These pristine samples are analyzed in Earth laboratories, potentially revealing ancient Martian life.",
+            "flavorText": "Interplanetary Sample Return"
+        }
+    }
+}

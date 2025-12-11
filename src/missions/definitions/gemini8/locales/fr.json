@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "gemini8": {
+            "title": "Gemini 8",
+            "description": "Neil Armstrong et David Scott réalisèrent le premier amarrage de deux vaisseaux le 16 mars 1966, se connectant à un véhicule cible Agena. Quand un propulseur bloqué les envoya dans une vrille dangereuse, Armstrong utilisa calmement les propulseurs de rentrée pour reprendre le contrôle. Cela présagea son calme sous pression lors d'Apollo 11.",
+            "flavorText": "Rendez-vous Orbital & Amarrage",
+            "conditionLabel": "Altitude > 300 km, Vitesse > 3000 m/s"
+        }
+    }
+}

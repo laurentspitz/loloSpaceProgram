@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sputnik2": {
+            "title": "Sputnik 2",
+            "description": "Just a month after Sputnik 1, the Soviets launched a much larger satellite carrying Laika, a stray dog from the streets of Moscow. Though Laika did not survive the mission, she proved that living organisms could endure the stresses of launch and weightlessness, paving the way for human spaceflight.",
+            "flavorText": "Life Support Systems",
+            "conditionLabel": "Altitude > 150 km, Velocity > 2000 m/s"
+        }
+    }
+}

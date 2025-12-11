@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "apollo11": {
+            "title": "Apollo 11",
+            "description": "Le 20 juillet 1969, Neil Armstrong et Buzz Aldrin posèrent le module Eagle sur la Mer de la Tranquillité pendant que Michael Collins orbitait au-dessus. Les premiers mots d'Armstrong sur la surface, 'C'est un petit pas pour l'homme, un bond de géant pour l'humanité,' sont gravés dans l'histoire. Ils passèrent 2h30 à explorer.",
+            "flavorText": "Opérations Surface Lunaire",
+            "conditionLabel": "Atterrir sur la Lune : Alt < 500 m, Vitesse < 50 m/s"
+        }
+    }
+}

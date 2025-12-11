@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsHumans": {
+            "title": "First Humans on Mars",
+            "description": "After months of transit, the first crew of explorers sets foot on Mars. They establish a habitat in Jezero Crater, surrounded by ancient river delta deposits. Using ISRU to produce fuel and oxygen from the Martian atmosphere, they begin humanity's era as a multiplanetary species.",
+            "flavorText": "Mars Surface Operations"
+        }
+    }
+}

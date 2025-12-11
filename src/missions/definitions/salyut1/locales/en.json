@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "salyut1": {
+            "title": "Salyut 1",
+            "description": "The first space station was launched on April 19, 1971. Though the first crew couldn't enter due to a docking hatch problem, the second crew (Soyuz 11) spent 23 days aboard. Tragically, they died during reentry due to a valve failure. Their sacrifice led to mandatory pressure suits during launch and landing.",
+            "flavorText": "Long-duration Habitation",
+            "conditionLabel": "Altitude > 250 km, Velocity > 2500 m/s"
+        }
+    }
+}

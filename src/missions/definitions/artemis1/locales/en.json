@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "artemis1": {
+            "title": "Artemis I",
+            "description": "On November 16, 2022, NASA's SLS rocket launched the Orion capsule on a 25-day mission around the Moon. This uncrewed test proved the most powerful rocket since Saturn V and the heat shield for lunar-return velocities. Artemis marks humanity's return to deep space.",
+            "flavorText": "Deep Space Exploration Systems"
+        }
+    }
+}

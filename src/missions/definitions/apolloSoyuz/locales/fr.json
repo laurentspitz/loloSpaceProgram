@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "apolloSoyuz": {
+            "title": "Apollo-Soyouz",
+            "description": "En juillet 1975, des astronautes américains et des cosmonautes soviétiques se rencontrèrent et s'amarrèrent en orbite—la première mission spatiale internationale habitée. Tom Stafford et Alexei Leonov se serrèrent la main à travers le sas, symbolisant la détente pendant la Guerre Froide. Cette mission inaugura les techniques utilisées sur l'ISS.",
+            "flavorText": "Coopération Internationale"
+        }
+    }
+}

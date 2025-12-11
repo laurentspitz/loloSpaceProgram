@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "skylab": {
+            "title": "Skylab",
+            "description": "La première station spatiale américaine fut lancée le 14 mai 1973, modifiée à partir d'un étage supérieur de Saturn V. Malgré la perte de son panneau solaire principal et de son bouclier thermique au lancement, trois équipages effectuèrent des réparations audacieuses et 270 jours de science. Skylab prouva que les humains pouvaient vivre dans l'espace pendant des mois.",
+            "flavorText": "Systèmes d'Énergie Solaire"
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sts1": {
+            "title": "STS-1 Columbia",
+            "description": "Le 12 avril 1981—exactement 20 ans après Gagarine—John Young et Bob Crippen décollèrent à bord de Columbia, la première navette spatiale. Contrairement à tous les vaisseaux précédents, la navette était conçue pour être réutilisable, atterrissant comme un avion. Cela inaugura 30 ans d'opérations de navettes.",
+            "flavorText": "Vaisseau Réutilisable",
+            "conditionLabel": "Altitude > 300 km, Vitesse > 3000 m/s"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "spaceshipone": {
+            "title": "SpaceShipOne",
+            "description": "On October 4, 2004, SpaceShipOne won the $10 million Ansari X Prize by completing two flights above 100km within two weeks. Designed by Burt Rutan and funded by Paul Allen, it proved private companies could reach space—launching the NewSpace revolution.",
+            "flavorText": "Commercial Spaceflight"
+        }
+    }
+}

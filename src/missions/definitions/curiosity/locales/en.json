@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "curiosity": {
+            "title": "Curiosity Rover",
+            "description": "On August 6, 2012, the car-sized Curiosity rover landed on Mars using an audacious sky crane maneuver. Its nuclear power source enables year-round operation. Curiosity found ancient riverbeds and organic molecules, proving Mars was once habitable.",
+            "flavorText": "Nuclear Rover Systems",
+            "conditionLabel": "Land on Mars: Alt < 500 m, Velocity < 50 m/s"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "europaProbe": {
+            "title": "Europa Lander",
+            "description": "After years of development, a probe lands on Europa's ice shell and drills toward the subsurface ocean. Protected from Jupiter's murderous radiation by a specially designed vault, it searches for signs of life in one of the solar system's most promising habitats.",
+            "flavorText": "Ice World Exploration"
+        }
+    }
+}

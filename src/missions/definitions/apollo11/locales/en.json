@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "apollo11": {
+            "title": "Apollo 11",
+            "description": "On July 20, 1969, Neil Armstrong and Buzz Aldrin landed the Eagle on the Sea of Tranquility while Michael Collins orbited above. Armstrong's first words on the surface, 'That's one small step for man, one giant leap for mankind,' are etched in history. They spent 2.5 hours exploring the lunar surface.",
+            "flavorText": "Lunar Surface Operations",
+            "conditionLabel": "Land on Moon: Alt < 500 m, Velocity < 50 m/s"
+        }
+    }
+}

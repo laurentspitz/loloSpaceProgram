@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "starlink": {
+            "title": "Constellation Starlink",
+            "description": "SpaceX lança les 60 premiers satellites Starlink le 23 mai 2019, débutant la construction de la plus grande constellation satellite de l'histoire. Utilisant des propulseurs à ions au krypton et des antennes à réseau phasé, Starlink vise à fournir l'internet haut débit mondial depuis plus de 40 000 satellites.",
+            "flavorText": "Technologie Méga-Constellation"
+        }
+    }
+}

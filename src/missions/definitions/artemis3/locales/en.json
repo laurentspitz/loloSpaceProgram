@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "artemis3": {
+            "title": "Artemis III",
+            "description": "The first crewed lunar landing since 1972, Artemis III will land astronauts near the lunar south pole using SpaceX's Starship HLS. For the first time, a woman and person of color will walk on the Moon. This mission establishes sustainable lunar exploration.",
+            "flavorText": "Lunar Surface Return"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "galileo": {
+            "title": "Galileo",
+            "description": "Launched in 1989, Galileo arrived at Jupiter in 1995 and spent 8 years studying the giant planet and its moons. Its atmospheric probe survived 58 minutes in Jupiter's atmosphere. Most importantly, it found strong evidence for a subsurface ocean on Europa.",
+            "flavorText": "Giant Planet Exploration"
+        }
+    }
+}

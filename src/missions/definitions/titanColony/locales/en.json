@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "titanColony": {
+            "title": "Titan Colony",
+            "description": "An outpost is established on Saturn's moon Titan, the only moon with a thick atmosphere. Despite -180°C temperatures, the dense nitrogen atmosphere provides radiation protection and enables flight with simple wings. Methane lakes fuel local operations.",
+            "flavorText": "Outer Solar System Habitation"
+        }
+    }
+}

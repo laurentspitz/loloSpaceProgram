@@ -17,7 +17,7 @@ import { GameTimeManager } from './managers/GameTimeManager';
 import type { RocketConfig } from './Config';
 import i18next from './services/i18n';
 
-import { MissionManager } from './systems/MissionSystem';
+import { MissionManager } from './missions';
 
 export class Game {
     bodies: Body[];

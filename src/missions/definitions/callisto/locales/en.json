@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "callisto": {
+            "title": "Callisto Base",
+            "description": "A research outpost is established on Callisto, just outside Jupiter's most intense radiation belts. From this relatively safe haven, scientists operate probes exploring the Jovian system and prepare technologies for eventual Europa ocean exploration.",
+            "flavorText": "Jupiter System Operations"
+        }
+    }
+}

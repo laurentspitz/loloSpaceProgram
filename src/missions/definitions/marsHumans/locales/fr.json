@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsHumans": {
+            "title": "Premiers Humains sur Mars",
+            "description": "Après des mois de transit, le premier équipage d'explorateurs pose le pied sur Mars. Ils établissent un habitat dans le cratère Jezero, entouré d'anciens dépôts de delta fluvial. Utilisant l'ISRU pour produire carburant et oxygène de l'atmosphère martienne, ils débutent l'ère de l'humanité en tant qu'espèce multiplanétaire.",
+            "flavorText": "Opérations Surface Mars"
+        }
+    }
+}

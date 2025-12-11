@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "proxima": {
+            "title": "Mission Proxima Centauri",
+            "description": "La première mission interstellaire habitée décolle vers Proxima Centauri b, l'exoplanète connue la plus proche dans une zone habitable. Utilisant la propulsion antimatière, le vaisseau génération mettra des décennies à arriver, transportant des milliers de colons vers le premier monde extrasolaire de l'humanité.",
+            "flavorText": "Colonisation Interstellaire"
+        }
+    }
+}

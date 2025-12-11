@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "phobosStation": {
+            "title": "Phobos Station",
+            "description": "An outpost is established on Phobos, Mars's larger moon. Its low gravity makes it ideal for refueling and staging Mars surface missions. Researchers study the moon's enigmatic origins—is it a captured asteroid or debris from ancient Mars?",
+            "flavorText": "Low-Gravity Operations"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "lunarGateway": {
+            "title": "Lunar Gateway",
+            "description": "The Lunar Gateway is a small space station orbiting the Moon in a near-rectilinear halo orbit. It serves as a staging point for lunar surface missions and deep space exploration. International partners contribute modules for habitation, propulsion, and science.",
+            "flavorText": "Cislunar Infrastructure"
+        }
+    }
+}

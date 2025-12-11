@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "explorer1": {
+            "title": "Explorer 1",
+            "description": "America's first satellite, designed by Wernher von Braun's team, launched on January 31, 1958. Aboard was a Geiger counter that made an unexpected discovery: intense radiation belts surrounding Earth. Scientist James Van Allen correctly interpreted the data, and the Van Allen Belts were named in his honor.",
+            "flavorText": "Radiation Hardening"
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "issZarya": {
+            "title": "ISS Zarya Module",
+            "description": "The first component of the International Space Station launched on November 20, 1998. This Russian-built module was followed by the US Unity node just weeks later. The ISS would become the largest structure ever built in space, hosting astronauts from 19 countries.",
+            "flavorText": "Modular Station Construction",
+            "conditionLabel": "Altitude > 400 km, Velocity > 3000 m/s"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "skylab": {
+            "title": "Skylab",
+            "description": "America's first space station launched on May 14, 1973, modified from a Saturn V upper stage. Despite losing its primary solar panel and heat shield during launch, three crews performed daring repairs and conducted 270 days of science. Skylab proved humans could live in space for months.",
+            "flavorText": "Solar Power Systems"
+        }
+    }
+}

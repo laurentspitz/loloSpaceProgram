@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "apollo1": {
+            "title": "Incendie d'Apollo 1",
+            "description": "Le 27 janvier 1967, un incendie éclair balaya la capsule Apollo 1 pendant un test sur le pas de tir, tuant les astronautes Gus Grissom, Ed White et Roger Chaffee. L'atmosphère d'oxygène pur et les matériaux inflammables transformèrent la cabine en piège mortel. La NASA reconçut entièrement le vaisseau.",
+            "flavorText": "Révision des Protocoles de Sécurité"
+        }
+    }
+}

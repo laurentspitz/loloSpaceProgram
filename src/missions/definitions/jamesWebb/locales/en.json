@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "jamesWebb": {
+            "title": "James Webb Space Telescope",
+            "description": "Launched December 25, 2021, JWST deployed its 6.5-meter gold mirror and tennis-court-sized sunshield flawlessly. Operating at L2 point, it has revealed the earliest galaxies, detected atmospheres of exoplanets, and captured stunning images of nearby star-forming regions.",
+            "flavorText": "Infrared Space Astronomy"
+        }
+    }
+}

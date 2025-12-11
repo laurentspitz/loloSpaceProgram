@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "curiosity": {
+            "title": "Rover Curiosity",
+            "description": "Le 6 août 2012, le rover Curiosity de la taille d'une voiture atterrit sur Mars grâce à une manœuvre audacieuse de grue céleste. Sa source d'énergie nucléaire permet un fonctionnement toute l'année. Curiosity trouva d'anciens lits de rivières et des molécules organiques, prouvant que Mars fut autrefois habitable.",
+            "flavorText": "Systèmes Rover Nucléaire",
+            "conditionLabel": "Atterrir sur Mars : Alt < 500 m, Vitesse < 50 m/s"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "mir": {
+            "title": "Station Spatiale Mir",
+            "description": "L'Union Soviétique lança le module central de Mir le 19 février 1986, débutant une mission de 15 ans. Mir fut pionnière de la construction modulaire de stations et accueillit des astronautes internationaux. Malgré incendies, collisions et systèmes vieillissants, elle prouva que l'humanité pouvait maintenir une présence permanente dans l'espace.",
+            "flavorText": "Habitation Spatiale Longue Durée"
+        }
+    }
+}

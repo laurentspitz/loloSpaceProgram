@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "lunarCity": {
+            "title": "Cité Lunaire",
+            "description": "La base lunaire s'étend pour accueillir 1 000 résidents permanents. Des tubes de lave fournissent une protection contre les radiations pour les dômes agricoles. Des catapultes électromagnétiques lancent des matériaux de construction vers les installations orbitales. La Lune devient le premier centre industriel hors-Terre de l'humanité.",
+            "flavorText": "Développement Industriel Lunaire"
+        }
+    }
+}

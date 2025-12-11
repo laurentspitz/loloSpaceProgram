@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "falcon1": {
+            "title": "Falcon 1 Success",
+            "description": "After three failures, SpaceX's Falcon 1 finally reached orbit on September 28, 2008. The company was nearly bankrupt—this was their last chance. The Merlin engine design proved itself, and Elon Musk's gamble paid off. SpaceX would go on to transform the industry.",
+            "flavorText": "Merlin Engine Technology"
+        }
+    }
+}

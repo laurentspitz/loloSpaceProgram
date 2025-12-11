@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "fusionEngine": {
+            "title": "Percée Moteur Fusion",
+            "description": "La propulsion à fusion devient réalité, permettant aux vaisseaux d'atteindre Mars en semaines au lieu de mois, et le système solaire externe en années au lieu de décennies. L'extraction d'hélium-3 sur la Lune fournit le carburant pour cette nouvelle ère de voyage interplanétaire rapide.",
+            "flavorText": "Propulsion Avancée"
+        }
+    }
+}

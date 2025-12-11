@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "apollo8": {
+            "title": "Apollo 8",
+            "description": "En décembre 1968, Frank Borman, Jim Lovell et Bill Anders devinrent les premiers humains à quitter l'orbite terrestre et atteindre la Lune. La veille de Noël, ils lurent la Genèse en observant le lever de Terre sur l'horizon lunaire—une image qui changea la façon dont l'humanité se percevait.",
+            "flavorText": "Navigation Trajectoire Lunaire",
+            "conditionLabel": "Orbite lunaire : Alt < 200 km, Vitesse > 500 m/s"
+        }
+    }
+}

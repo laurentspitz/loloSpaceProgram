@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "europaProbe": {
+            "title": "Atterrisseur Europa",
+            "description": "Après des années de développement, une sonde atterrit sur la coquille de glace d'Europa et fore vers l'océan souterrain. Protégée des radiations meurtrières de Jupiter par un coffre-fort spécialement conçu, elle recherche des signes de vie dans l'un des habitats les plus prometteurs du système solaire.",
+            "flavorText": "Exploration Mondes de Glace"
+        }
+    }
+}

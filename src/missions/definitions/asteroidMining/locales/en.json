@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "asteroidMining": {
+            "title": "Asteroid Mining Begins",
+            "description": "Robotic mining operations begin on near-Earth asteroids, harvesting water, platinum-group metals, and raw materials. These resources fuel a space-based economy, dropping the cost of space construction by orders of magnitude.",
+            "flavorText": "Space Resource Extraction"
+        }
+    }
+}

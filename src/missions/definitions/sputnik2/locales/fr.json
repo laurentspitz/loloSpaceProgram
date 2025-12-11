@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sputnik2": {
+            "title": "Spoutnik 2",
+            "description": "Un mois après Spoutnik 1, les Soviétiques lancent un satellite bien plus grand transportant Laïka, une chienne errante des rues de Moscou. Bien que Laïka n'ait pas survécu, elle prouva que les organismes vivants pouvaient endurer les contraintes du lancement et de l'apesanteur, ouvrant la voie aux vols habités.",
+            "flavorText": "Systèmes de Support de Vie",
+            "conditionLabel": "Altitude > 150 km, Vitesse > 2000 m/s"
+        }
+    }
+}

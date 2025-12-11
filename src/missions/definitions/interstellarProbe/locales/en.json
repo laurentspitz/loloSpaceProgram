@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "interstellarProbe": {
+            "title": "Interstellar Probe",
+            "description": "The first interstellar probe accelerates toward Alpha Centauri using a powerful Earth-based laser array pushing a lightsail. Though it will take decades to arrive and transmit data back, humanity has finally reached for the stars.",
+            "flavorText": "Interstellar Technology"
+        }
+    }
+}

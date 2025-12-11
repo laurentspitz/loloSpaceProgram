@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "karman_line": {
+            "title": "Franchir la ligne de Kármán",
+            "description": "Atteignez la frontière officielle de l'espace à 100 km d'altitude. C'est le début de votre voyage vers les étoiles.",
+            "conditionLabel": "Altitude ≥ 100 km"
+        }
+    }
+}

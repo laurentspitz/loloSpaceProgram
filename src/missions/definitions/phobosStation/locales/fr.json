@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "phobosStation": {
+            "title": "Station Phobos",
+            "description": "Un avant-poste est établi sur Phobos, la plus grande lune de Mars. Sa faible gravité en fait un lieu idéal pour le ravitaillement et le transit vers la surface martienne. Les chercheurs étudient les origines énigmatiques de la lune—est-ce un astéroïde capturé ou des débris de l'ancien Mars ?",
+            "flavorText": "Opérations Faible Gravité"
+        }
+    }
+}

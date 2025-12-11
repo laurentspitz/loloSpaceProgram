@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "falcon9": {
+            "title": "Falcon 9 Landing",
+            "description": "On December 21, 2015, a Falcon 9 first stage landed vertically at Cape Canaveral after delivering satellites to orbit—the first orbital-class rocket to achieve propulsive landing. This breakthrough slashed launch costs and made SpaceX the dominant launch provider.",
+            "flavorText": "Propulsive Landing"
+        }
+    }
+}

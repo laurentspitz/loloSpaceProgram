@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "pathfinder": {
+            "title": "Mars Pathfinder",
+            "description": "Le 4 juillet 1997, Pathfinder rebondit jusqu'à l'atterrissage sur Mars grâce à des airbags innovants. Son petit rover Sojourner—le premier rover martien—explora les rochers voisins pendant 83 jours. La mission prouva que l'exploration planétaire à faible coût était possible et captiva le public.",
+            "flavorText": "Technologie Rover"
+        }
+    }
+}

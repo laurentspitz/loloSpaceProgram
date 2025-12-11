@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "vostok1": {
+            "title": "Vostok 1",
+            "description": "On April 12, 1961, Soviet cosmonaut Yuri Gagarin became the first human in space, completing one orbit of Earth in 108 minutes. His famous words, 'Poyekhali!' (Let's go!), marked the beginning of human space exploration. Gagarin became an international hero and symbol of the Space Age.",
+            "flavorText": "Manned Orbital Flight",
+            "conditionLabel": "Altitude > 200 km, Velocity > 2500 m/s"
+        }
+    }
+}

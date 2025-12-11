@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsStation": {
+            "title": "Mars Orbital Station",
+            "description": "A permanent station in Mars orbit enables regular crew rotations, real-time surface operations support, and interplanetary ship maintenance. Cycler spacecraft begin regular Earth-Mars transits, cutting travel time and radiation exposure.",
+            "flavorText": "Interplanetary Logistics"
+        }
+    }
+}

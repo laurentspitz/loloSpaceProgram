@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "luna2": {
+            "title": "Luna 2",
+            "description": "Le 14 septembre 1959, Luna 2 devint le premier objet fabriqué par l'homme à atteindre la Lune, s'écrasant dans la Mare Imbrium. Elle transportait des fanions soviétiques éparpillés à l'impact. Cette mission prouva que les vaisseaux pouvaient viser précisément les corps célestes.",
+            "flavorText": "Systèmes de Guidage V1",
+            "conditionLabel": "Distance à la Lune < 5 km"
+        }
+    }
+}

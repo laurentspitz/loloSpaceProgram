@@ -4,7 +4,7 @@ import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { Rocket } from '../entities/Rocket';
 import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
-import { MissionManager } from '../systems/MissionSystem';
+import { MissionManager } from '../missions';
 import i18next from 'i18next';
 
 // Panels
@@ -73,7 +73,8 @@ export class UI {
         window.addEventListener('mission-completed', async (e: any) => {
             const { NotificationManager } = await import('./NotificationManager');
             const mission = e.detail.mission;
-            NotificationManager.show(i18next.t('ui.missionAccomplished', { title: mission.title }) + '\n' + i18next.t('ui.reward', { reward: mission.reward }), 'success', 5000);
+            const rewardText = mission.rewardMoney ? `+${mission.rewardMoney.toLocaleString()} $` : '';
+            NotificationManager.show(i18next.t('ui.missionAccomplished', { title: mission.title }) + (rewardText ? '\n💰 ' + rewardText : ''), 'success', 5000);
         });
 
         // Listen for language changes
@@ -457,14 +458,16 @@ export class UI {
             desc.style.fontSize = '0.9em';
             desc.style.color = '#aaa';
 
-            const reward = document.createElement('div');
-            reward.innerText = `Reward: ${m.reward}`;
-            reward.style.fontSize = '0.8em';
-            reward.style.color = '#88cc88';
+            if (m.rewardMoney) {
+                const reward = document.createElement('div');
+                reward.innerText = `💰 +${m.rewardMoney.toLocaleString()} $`;
+                reward.style.fontSize = '0.9em';
+                reward.style.color = '#FFD700';
+                info.appendChild(reward);
+            }
 
             info.appendChild(title);
             info.appendChild(desc);
-            info.appendChild(reward);
 
             const status = document.createElement('div');
             if (m.completed) {

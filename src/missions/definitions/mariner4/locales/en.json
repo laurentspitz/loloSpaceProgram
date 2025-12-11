@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "mariner4": {
+            "title": "Mariner 4",
+            "description": "On July 15, 1965, Mariner 4 performed the first successful flyby of Mars, returning 22 close-up photos. The images revealed a cratered, Moon-like surface—shattering hopes of canals or vegetation. Mars was more desolate than expected, but the mission proved interplanetary exploration was possible.",
+            "flavorText": "Deep Space Communications"
+        }
+    }
+}

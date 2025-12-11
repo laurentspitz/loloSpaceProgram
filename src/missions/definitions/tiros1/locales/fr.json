@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "tiros1": {
+            "title": "TIROS-1",
+            "description": "Lancé le 1er avril 1960, TIROS-1 fut le premier satellite météorologique réussi. Durant ses 78 jours d'opération, il transmit près de 23 000 images de couverture nuageuse, révolutionnant les prévisions météorologiques. Les météorologues pouvaient désormais suivre les ouragans depuis l'espace pour la première fois.",
+            "flavorText": "Systèmes d'Observation Terrestre"
+        }
+    }
+}

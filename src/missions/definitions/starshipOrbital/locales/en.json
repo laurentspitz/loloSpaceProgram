@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "starshipOrbital": {
+            "title": "Starship Orbital Test",
+            "description": "SpaceX's fully reusable Starship—the largest rocket ever flown—achieved its first successful orbital test in 2024. With 33 Raptor engines producing twice Saturn V's thrust, Starship is designed to carry 100+ passengers to Mars and enable permanent human settlement beyond Earth.",
+            "flavorText": "Super Heavy Lift Reusability"
+        }
+    }
+}

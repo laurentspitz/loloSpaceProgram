@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "proxima": {
+            "title": "Proxima Centauri Mission",
+            "description": "The first crewed interstellar mission launches toward Proxima Centauri b, the nearest known exoplanet in a habitable zone. Using antimatter propulsion, the generation ship will take decades to arrive, carrying thousands of colonists to humanity's first extrasolar world.",
+            "flavorText": "Interstellar Colonization"
+        }
+    }
+}

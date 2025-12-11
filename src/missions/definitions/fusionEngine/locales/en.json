@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "fusionEngine": {
+            "title": "Fusion Engine Breakthrough",
+            "description": "Practical fusion propulsion becomes reality, enabling spacecraft to reach Mars in weeks instead of months, and the outer solar system in years instead of decades. Helium-3 mining on the Moon provides fuel for this new era of rapid interplanetary travel.",
+            "flavorText": "Advanced Propulsion"
+        }
+    }
+}

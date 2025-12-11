@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsCity": {
+            "title": "Mars City",
+            "description": "The first true Martian city reaches 1,000 residents living in pressurized habitats. Nuclear reactors provide power, while ISRU facilities produce all life support. Children born on Mars—the first true Martians—grow up never knowing Earth gravity.",
+            "flavorText": "Planetary Settlement"
+        }
+    }
+}

@@ -129,176 +129,319 @@
         "selectEvent": "Sélectionnez un événement pour voir les détails",
         "madeBy": "Réalisé par : {{flag}} {{country}}",
         "techBreakthrough": "Percée Technologique",
-        "unlockedParts": "Pièces Débloquées :"
+        "unlockedParts": "Pièces Débloquées :",
+        "events": "événement(s)",
+        "event": "Événement",
+        "noEvents": "Aucun événement cette année",
+        "missionsCompleted": "missions complétées",
+        "relatedMissions": "Missions"
+    },
+    "mission": {
+        "objective": "Objectif",
+        "condition": "Condition de réussite",
+        "reward": "Récompense",
+        "completed": "Terminée"
     },
     "historyEvents": {
         "sputnik1": {
             "title": "Spoutnik 1",
-            "desc": "L'Union Soviétique lance le premier satellite artificiel, marquant le début de l'ère spatiale.",
+            "desc": "Le 4 octobre 1957, l'Union Soviétique stupéfie le monde en lançant le premier satellite artificiel en orbite. Cette sphère métallique de 58 cm transmettait des impulsions radio captées par des radioamateurs du monde entier, prouvant que l'espace était désormais à portée de l'humanité. Ce lancement unique déclencha la Course à l'Espace.",
             "flavor": "Fuséologie Basique & Moteurs Liquides"
         },
         "sputnik2": {
             "title": "Spoutnik 2",
-            "desc": "Premier animal en orbite (Laika). Preuve que les êtres vivants peuvent survivre au lancement.",
+            "desc": "Un mois après Spoutnik 1, les Soviétiques lancent un satellite bien plus grand transportant Laïka, une chienne errante des rues de Moscou. Bien que Laïka n'ait pas survécu, elle prouva que les organismes vivants pouvaient endurer les contraintes du lancement et de l'apesanteur, ouvrant la voie aux vols habités.",
             "flavor": "Systèmes de Support de Vie"
         },
         "explorer1": {
             "title": "Explorer 1",
-            "desc": "Premier satellite US. Découverte des ceintures de radiation Van Allen.",
+            "desc": "Le premier satellite américain, conçu par l'équipe de Wernher von Braun, fut lancé le 31 janvier 1958. À son bord, un compteur Geiger fit une découverte inattendue : d'intenses ceintures de radiation entourant la Terre. Le scientifique James Van Allen interpréta correctement les données, et les Ceintures de Van Allen furent nommées en son honneur.",
             "flavor": "Durcissement aux Radiations"
         },
         "nasaFormed": {
-            "title": "Création NASA",
-            "desc": "La National Aeronautics and Space Administration est établie."
+            "title": "Création de la NASA",
+            "desc": "Le président Eisenhower signa le National Aeronautics and Space Act le 29 juillet 1958, créant la NASA. Cette nouvelle agence absorba la NACA et unifia les efforts spatiaux américains sous contrôle civil. C'était crucial pour les courses à venir vers l'orbite et la Lune."
         },
         "luna2": {
             "title": "Luna 2",
-            "desc": "Premier objet humain à impacter la Lune.",
+            "desc": "Le 14 septembre 1959, Luna 2 devint le premier objet fabriqué par l'homme à atteindre la Lune, s'écrasant dans la Mare Imbrium. Elle transportait des fanions soviétiques éparpillés à l'impact. Cette mission prouva que les vaisseaux pouvaient viser précisément les corps célestes.",
             "flavor": "Systèmes de Guidage V1"
         },
         "luna3": {
             "title": "Luna 3",
-            "desc": "Premières photos de la face cachée de la Lune."
+            "desc": "En octobre 1959, Luna 3 contourna la Lune et photographia sa face cachée pour la première fois de l'histoire. Les images, développées à bord et transmises à la Terre, révélèrent un terrain étonnamment différent—principalement des hauts plateaux avec peu de 'mers'. Les formations furent nommées d'après des pionniers soviétiques."
+        },
+        "tiros1": {
+            "title": "TIROS-1",
+            "desc": "Lancé le 1er avril 1960, TIROS-1 fut le premier satellite météorologique réussi. Durant ses 78 jours d'opération, il transmit près de 23 000 images de couverture nuageuse, révolutionnant les prévisions météorologiques. Les météorologues pouvaient désormais suivre les ouragans depuis l'espace pour la première fois.",
+            "flavor": "Systèmes d'Observation Terrestre"
         },
         "vostok1": {
             "title": "Vostok 1",
-            "desc": "Yuri Gagarine devient le premier humain dans l'espace (Orbite).",
+            "desc": "Le 12 avril 1961, le cosmonaute soviétique Youri Gagarine devint le premier humain dans l'espace, complétant une orbite terrestre en 108 minutes. Ses mots célèbres, 'Poïekhali !' (C'est parti !), marquèrent le début de l'exploration spatiale humaine. Gagarine devint un héros international et symbole de l'Ère Spatiale.",
             "flavor": "Vol Orbital Habité"
         },
         "freedom7": {
             "title": "Freedom 7",
-            "desc": "Alan Shepard devient le premier Américain dans l'espace (Suborbital).",
+            "desc": "Le 5 mai 1961, Alan Shepard devint le premier Américain dans l'espace à bord de Freedom 7. Bien que ce ne fût qu'un vol suborbital de 15 minutes, il démontra que les Américains pouvaient aussi atteindre l'espace. Le courage de Shepard sous pression en fit un héros national.",
             "flavor": "Moteurs à Propergol Solide"
         },
         "friendship7": {
             "title": "Friendship 7",
-            "desc": "John Glenn en orbite. Premier vol orbital US.",
+            "desc": "John Glenn devint le premier Américain à orbiter la Terre le 20 février 1962. Durant ses trois orbites, un capteur défectueux indiqua que son bouclier thermique était peut-être détaché—on dit à Glenn de garder le pack de rétro-fusées attaché pendant la rentrée. Il survécut, et le capteur s'avéra défaillant.",
             "flavor": "Protection Thermique de Rentrée"
         },
         "vostok6": {
             "title": "Vostok 6",
-            "desc": "Valentina Terechkova devient la première femme dans l'espace."
+            "desc": "Valentina Terechkova devint la première femme dans l'espace le 16 juin 1963. L'ouvrière textile devenue cosmonaute compléta 48 orbites en près de 3 jours, orbitant plus de fois que tous les astronautes américains réunis à ce moment-là. Elle reste la seule femme à avoir effectué une mission spatiale solo."
+        },
+        "mariner4": {
+            "title": "Mariner 4",
+            "desc": "Le 15 juillet 1965, Mariner 4 effectua le premier survol réussi de Mars, rapportant 22 photos en gros plan. Les images révélèrent une surface cratérisée semblable à la Lune—brisant les espoirs de canaux ou de végétation. Mars était plus désolée que prévu, mais la mission prouva que l'exploration interplanétaire était possible.",
+            "flavor": "Communications Espace Lointain"
         },
         "voskhod2": {
             "title": "Voskhod 2",
-            "desc": "Alexei Leonov effectue la première sortie extravéhiculaire (EVA).",
+            "desc": "Alexei Leonov effectua la première sortie dans l'espace le 18 mars 1965, flottant hors de son vaisseau pendant 12 minutes. Sa combinaison gonfla dangereusement dans le vide, et il dut la dégonfler partiellement pour se faufiler à travers le sas. Malgré le drame, la mission prouva que les humains pouvaient travailler dans le vide.",
             "flavor": "Unités Mobiles Extravéhiculaires"
         },
         "gemini4": {
             "title": "Gemini 4",
-            "desc": "Première sortie extravéhiculaire US par Ed White."
+            "desc": "Ed White devint le premier Américain à marcher dans l'espace le 3 juin 1965. Utilisant un pistolet à azote portatif pour la propulsion, il flotta à l'extérieur pendant 23 minutes. Quand on lui ordonna de rentrer, il répondit 'C'est le moment le plus triste de ma vie.' White périt plus tard dans l'incendie d'Apollo 1."
+        },
+        "luna9": {
+            "title": "Luna 9",
+            "desc": "Le 3 février 1966, Luna 9 devint le premier engin spatial à réaliser un atterrissage en douceur sur la Lune. L'atterrisseur de 99 kg transmit les premières photos panoramiques de la surface lunaire, prouvant que le sol était solide—et non la poussière profonde que certains craignaient d'engloutir les atterrisseurs.",
+            "flavor": "Technologie d'Atterrissage en Douceur"
         },
         "gemini8": {
             "title": "Gemini 8",
-            "desc": "Premier amarrage de deux engins spatiaux en orbite.",
+            "desc": "Neil Armstrong et David Scott réalisèrent le premier amarrage de deux vaisseaux le 16 mars 1966, se connectant à un véhicule cible Agena. Quand un propulseur bloqué les envoya dans une vrille dangereuse, Armstrong utilisa calmement les propulseurs de rentrée pour reprendre le contrôle. Cela présagea son calme sous pression lors d'Apollo 11.",
             "flavor": "Rendez-vous Orbital & Amarrage"
+        },
+        "apollo1": {
+            "title": "Incendie d'Apollo 1",
+            "desc": "Le 27 janvier 1967, un incendie éclair balaya la capsule Apollo 1 pendant un test sur le pas de tir, tuant les astronautes Gus Grissom, Ed White et Roger Chaffee. L'atmosphère d'oxygène pur et les matériaux inflammables transformèrent la cabine en piège mortel. La NASA reconçut entièrement le vaisseau.",
+            "flavor": "Révision des Protocoles de Sécurité"
         },
         "saturnv": {
             "title": "Saturn V",
-            "desc": "Premier lancement complet de la massive fusée Saturn V (Apollo 4).",
+            "desc": "Le premier test complet de la Saturn V le 9 novembre 1967 fut un succès total. Avec ses 111 mètres de haut et 2 800 tonnes, elle reste la fusée la plus puissante jamais construite. Ses cinq moteurs F-1 produisaient 33 millions de newtons de poussée. Ce monstre transporterait des humains vers la Lune.",
             "flavor": "Fusées de Levage Lourd"
-        },
-        "apollo1": {
-            "title": "Incendie Apollo 1",
-            "desc": "Tragédie dans le programme Apollo. Trois astronautes perdus.",
-            "flavor": "Révision Protocoles Sécurité"
         },
         "apollo8": {
             "title": "Apollo 8",
-            "desc": "Premier vaisseau habité en orbite lunaire.",
+            "desc": "En décembre 1968, Frank Borman, Jim Lovell et Bill Anders devinrent les premiers humains à quitter l'orbite terrestre et atteindre la Lune. La veille de Noël, ils lurent la Genèse en observant le lever de Terre sur l'horizon lunaire—une image qui changea la façon dont l'humanité se percevait.",
             "flavor": "Navigation Trajectoire Lunaire"
         },
         "apollo11": {
             "title": "Apollo 11",
-            "desc": "L'Homme marche sur la Lune. 'Un petit pas pour l'homme'.",
+            "desc": "Le 20 juillet 1969, Neil Armstrong et Buzz Aldrin posèrent le module Eagle sur la Mer de la Tranquillité pendant que Michael Collins orbitait au-dessus. Les premiers mots d'Armstrong sur la surface, 'C'est un petit pas pour l'homme, un bond de géant pour l'humanité,' sont gravés dans l'histoire. Ils passèrent 2h30 à explorer.",
             "flavor": "Opérations Surface Lunaire"
         },
         "salyut1": {
-            "title": "Salyut 1",
-            "desc": "Première station spatiale lancée.",
+            "title": "Saliout 1",
+            "desc": "La première station spatiale fut lancée le 19 avril 1971. Bien que le premier équipage ne put y entrer à cause d'un problème de trappe, le second (Soyouz 11) y passa 23 jours. Tragiquement, ils moururent lors de la rentrée à cause d'une valve défaillante. Leur sacrifice mena aux combinaisons pressurisées obligatoires.",
             "flavor": "Habitation Longue Durée"
+        },
+        "skylab": {
+            "title": "Skylab",
+            "desc": "La première station spatiale américaine fut lancée le 14 mai 1973, modifiée à partir d'un étage supérieur de Saturn V. Malgré la perte de son panneau solaire principal et de son bouclier thermique au lancement, trois équipages effectuèrent des réparations audacieuses et 270 jours de science. Skylab prouva que les humains pouvaient vivre dans l'espace pendant des mois.",
+            "flavor": "Systèmes d'Énergie Solaire"
+        },
+        "apolloSoyuz": {
+            "title": "Apollo-Soyouz",
+            "desc": "En juillet 1975, des astronautes américains et des cosmonautes soviétiques se rencontrèrent et s'amarrèrent en orbite—la première mission spatiale internationale habitée. Tom Stafford et Alexei Leonov se serrèrent la main à travers le sas, symbolisant la détente pendant la Guerre Froide. Cette mission inaugura les techniques utilisées sur l'ISS.",
+            "flavor": "Coopération Internationale"
         },
         "viking1": {
             "title": "Viking 1",
-            "desc": "Premier atterrissage réussi sur Mars.",
-            "flavor": "Communications Interplanétaires"
+            "desc": "Le 20 juillet 1976—exactement sept ans après Apollo 11—Viking 1 devint le premier vaisseau américain à atterrir sur Mars. Il transmit les premières photos couleur de la surface martienne et rechercha des signes de vie. Les résultats furent ambigus mais fascinants.",
+            "flavor": "Opérations Surface Interplanétaire"
         },
         "voyager1": {
             "title": "Voyager 1",
-            "desc": "Lancement de la sonde qui quittera le système solaire.",
+            "desc": "Lancée le 5 septembre 1977, Voyager 1 utilisa des assistances gravitationnelles pour visiter Jupiter et Saturne avant de se diriger vers l'espace interstellaire. Son Disque d'Or porte des salutations en 55 langues et de la musique du monde entier. En 2012, elle devint le premier objet humain à entrer dans l'espace interstellaire.",
             "flavor": "Systèmes Énergie Espace Lointain"
+        },
+        "pioneerVenus": {
+            "title": "Pioneer Venus",
+            "desc": "En 1978, Pioneer Venus envoya un orbiteur et quatre sondes atmosphériques vers la 'jumelle maléfique' de la Terre. Les données révélèrent la pression écrasante de 90 atmosphères de Vénus, des températures de 460°C, et des nuages d'acide sulfurique. Une sonde survécut 67 minutes sur cette surface hostile.",
+            "flavor": "Ingénierie Environnements Extrêmes"
         },
         "sts1": {
             "title": "STS-1 Columbia",
-            "desc": "Premier vol de la Navette Spatiale réutilisable.",
+            "desc": "Le 12 avril 1981—exactement 20 ans après Gagarine—John Young et Bob Crippen décollèrent à bord de Columbia, la première navette spatiale. Contrairement à tous les vaisseaux précédents, la navette était conçue pour être réutilisable, atterrissant comme un avion. Cela inaugura 30 ans d'opérations de navettes.",
             "flavor": "Vaisseau Réutilisable"
         },
         "challenger": {
-            "title": "Challenger",
-            "desc": "Désastre de la navette Challenger au lancement."
+            "title": "Catastrophe de Challenger",
+            "desc": "Le 28 janvier 1986, la navette spatiale Challenger se désintégra 73 secondes après le décollage, tuant les sept membres d'équipage dont l'enseignante Christa McAuliffe. La cause fut une défaillance de joint torique par temps froid. La catastrophe mena à 32 mois d'arrêt et des réformes majeures de sécurité."
+        },
+        "mir": {
+            "title": "Station Spatiale Mir",
+            "desc": "L'Union Soviétique lança le module central de Mir le 19 février 1986, débutant une mission de 15 ans. Mir fut pionnière de la construction modulaire de stations et accueillit des astronautes internationaux. Malgré incendies, collisions et systèmes vieillissants, elle prouva que l'humanité pouvait maintenir une présence permanente dans l'espace.",
+            "flavor": "Habitation Spatiale Longue Durée"
+        },
+        "galileo": {
+            "title": "Galileo",
+            "desc": "Lancée en 1989, Galileo arriva à Jupiter en 1995 et passa 8 ans à étudier la planète géante et ses lunes. Sa sonde atmosphérique survécut 58 minutes dans l'atmosphère jovienne. Plus important encore, elle trouva de solides preuves d'un océan souterrain sur Europe.",
+            "flavor": "Exploration des Planètes Géantes"
         },
         "hubble": {
-            "title": "Hubble",
-            "desc": "Déploiement du Télescope Spatial Hubble.",
-            "flavor": "Optique Avancée"
+            "title": "Télescope Spatial Hubble",
+            "desc": "Lancé le 24 avril 1990, Hubble fut initialement handicapé par un miroir défectueux. Après une mission de réparation dramatique en 1993, il devint probablement le télescope le plus important de l'histoire, transformant notre compréhension de l'univers, des exoplanètes à l'âge du cosmos.",
+            "flavor": "Optique Spatiale Avancée"
+        },
+        "pathfinder": {
+            "title": "Mars Pathfinder",
+            "desc": "Le 4 juillet 1997, Pathfinder rebondit jusqu'à l'atterrissage sur Mars grâce à des airbags innovants. Son petit rover Sojourner—le premier rover martien—explora les rochers voisins pendant 83 jours. La mission prouva que l'exploration planétaire à faible coût était possible et captiva le public.",
+            "flavor": "Technologie Rover"
         },
         "issZarya": {
-            "title": "ISS Zarya",
-            "desc": "Premier module de la Station Spatiale Internationale.",
+            "title": "Module ISS Zarya",
+            "desc": "Le premier composant de la Station Spatiale Internationale fut lancé le 20 novembre 1998. Ce module de fabrication russe fut suivi du nœud américain Unity quelques semaines plus tard. L'ISS deviendrait la plus grande structure jamais construite dans l'espace, accueillant des astronautes de 19 pays.",
             "flavor": "Construction Station Modulaire"
         },
         "spaceshipone": {
             "title": "SpaceShipOne",
-            "desc": "Premier vol spatial humain financé par le privé.",
+            "desc": "Le 4 octobre 2004, SpaceShipOne remporta le prix Ansari X de 10 millions de dollars en complétant deux vols au-dessus de 100 km en deux semaines. Conçu par Burt Rutan et financé par Paul Allen, il prouva que les entreprises privées pouvaient atteindre l'espace—lançant la révolution NewSpace.",
             "flavor": "Vol Spatial Commercial"
         },
+        "falcon1": {
+            "title": "Succès de Falcon 1",
+            "desc": "Après trois échecs, le Falcon 1 de SpaceX atteignit enfin l'orbite le 28 septembre 2008. L'entreprise était presque en faillite—c'était leur dernière chance. Le moteur Merlin prouva sa valeur, et le pari d'Elon Musk fut payant. SpaceX allait transformer l'industrie.",
+            "flavor": "Technologie Moteur Merlin"
+        },
+        "dragonCargo": {
+            "title": "Dragon Cargo",
+            "desc": "Le 8 décembre 2010, la capsule Dragon de SpaceX devint le premier vaisseau commercial récupéré de l'orbite. En 2012, il devint le premier vaisseau commercial à s'amarrer à l'ISS. Le bouclier thermique PICA-X et la capacité cargo marquèrent une nouvelle ère dans la logistique spatiale.",
+            "flavor": "Systèmes Cargo Commercial"
+        },
         "curiosity": {
-            "title": "Curiosity Rover",
-            "desc": "Atterrissage du rover massif sur Mars via Skycrane."
+            "title": "Rover Curiosity",
+            "desc": "Le 6 août 2012, le rover Curiosity de la taille d'une voiture atterrit sur Mars grâce à une manœuvre audacieuse de grue céleste. Sa source d'énergie nucléaire permet un fonctionnement toute l'année. Curiosity trouva d'anciens lits de rivières et des molécules organiques, prouvant que Mars fut autrefois habitable.",
+            "flavor": "Systèmes Rover Nucléaire"
         },
         "falcon9": {
             "title": "Atterrissage Falcon 9",
-            "desc": "SpaceX fait atterrir un booster orbital pour la première fois.",
+            "desc": "Le 21 décembre 2015, un premier étage Falcon 9 atterrit verticalement à Cap Canaveral après avoir livré des satellites en orbite—la première fusée de classe orbitale à réaliser un atterrissage propulsif. Cette percée réduisit drastiquement les coûts de lancement et fit de SpaceX le fournisseur dominant.",
             "flavor": "Atterrissage Propulsif"
+        },
+        "starlink": {
+            "title": "Constellation Starlink",
+            "desc": "SpaceX lança les 60 premiers satellites Starlink le 23 mai 2019, débutant la construction de la plus grande constellation satellite de l'histoire. Utilisant des propulseurs à ions au krypton et des antennes à réseau phasé, Starlink vise à fournir l'internet haut débit mondial depuis plus de 40 000 satellites.",
+            "flavor": "Technologie Méga-Constellation"
         },
         "crewDragon": {
             "title": "Crew Dragon",
-            "desc": "Premier lancement commercial habité vers l'ISS.",
-            "flavor": "Cockpits Tactiles"
+            "desc": "Le 30 mai 2020, les astronautes NASA Bob Behnken et Doug Hurley décollèrent à bord du Crew Dragon de SpaceX—le premier vol spatial commercial habité vers l'orbite. Cela mit fin à la dépendance de la NASA envers le Soyouz russe et inaugura une nouvelle ère de transport d'équipage commercial vers l'ISS.",
+            "flavor": "Systèmes Équipage Commercial"
         },
         "jamesWebb": {
-            "title": "James Webb",
-            "desc": "Lancement du télescope spatial le plus avancé.",
-            "flavor": "Astronomie Infrarouge"
+            "title": "Télescope Spatial James Webb",
+            "desc": "Lancé le 25 décembre 2021, le JWST déploya son miroir doré de 6,5 mètres et son pare-soleil de la taille d'un court de tennis sans accroc. Opérant au point L2, il a révélé les premières galaxies, détecté des atmosphères d'exoplanètes et capturé des images stupéfiantes de régions de formation d'étoiles.",
+            "flavor": "Astronomie Spatiale Infrarouge"
+        },
+        "artemis1": {
+            "title": "Artemis I",
+            "desc": "Le 16 novembre 2022, la fusée SLS de la NASA lança la capsule Orion pour une mission de 25 jours autour de la Lune. Ce test non habité prouva la fusée la plus puissante depuis Saturn V et le bouclier thermique pour les vitesses de retour lunaire. Artemis marque le retour de l'humanité dans l'espace lointain.",
+            "flavor": "Systèmes Exploration Espace Lointain"
+        },
+        "starshipOrbital": {
+            "title": "Test Orbital Starship",
+            "desc": "Le Starship entièrement réutilisable de SpaceX—la plus grande fusée jamais construite—réussit son premier test orbital en 2024. Avec 33 moteurs Raptor produisant deux fois la poussée de Saturn V, Starship est conçu pour transporter plus de 100 passagers vers Mars et permettre l'établissement humain permanent au-delà de la Terre.",
+            "flavor": "Réutilisabilité Super Heavy Lift"
         },
         "artemis3": {
             "title": "Artemis III",
-            "desc": "Retour des humains sur la surface lunaire.",
-            "flavor": "Logistique Espace Lointain"
+            "desc": "Le premier alunissage habité depuis 1972, Artemis III posera des astronautes près du pôle sud lunaire en utilisant le Starship HLS de SpaceX. Pour la première fois, une femme et une personne de couleur marcheront sur la Lune. Cette mission établit l'exploration lunaire durable.",
+            "flavor": "Retour Surface Lunaire"
+        },
+        "lunarGateway": {
+            "title": "Lunar Gateway",
+            "desc": "Le Lunar Gateway est une petite station spatiale orbitant la Lune sur une orbite halo quasi-rectiligne. Elle sert de point de transit pour les missions vers la surface lunaire et l'exploration de l'espace lointain. Des partenaires internationaux contribuent des modules pour l'habitation, la propulsion et la science.",
+            "flavor": "Infrastructure Cislunaire"
         },
         "marsSample": {
-            "title": "Retour Échantillons Mars",
-            "desc": "Retour robotique d'échantillons du sol martien."
+            "title": "Retour d'Échantillons Mars",
+            "desc": "Une collaboration NASA-ESA récupère des échantillons mis en cache par le rover Perseverance et les lance depuis Mars en utilisant la première fusée jamais lancée d'une autre planète. Ces échantillons vierges sont analysés dans des laboratoires terrestres, révélant potentiellement une vie martienne ancienne.",
+            "flavor": "Retour Échantillons Interplanétaire"
+        },
+        "lunarBase": {
+            "title": "Camp de Base Artemis",
+            "desc": "La première base lunaire permanente est établie près du cratère Shackleton au pôle sud, où la glace d'eau existe dans les régions d'ombre permanente. Les systèmes ISRU extraient l'eau pour le support de vie et le carburant. Les équipages restent 60 jours, menant des sciences et testant les technologies martiennes.",
+            "flavor": "Présence Lunaire Permanente"
         },
         "marsHumans": {
             "title": "Premiers Humains sur Mars",
-            "desc": "Empreinte humaine sur la Planète Rouge.",
-            "flavor": "Utilisation Ressources In-Situ"
+            "desc": "Après des mois de transit, le premier équipage d'explorateurs pose le pied sur Mars. Ils établissent un habitat dans le cratère Jezero, entouré d'anciens dépôts de delta fluvial. Utilisant l'ISRU pour produire carburant et oxygène de l'atmosphère martienne, ils débutent l'ère de l'humanité en tant qu'espèce multiplanétaire.",
+            "flavor": "Opérations Surface Mars"
+        },
+        "phobosStation": {
+            "title": "Station Phobos",
+            "desc": "Un avant-poste est établi sur Phobos, la plus grande lune de Mars. Sa faible gravité en fait un lieu idéal pour le ravitaillement et le transit vers la surface martienne. Les chercheurs étudient les origines énigmatiques de la lune—est-ce un astéroïde capturé ou des débris de l'ancien Mars ?",
+            "flavor": "Opérations Faible Gravité"
+        },
+        "marsStation": {
+            "title": "Station Orbitale Mars",
+            "desc": "Une station permanente en orbite martienne permet des rotations d'équipage régulières, un support opérationnel de surface en temps réel et la maintenance des vaisseaux interplanétaires. Des vaisseaux cycleurs commencent des transits réguliers Terre-Mars, réduisant le temps de voyage et l'exposition aux radiations.",
+            "flavor": "Logistique Interplanétaire"
+        },
+        "lunarCity": {
+            "title": "Cité Lunaire",
+            "desc": "La base lunaire s'étend pour accueillir 1 000 résidents permanents. Des tubes de lave fournissent une protection contre les radiations pour les dômes agricoles. Des catapultes électromagnétiques lancent des matériaux de construction vers les installations orbitales. La Lune devient le premier centre industriel hors-Terre de l'humanité.",
+            "flavor": "Développement Industriel Lunaire"
         },
         "marsCity": {
-            "title": "Cité Mars Alpha",
-            "desc": "Première colonie permanente atteint 1 000 résidents.",
-            "flavor": "Écosystèmes Autonomes"
+            "title": "Cité Martienne",
+            "desc": "La première vraie ville martienne atteint 1 000 résidents vivant dans des habitats pressurisés. Des réacteurs nucléaires fournissent l'énergie, tandis que les installations ISRU produisent tout le support de vie. Des enfants nés sur Mars—les premiers vrais Martiens—grandissent sans jamais connaître la gravité terrestre.",
+            "flavor": "Colonisation Planétaire"
+        },
+        "asteroidMining": {
+            "title": "Début du Minage d'Astéroïdes",
+            "desc": "Des opérations minières robotisées commencent sur les astéroïdes géocroiseurs, récoltant eau, métaux du groupe platine et matières premières. Ces ressources alimentent une économie spatiale, réduisant drastiquement le coût de la construction spatiale.",
+            "flavor": "Extraction Ressources Spatiales"
+        },
+        "europaProbe": {
+            "title": "Atterrisseur Europa",
+            "desc": "Après des années de développement, une sonde atterrit sur la coquille de glace d'Europa et fore vers l'océan souterrain. Protégée des radiations meurtrières de Jupiter par un coffre-fort spécialement conçu, elle recherche des signes de vie dans l'un des habitats les plus prometteurs du système solaire.",
+            "flavor": "Exploration Mondes de Glace"
+        },
+        "callisto": {
+            "title": "Base Callisto",
+            "desc": "Un avant-poste de recherche est établi sur Callisto, juste à l'extérieur des ceintures de radiation les plus intenses de Jupiter. Depuis ce havre relativement sûr, les scientifiques opèrent des sondes explorant le système jovien et préparent les technologies pour l'exploration éventuelle de l'océan d'Europa.",
+            "flavor": "Opérations Système Jupiter"
+        },
+        "fusionEngine": {
+            "title": "Percée Moteur Fusion",
+            "desc": "La propulsion à fusion devient réalité, permettant aux vaisseaux d'atteindre Mars en semaines au lieu de mois, et le système solaire externe en années au lieu de décennies. L'extraction d'hélium-3 sur la Lune fournit le carburant pour cette nouvelle ère de voyage interplanétaire rapide.",
+            "flavor": "Propulsion Avancée"
         },
         "titanColony": {
             "title": "Colonie Titan",
-            "desc": "Avant-poste établi sur Titan, lune de Saturne.",
-            "flavor": "Cryo-Ingénierie"
+            "desc": "Un avant-poste est établi sur Titan, lune de Saturne, la seule lune avec une atmosphère épaisse. Malgré des températures de -180°C, l'atmosphère dense d'azote fournit une protection contre les radiations et permet le vol avec de simples ailes. Les lacs de méthane alimentent les opérations locales.",
+            "flavor": "Habitation Système Solaire Externe"
+        },
+        "marsOcean": {
+            "title": "Début de la Terraformation Mars",
+            "desc": "Après des décennies d'activité industrielle, l'atmosphère de Mars commence à s'épaissir de façon mesurable. Des miroirs orbitaux concentrent la lumière solaire sur les pôles, libérant du CO2. C'est un projet mesuré en siècles, mais les premiers pas vers un second monde bleu-vert ont commencé.",
+            "flavor": "Ingénierie Planétaire"
+        },
+        "interstellarProbe": {
+            "title": "Sonde Interstellaire",
+            "desc": "La première sonde interstellaire accélère vers Alpha du Centaure utilisant un puissant réseau laser terrestre poussant une voile lumineuse. Bien qu'il faudra des décennies pour arriver et transmettre des données, l'humanité a enfin atteint les étoiles.",
+            "flavor": "Technologie Interstellaire"
+        },
+        "dysonSwarm": {
+            "title": "Construction Essaim de Dyson",
+            "desc": "Des milliers de collecteurs solaires commencent à orbiter le Soleil, transmettant de l'énergie à des récepteurs dans tout le système solaire. Bien que loin d'une sphère complète, cet essaim de Dyson partiel marque la transition de l'humanité vers une civilisation de Type I.",
+            "flavor": "Capture Énergie Stellaire"
         },
         "proxima": {
-            "title": "Proxima Centauri",
-            "desc": "Lancement de la première sonde à voile solaire relativiste.",
-            "flavor": "Propulsion Interstellaire"
+            "title": "Mission Proxima Centauri",
+            "desc": "La première mission interstellaire habitée décolle vers Proxima Centauri b, l'exoplanète connue la plus proche dans une zone habitable. Utilisant la propulsion antimatière, le vaisseau génération mettra des décennies à arriver, transportant des milliers de colons vers le premier monde extrasolaire de l'humanité.",
+            "flavor": "Colonisation Interstellaire"
         }
     }
 }

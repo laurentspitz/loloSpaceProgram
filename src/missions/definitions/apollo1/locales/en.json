@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "apollo1": {
+            "title": "Apollo 1 Fire",
+            "description": "On January 27, 1967, a flash fire swept through the Apollo 1 capsule during a launch pad test, killing astronauts Gus Grissom, Ed White, and Roger Chaffee. The pure oxygen atmosphere and flammable materials turned the cabin into a death trap. NASA completely redesigned the spacecraft.",
+            "flavorText": "Safety Protocols Overhaul"
+        }
+    }
+}

@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsCity": {
+            "title": "Cité Martienne",
+            "description": "La première vraie ville martienne atteint 1 000 résidents vivant dans des habitats pressurisés. Des réacteurs nucléaires fournissent l'énergie, tandis que les installations ISRU produisent tout le support de vie. Des enfants nés sur Mars—les premiers vrais Martiens—grandissent sans jamais connaître la gravité terrestre.",
+            "flavorText": "Colonisation Planétaire"
+        }
+    }
+}

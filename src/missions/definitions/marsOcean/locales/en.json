@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsOcean": {
+            "title": "Mars Terraforming Begins",
+            "description": "After decades of industrial activity, Mars's atmosphere begins to thicken measurably. Orbital mirrors concentrate sunlight on the poles, releasing CO2. It's a project measured in centuries, but the first steps toward a second blue-green world have begun.",
+            "flavorText": "Planetary Engineering"
+        }
+    }
+}

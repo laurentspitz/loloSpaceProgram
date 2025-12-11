@@ -73,10 +73,14 @@ export class HubScreen {
         chronologyBtn.onclick = async () => {
             // Lazy load ChronologyMenu and MissionManager
             const { ChronologyMenu } = await import('../chronology');
-            const { MissionManager } = await import('../../systems/MissionSystem');
+            const { MissionManager } = await import('../../missions');
 
             // Prepare Mission Manager with current state
             const missionManager = new MissionManager();
+
+            // Wait for missions to be auto-discovered and loaded
+            await missionManager.ensureInitialized();
+
             if (this.pendingState && this.pendingState.missions) {
                 missionManager.deserialize(this.pendingState.missions);
             } else if (this.pendingState && this.pendingState.completedMissionIds) {

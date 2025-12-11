@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "vostok1": {
+            "title": "Vostok 1",
+            "description": "Le 12 avril 1961, le cosmonaute soviétique Youri Gagarine devint le premier humain dans l'espace, complétant une orbite terrestre en 108 minutes. Ses mots célèbres, 'Poïekhali !' (C'est parti !), marquèrent le début de l'exploration spatiale humaine. Gagarine devint un héros international et symbole de l'Ère Spatiale.",
+            "flavorText": "Vol Orbital Habité",
+            "conditionLabel": "Altitude > 200 km, Vitesse > 2500 m/s"
+        }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "hubble": {
+            "title": "Télescope Spatial Hubble",
+            "description": "Lancé le 24 avril 1990, Hubble fut initialement handicapé par un miroir défectueux. Après une mission de réparation dramatique en 1993, il devint probablement le télescope le plus important de l'histoire, transformant notre compréhension de l'univers, des exoplanètes à l'âge du cosmos.",
+            "flavorText": "Optique Spatiale Avancée",
+            "conditionLabel": "Altitude > 500 km, Vitesse > 3500 m/s"
+        }
+    }
+}

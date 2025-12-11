@@ -1,8 +1,8 @@
-import type { HistoryEvent } from '../../data/SpaceHistory';
+import type { Mission } from '../../missions';
 
 export interface YearGroup {
     year: number;
-    events: HistoryEvent[];
+    missions: Mission[];  // Now uses missions instead of legacy events
     status: 'success' | 'failure' | 'discovery' | 'future' | 'mixed';
 }
 

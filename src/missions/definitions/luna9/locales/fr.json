@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "luna9": {
+            "title": "Luna 9",
+            "description": "Le 3 février 1966, Luna 9 devint le premier engin spatial à réaliser un atterrissage en douceur sur la Lune. L'atterrisseur de 99 kg transmit les premières photos panoramiques de la surface lunaire, prouvant que le sol était solide—et non la poussière profonde que certains craignaient d'engloutir les atterrisseurs.",
+            "flavorText": "Technologie d'Atterrissage en Douceur"
+        }
+    }
+}

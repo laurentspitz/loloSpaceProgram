@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "titanColony": {
+            "title": "Colonie Titan",
+            "description": "Un avant-poste est établi sur Titan, lune de Saturne, la seule lune avec une atmosphère épaisse. Malgré des températures de -180°C, l'atmosphère dense d'azote fournit une protection contre les radiations et permet le vol avec de simples ailes. Les lacs de méthane alimentent les opérations locales.",
+            "flavorText": "Habitation Système Solaire Externe"
+        }
+    }
+}

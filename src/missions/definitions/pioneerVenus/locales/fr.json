@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "pioneerVenus": {
+            "title": "Pioneer Venus",
+            "description": "En 1978, Pioneer Venus envoya un orbiteur et quatre sondes atmosphériques vers la 'jumelle maléfique' de la Terre. Les données révélèrent la pression écrasante de 90 atmosphères de Vénus, des températures de 460°C, et des nuages d'acide sulfurique. Une sonde survécut 67 minutes sur cette surface hostile.",
+            "flavorText": "Ingénierie Environnements Extrêmes"
+        }
+    }
+}

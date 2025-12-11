@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "lunarBase": {
+            "title": "Camp de Base Artemis",
+            "description": "La première base lunaire permanente est établie près du cratère Shackleton au pôle sud, où la glace d'eau existe dans les régions d'ombre permanente. Les systèmes ISRU extraient l'eau pour le support de vie et le carburant. Les équipages restent 60 jours, menant des sciences et testant les technologies martiennes.",
+            "flavorText": "Présence Lunaire Permanente"
+        }
+    }
+}

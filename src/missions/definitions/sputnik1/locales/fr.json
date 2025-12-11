@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "sputnik1": {
+            "title": "Spoutnik 1",
+            "description": "Le premier satellite artificiel. Lancez un engin spatial en orbite autour de la Terre.",
+            "flavor": "Bip... Bip... Bip...",
+            "conditionLabel": "Altitude > 150 km, Vitesse > 2000 m/s"
+        }
+    }
+}

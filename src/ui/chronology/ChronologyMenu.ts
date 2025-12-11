@@ -1,5 +1,5 @@
 import i18next from 'i18next';
-import type { MissionManager } from '../../systems/MissionSystem';
+import type { MissionManager } from '../../missions';
 import type { YearGroup } from './types';
 import { TimelineRenderer } from './TimelineRenderer';
 import { EventDetailPanel } from './EventDetailPanel';
@@ -66,22 +66,22 @@ export class ChronologyMenu {
             flexShrink: '0'
         });
 
-        const title = document.createElement('h1');
-        title.innerHTML = `${i18next.t('chronology.title')} <span style="font-weight:lighter; font-size: 0.6em; color: #aaa;">${this.currentYear}</span>`;
-        title.style.margin = '0';
-        title.style.letterSpacing = '2px';
+        const title = document.createElement('h2');
+        title.innerHTML = `${i18next.t('chronology.title')} <span style="font-weight:lighter; font-size: 0.7em; color: #aaa;">${this.currentYear}</span>`;
+        Object.assign(title.style, {
+            margin: '0',
+            letterSpacing: '2px',
+            fontSize: '24px'
+        });
         header.appendChild(title);
 
-        // Close button
+        // Close button - consistent with HubScreen
         const closeBtn = document.createElement('button');
         closeBtn.innerHTML = i18next.t('menu.back');
         closeBtn.className = 'game-btn';
         Object.assign(closeBtn.style, {
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
             padding: '10px 20px',
-            fontSize: '18px',
+            fontSize: '14px',
             background: 'rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             color: 'white',
@@ -96,7 +96,7 @@ export class ChronologyMenu {
             this.onClose();
         };
 
-        this.container.appendChild(closeBtn);
+        header.appendChild(closeBtn);
         this.container.appendChild(header);
     }
 
@@ -123,18 +123,7 @@ export class ChronologyMenu {
             position: 'relative'
         });
 
-        // Axis line
-        const axisLine = document.createElement('div');
-        Object.assign(axisLine.style, {
-            position: 'absolute',
-            top: '50%',
-            left: '0',
-            height: '2px',
-            backgroundColor: 'rgba(255, 255, 255, 0.3)',
-            width: '10000px',
-            zIndex: '0'
-        });
-        this.timelineContainer.appendChild(axisLine);
+        // Axis line is now rendered by TimelineRenderer
 
         // Custom scrollbar styles
         const style = document.createElement('style');
@@ -145,10 +134,11 @@ export class ChronologyMenu {
         `;
         this.container.appendChild(style);
 
-        // Initialize timeline renderer
+        // Initialize timeline renderer with missionManager for mission completion tracking
         this.timelineRenderer = new TimelineRenderer({
             container: this.timelineContainer,
             currentYear: this.currentYear,
+            missionManager: this.missionManager,
             onYearSelect: (group, item) => this.handleYearSelect(group, item)
         });
         this.timelineRenderer.render();
@@ -245,6 +235,10 @@ export class ChronologyMenu {
     }
 
     close(): void {
+        // Clean up timeline renderer (removes tooltip)
+        if (this.timelineRenderer) {
+            this.timelineRenderer.destroy();
+        }
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

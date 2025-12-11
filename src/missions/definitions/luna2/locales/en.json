@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "luna2": {
+            "title": "Luna 2",
+            "description": "On September 14, 1959, Luna 2 became the first human-made object to reach the Moon, impacting in the Mare Imbrium. It carried Soviet pennants that scattered on impact. This mission proved that spacecraft could be accurately aimed at celestial bodies.",
+            "flavorText": "Guidance Systems V1",
+            "conditionLabel": "Distance to Moon < 5 km"
+        }
+    }
+}

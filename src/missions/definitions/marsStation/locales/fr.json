@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "marsStation": {
+            "title": "Station Orbitale Mars",
+            "description": "Une station permanente en orbite martienne permet des rotations d'équipage régulières, un support opérationnel de surface en temps réel et la maintenance des vaisseaux interplanétaires. Des vaisseaux cycleurs commencent des transits réguliers Terre-Mars, réduisant le temps de voyage et l'exposition aux radiations.",
+            "flavorText": "Logistique Interplanétaire"
+        }
+    }
+}

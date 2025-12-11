@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "explorer1": {
+            "title": "Explorer 1",
+            "description": "Le premier satellite américain, conçu par l'équipe de Wernher von Braun, fut lancé le 31 janvier 1958. À son bord, un compteur Geiger fit une découverte inattendue : d'intenses ceintures de radiation entourant la Terre. Le scientifique James Van Allen interpréta correctement les données, et les Ceintures de Van Allen furent nommées en son honneur.",
+            "flavorText": "Durcissement aux Radiations"
+        }
+    }
+}

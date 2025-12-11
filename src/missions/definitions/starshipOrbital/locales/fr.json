@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "starshipOrbital": {
+            "title": "Test Orbital Starship",
+            "description": "Le Starship entièrement réutilisable de SpaceX—la plus grande fusée jamais construite—réussit son premier test orbital en 2024. Avec 33 moteurs Raptor produisant deux fois la poussée de Saturn V, Starship est conçu pour transporter plus de 100 passagers vers Mars et permettre l'établissement humain permanent au-delà de la Terre.",
+            "flavorText": "Réutilisabilité Super Heavy Lift"
+        }
+    }
+}

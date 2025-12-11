@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "dysonSwarm": {
+            "title": "Dyson Swarm Construction",
+            "description": "Thousands of solar collectors begin orbiting the Sun, beaming power to receivers throughout the solar system. Though far from a complete sphere, this partial Dyson Swarm marks humanity's transition to a Type I civilization.",
+            "flavorText": "Stellar Energy Capture"
+        }
+    }
+}

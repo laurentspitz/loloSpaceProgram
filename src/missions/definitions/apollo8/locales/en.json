@@ -1,0 +1,10 @@
+{
+    "mission": {
+        "apollo8": {
+            "title": "Apollo 8",
+            "description": "In December 1968, Frank Borman, Jim Lovell, and Bill Anders became the first humans to leave Earth orbit and reach the Moon. On Christmas Eve, they read from Genesis while viewing Earth rise over the lunar horizon—an image that changed how humanity saw itself.",
+            "flavorText": "Lunar Trajectory Navigation",
+            "conditionLabel": "Moon orbit: Alt < 200 km, Velocity > 500 m/s"
+        }
+    }
+}

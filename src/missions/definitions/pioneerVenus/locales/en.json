@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "pioneerVenus": {
+            "title": "Pioneer Venus",
+            "description": "In 1978, Pioneer Venus sent an orbiter and four atmospheric probes to Earth's 'evil twin'. The data revealed Venus's crushing 90-atmosphere surface pressure, 460°C temperatures, and sulfuric acid clouds. One probe survived 67 minutes on the hostile surface.",
+            "flavorText": "Extreme Environment Engineering"
+        }
+    }
+}
