@@ -1,9 +1,21 @@
 import { Rocket } from '../entities/Rocket';
 import { Body } from '../core/Body';
+import type { ConditionFn } from './types';
 
 /**
  * Shared helper functions for mission condition checking
  */
+
+/** Check if a specific date (year + month) has been reached */
+export function reachedDate(targetYear: number, targetMonth: number): ConditionFn {
+    // Prefix unused arguments with underscore to satisfy no-unused-vars
+    return (_rocket: Rocket, _bodies: Body[], currentYear: number) => {
+        // Calculate precise target time (year + fraction)
+        // targetMonth is 0-11
+        const targetTime = targetYear + (targetMonth / 12);
+        return currentYear >= targetTime;
+    };
+}
 
 /** Get altitude above nearest celestial body */
 export function getAltitude(rocket: Rocket, bodies: Body[]): number {

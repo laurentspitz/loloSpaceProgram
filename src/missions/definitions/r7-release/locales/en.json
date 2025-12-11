@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "r7_release": {
+            "title": "R-7 Semyorka Program",
+            "description": "The development of the R-7 rocket (NATO reporting name: SS-6 Sapwood) marks a decisive turning point in space history. Designed by the OKB-1 design bureau led by Sergei Korolev, it is the world's first intercontinental ballistic missile (ICBM).\n\nIts unique 'cluster' architecture, consisting of a central core (Blok A) surrounded by four tapered boosters (Blok B, V, G, D), allows all engines to be ignited on the ground. This configuration results in the famous 'Korolev Cross' upon booster separation.\n\nWhile complex and expensive as a weapon, the R-7 proved to be an exceptional space launcher. It was chosen to orbit humanity's first artificial satellite, Sputnik 1, inaugurating the Space Age.",
+            "flavorText": "The key to space is in our hands."
+        }
+    }
+}

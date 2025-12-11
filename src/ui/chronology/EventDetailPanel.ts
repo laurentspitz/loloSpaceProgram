@@ -111,8 +111,20 @@ export class EventDetailPanel {
         }
         html += `</div>`;
 
+        // === CONTENT CONTAINER ===
+        html += `<div style="margin-bottom: 15px;">`;
+
+        // === IMAGE ===
+        if (mission.image) {
+            html += `<div style="float: right; width: 180px; margin-left: 15px; margin-bottom: 10px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #000;">
+                <img src="${mission.image}" alt="${i18next.t(mission.title)}" style="width: 100%; height: auto; display: block;">
+            </div>`;
+        }
+
         // === DESCRIPTION ===
-        html += `<p style="color: #ccc; margin: 0 0 15px 0; line-height: 1.6; font-size: 14px;">${i18next.t(mission.description)}</p>`;
+        html += `<div style="color: #ccc; line-height: 1.6; font-size: 14px; white-space: pre-line;">${i18next.t(mission.description)}</div>`;
+        html += `<div style="clear: both;"></div>`; // Clear floats
+        html += `</div>`;
 
         // === FLAVOR TEXT ===
         if (mission.flavorText) {

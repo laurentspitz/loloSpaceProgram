@@ -5,7 +5,7 @@ import type { Body } from '../core/Body';
  * Function type for mission condition checking
  * Returns true if the mission objective is met
  */
-export type ConditionFn = (rocket: Rocket, bodies: Body[]) => boolean;
+export type ConditionFn = (rocket: Rocket, bodies: Body[], currentYear: number) => boolean;
 
 /**
  * Mission type determines completion behavior
@@ -29,6 +29,7 @@ export interface MissionConfig {
     title: string;
     description: string;
     flavorText?: string;
+    image?: string;       // URL for visual context
 
     // Origin
     country?: string | string[];          // USA, USSR, ESA, China, etc.

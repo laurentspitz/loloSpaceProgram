@@ -93,6 +93,9 @@ export class HubScreen {
             const yearsElapsed = Math.floor((this.pendingState?.missionTime || 0) / (365 * 24 * 3600 * 1000));
             const currentYear = baseYear + yearsElapsed;
 
+            // Update events status (auto-complete historical events)
+            missionManager.checkEvents(currentYear);
+
             new ChronologyMenu(currentYear, missionManager, () => {
                 // On close, do nothing (stay in hub)
             });

@@ -67,11 +67,44 @@ export class MissionManager {
 
             // Check completion based on mission type
             if (mission.type === 'event') {
-                // Events auto-complete when year is reached
-                this.completeMission(mission);
+                if (mission.checkCondition) {
+                    // Start checking condition once year is reached
+                    if (currentYear >= mission.year) {
+                        if (mission.checkCondition(rocket, bodies, currentYear)) {
+                            this.completeMission(mission);
+                        }
+                    }
+                } else {
+                    // Legacy behavior: Auto-complete when year is fully reached + margin of safety or just start of year?
+                    // Original behavior was implicitly "when update is called and year >= currentYear"
+                    // But update() has explicit check `if (mission.year > currentYear) return` at top.
+                    // So if we are here, year <= currentYear.
+
+                    // Implicitly, events without conditions complete immediately when available
+                    this.completeMission(mission);
+                }
             } else if (mission.type === 'objective' && mission.checkCondition) {
                 // Objectives require condition to be met
-                if (mission.checkCondition(rocket, bodies)) {
+                if (mission.checkCondition(rocket, bodies, currentYear)) {
+                    this.completeMission(mission);
+                }
+            }
+        });
+    }
+
+    /**
+     * Check and complete event-type missions for the given year
+     * Safe to call without a rocket instance (unlike update())
+     */
+    checkEvents(currentYear: number): void {
+        this.missions.forEach(mission => {
+            if (this.completedMissionIds.has(mission.id)) return;
+            if (mission.year > currentYear) return;
+
+            if (mission.type === 'event') {
+                // If it has a condition, we can't check it without a Rocket (usually)
+                // But if it has NO condition (pure date event), we can complete it.
+                if (!mission.checkCondition) {
                     this.completeMission(mission);
                 }
             }

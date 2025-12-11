@@ -1,0 +1,9 @@
+{
+    "mission": {
+        "r7_release": {
+            "title": "Programme R-7 Semyorka",
+            "description": "Le développement de la fusée R-7 (code OTAN : SS-6 Sapwood) marque un tournant décisif dans l'histoire spatiale. Conçue par le bureau d'études OKB-1 dirigé par Sergueï Korolev, c'est le tout premier missile balistique intercontinental (ICBM) au monde.\n\nSon architecture unique en 'cluster', composée d'un étage central (Blok A) entouré de quatre propulseurs coniques (Blok B, V, G, D), permet d'allumer tous les moteurs au sol, évitant les risques d'allumage en altitude. Cette configuration donne lieu à la célèbre 'Croix de Korolev' lors de la séparation des boosters.\n\nBien que complexe et coûteuse en tant qu'arme, la R-7 se révèle être un lanceur spatial exceptionnel. Elle est choisie pour mettre en orbite le premier satellite artificiel de l'humanité, Spoutnik 1, inaugurant l'ère spatiale. La famille de lanceurs R-7, dont le Soyouz est le descendant direct, deviendra la plus fiable et la plus utilisée de l'histoire.",
+            "flavorText": "La clé de l'espace est entre nos mains. Le BIP-BIP va bientôt résonner."
+        }
+    }
+}
