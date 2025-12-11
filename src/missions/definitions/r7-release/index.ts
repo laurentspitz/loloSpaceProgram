@@ -22,7 +22,8 @@ const config: MissionConfig = {
         'Sputnik 1',
         'RD-108 Engine',
         'R7 Block A',
-        'R7 Block B',
+        'R7 Block B (Right)',
+        'R7 Block B (Left)',
         'RD-0110 Engine',
         'R7 Block E'
     ]

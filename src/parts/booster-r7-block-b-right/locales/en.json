@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "booster_block_b": {
+            "name": "Block B (Booster)",
+            "description": "Lateral tapered booster for the R7 rocket. Combines tank and RD-107 engine. Detaches in a Korolev Cross."
+        }
+    }
+}

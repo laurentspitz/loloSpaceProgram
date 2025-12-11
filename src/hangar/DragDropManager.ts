@@ -680,6 +680,9 @@ export class DragDropManager {
     }
 
     private areNodesCompatible(typeA: string, typeB: string): boolean {
+        // Standard nodes can connect to anything (or at least other standards)
+        if (typeA === 'standard' || typeB === 'standard') return true;
+
         // Simple rule: Top connects to Bottom
         return (typeA === 'top' && typeB === 'bottom') ||
             (typeA === 'bottom' && typeB === 'top');

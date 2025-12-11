@@ -39,6 +39,30 @@
                 "y": -1
             },
             "type": "bottom"
+        },
+        {
+            "id": "left",
+            "position": {
+                "x": -1.25,
+                "y": -1
+            },
+            "direction": {
+                "x": -1,
+                "y": 0
+            },
+            "type": "standard"
+        },
+        {
+            "id": "right",
+            "position": {
+                "x": 1.25,
+                "y": -1
+            },
+            "direction": {
+                "x": 1,
+                "y": 0
+            },
+            "type": "standard"
         }
     ]
 }

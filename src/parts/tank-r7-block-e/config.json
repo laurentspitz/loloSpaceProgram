@@ -4,7 +4,7 @@
     "type": "tank",
     "description": "parts.tank_block_e.description",
     "dimensions": {
-        "width": 2.5,
+        "width": 2,
         "height": 3.0
     },
     "creationYear": 1957,

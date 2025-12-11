@@ -1,5 +1,5 @@
 {
-    "id": "booster_block_b",
+    "id": "booster-r7-block-b-left",
     "name": "parts.booster_block_b.name",
     "type": "booster",
     "description": "parts.booster_block_b.description",
@@ -21,26 +21,14 @@
         {
             "id": "side",
             "position": {
-                "x": 1.25,
+                "x": -0.5,
                 "y": 0
             },
             "direction": {
                 "x": 1,
                 "y": 0
             },
-            "type": "top"
-        },
-        {
-            "id": "bottom",
-            "position": {
-                "x": 0,
-                "y": -5.0
-            },
-            "direction": {
-                "x": 0,
-                "y": -1
-            },
-            "type": "bottom"
+            "type": "standard"
         }
     ],
     "visual": {
