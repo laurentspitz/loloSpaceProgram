@@ -2,10 +2,10 @@ import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { OrbitUtils } from './OrbitUtils';
 
-import { Config } from '../Config';
+import { Settings } from '../config';
 
 export class Physics {
-    static G = Config.PHYSICS.G; // Gravitational constant
+    static G = Settings.PHYSICS.G; // Gravitational constant
 
     // Scratch vectors for memory optimization
     private static _dir = new Vector2(0, 0);

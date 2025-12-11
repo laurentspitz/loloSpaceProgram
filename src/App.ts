@@ -2,6 +2,7 @@ import { Game } from './Game';
 import { MainMenu } from './ui/MainMenu';
 import { Hangar, createHangar } from './Hangar';
 import { GameTimeManager } from './managers/GameTimeManager';
+import { GAME_START_YEAR } from './config';
 
 /**
  * App - Main entry point and state manager
@@ -39,13 +40,15 @@ export class App {
         );
     }
 
+
+
     startGame(state?: any) {
         this.cleanup();
 
         // Reset time if New Game requested
         if (state && state.newGame) {
             // Use startYear from game mode selection, default to 1957 for mission mode
-            const startYear = state.startYear || 1957;
+            const startYear = state.startYear || GAME_START_YEAR;
             this.currentGameTime = GameTimeManager.getSecondsFromYear(startYear);
             console.log(`[App] Starting new game in year ${startYear}, elapsed time: ${this.currentGameTime}s`);
         }
@@ -85,7 +88,7 @@ export class App {
         if (this.game) {
             // BACKUP TIME from Game before destroying
             this.currentGameTime = this.game.elapsedGameTime;
-            console.log('[App] Saved game time:', this.currentGameTime, 'Year:', new Date(1957, 0, 1).getFullYear() + Math.floor(this.currentGameTime / 31536000)); // Approx year check
+            console.log('[App] Saved game time:', this.currentGameTime, 'Year:', new Date(GAME_START_YEAR, 0, 1).getFullYear() + Math.floor(this.currentGameTime / 31536000)); // Approx year check
 
             if (typeof this.game.dispose === 'function') {
                 this.game.dispose();

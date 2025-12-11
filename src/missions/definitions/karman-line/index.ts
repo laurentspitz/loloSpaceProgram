@@ -2,10 +2,11 @@ import type { MissionConfig } from '../../types';
 import { getAltitude } from '../../helpers';
 import en from './locales/en.json';
 import fr from './locales/fr.json';
+import { GAME_START_YEAR } from '../../../config';
 
 const config: MissionConfig = {
     id: 'karman_line',
-    year: 1957,
+    year: GAME_START_YEAR,
     month: 0,
 
     title: 'mission.karman_line.title',

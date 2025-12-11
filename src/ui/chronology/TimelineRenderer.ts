@@ -1,4 +1,5 @@
 import i18next from 'i18next';
+import { GAME_START_YEAR } from '../../config';
 import type { MissionManager } from '../../missions';
 import type { YearGroup } from './types';
 import { getNodeColor } from './ChronologyUtils';
@@ -22,7 +23,7 @@ export class TimelineRenderer {
     private yearGroups: Map<number, YearGroup> = new Map();
     private tooltip: HTMLDivElement | null = null;
 
-    private static readonly START_YEAR = 1957;
+    private static readonly START_YEAR = GAME_START_YEAR;
     private static readonly END_YEAR = 2100;
     private static readonly PIXELS_PER_YEAR = 80;
     private static readonly TIMELINE_PADDING = 100;

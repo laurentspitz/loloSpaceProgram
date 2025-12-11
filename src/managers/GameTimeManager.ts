@@ -1,5 +1,7 @@
+import { GAME_START_DATE } from '../config';
+
 export class GameTimeManager {
-    static readonly START_DATE = new Date('1957-01-01T00:00:00Z');
+    static readonly START_DATE = GAME_START_DATE;
 
     /**
      * Calculate current date based on elapsed game seconds

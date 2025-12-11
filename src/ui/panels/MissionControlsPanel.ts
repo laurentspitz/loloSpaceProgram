@@ -119,8 +119,9 @@ export class MissionControlsPanel {
         this.contentContainer.appendChild(createBtn(i18next.t('ui.chronology'), async () => {
             const { ChronologyMenu } = await import('../chronology');
             const { GameTimeManager } = await import('../../managers/GameTimeManager');
+            const { GAME_START_YEAR } = await import('../../config');
             const game = (window as any).game;
-            const currentYear = game?.elapsedGameTime ? GameTimeManager.getYear(game.elapsedGameTime) : 1957;
+            const currentYear = game?.elapsedGameTime ? GameTimeManager.getYear(game.elapsedGameTime) : GAME_START_YEAR;
             const missionManager = game?.missionManager;
             new ChronologyMenu(currentYear, missionManager, () => { });
         }, i18next.t('ui.viewHistory')));

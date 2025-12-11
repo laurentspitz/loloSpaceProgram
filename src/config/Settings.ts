@@ -1,4 +1,4 @@
-export const Config = {
+export const Settings = {
     PHYSICS: {
         G: 6.67430e-11, // Gravitational Constant
         MAX_STEP: 1,    // Max physics step size (seconds)

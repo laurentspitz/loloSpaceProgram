@@ -12,9 +12,9 @@ import { TrajectoryPredictor } from './systems/TrajectoryPredictor';
 import { Vector2 } from './core/Vector2';
 import { SceneSetup } from './SceneSetup';
 import { ManeuverNodeManager } from './systems/ManeuverNodeManager';
-import { Config } from './Config';
+import { Settings } from './config';
 import { GameTimeManager } from './managers/GameTimeManager';
-import type { RocketConfig } from './Config';
+import type { RocketConfig } from './config';
 import i18next from './services/i18n';
 
 import { MissionManager } from './missions';
@@ -41,7 +41,7 @@ export class Game {
 
     // Max physics step size for stability (e.g. 1 second)
     // If we warp time, we take multiple steps of this size or smaller
-    readonly MAX_PHYSICS_STEP = Config.PHYSICS.MAX_STEP;
+    readonly MAX_PHYSICS_STEP = Settings.PHYSICS.MAX_STEP;
     private sceneSetup: typeof SceneSetup;
     private animationFrameId: number | null = null;
     private isDisposed: boolean = false;
@@ -118,11 +118,12 @@ export class Game {
         this.renderer.followedBody = this.rocket!.body;
 
         // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
-        this.renderer.scale = Config.GAMEPLAY.ROCKET.INITIAL_ZOOM; // Much closer zoom (was 1e-9)
+        this.renderer.scale = Settings.GAMEPLAY.ROCKET.INITIAL_ZOOM; // Much closer zoom (was 1e-9)
 
         // Don't start the loop yet - wait for start() to be called
         // This allows deserializeState to run before the simulation begins
     }
+
 
     /**
      * Start the game loop
@@ -451,11 +452,11 @@ export class Game {
         const impactSpeed = relVel.mag();
 
         // IMPORTANT: Correct penetration first to prevent passing through
-        this.collisionManager.correctPenetration(rocket, planet, Config.GAMEPLAY.COLLISION.PENETRATION_CORRECTION_SPEED);
+        this.collisionManager.correctPenetration(rocket, planet, Settings.GAMEPLAY.COLLISION.PENETRATION_CORRECTION_SPEED);
 
         // Collision response based on speed
-        const SOFT_LANDING_THRESHOLD = Config.GAMEPLAY.COLLISION.SOFT_LANDING_THRESHOLD;
-        const CRASH_THRESHOLD = Config.GAMEPLAY.COLLISION.CRASH_THRESHOLD;
+        const SOFT_LANDING_THRESHOLD = Settings.GAMEPLAY.COLLISION.SOFT_LANDING_THRESHOLD;
+        const CRASH_THRESHOLD = Settings.GAMEPLAY.COLLISION.CRASH_THRESHOLD;
 
         if (impactSpeed < SOFT_LANDING_THRESHOLD) {
             // Soft landing - small bounce
