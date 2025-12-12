@@ -13,7 +13,7 @@ export class TimeControlsPanel {
     private container: HTMLDivElement | null = null;
     private timeSpeedDisplay: HTMLElement | null = null;
     private currentTimeWarp: number = 1;
-    private warpLevels: number[] = [0, 1, 5, 10, 50, 100, 500, 1000, 5000];
+    private warpLevels: number[] = [0, 0.1, 0.2, 0.5, 1, 5, 10, 50, 100, 500, 1000, 5000];
     private onTimeWarpChange?: (factor: number) => void;
 
     constructor(options: TimeControlsPanelOptions = {}) {
@@ -129,14 +129,20 @@ export class TimeControlsPanel {
         this.currentTimeWarp = levelIndexOrValue;
 
         if (this.timeSpeedDisplay) {
-            this.timeSpeedDisplay.innerText = this.currentTimeWarp + 'x';
+            // Format display: show decimals for slow motion
+            const displayValue = levelIndexOrValue < 1 && levelIndexOrValue > 0
+                ? levelIndexOrValue.toFixed(1)
+                : String(levelIndexOrValue);
+            this.timeSpeedDisplay.innerText = displayValue + 'x';
 
             if (levelIndexOrValue === 0) {
-                this.timeSpeedDisplay.style.color = '#ff4444';
+                this.timeSpeedDisplay.style.color = '#ff4444'; // Red - paused
+            } else if (levelIndexOrValue < 1) {
+                this.timeSpeedDisplay.style.color = '#00bfff'; // Cyan - slow motion
             } else if (levelIndexOrValue === 1) {
-                this.timeSpeedDisplay.style.color = '#00C851';
+                this.timeSpeedDisplay.style.color = '#00C851'; // Green - realtime
             } else {
-                this.timeSpeedDisplay.style.color = '#ffbb33';
+                this.timeSpeedDisplay.style.color = '#ffbb33'; // Orange - fast forward
             }
         }
 

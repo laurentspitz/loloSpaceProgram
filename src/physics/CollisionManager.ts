@@ -212,6 +212,7 @@ export class CollisionManager {
         // Check all bodies for potential penetration
         bodies.forEach(body => {
             if (body === rocket.body) return; // Skip rocket itself
+            if (body.name === 'Debris') return; // Ignore debris collision (requested by user)
 
             const visualRadius = body.radius * this.VISUAL_SCALE;
             const rocketHalfHeight = rocket.body.radius * this.VISUAL_SCALE;
@@ -289,10 +290,12 @@ export class CollisionManager {
         bodies.forEach(body => {
             if (body === debris) return;
             if (body instanceof Rocket) return; // Ignore rocket collision
+            if (body instanceof Debris) return; // Ignore other debris collision
+            if (body.name === 'Rocket') return; // Ignore rocket.body (which is a Body, not Rocket)
 
             const visualRadius = body.radius * this.VISUAL_SCALE;
-            // Debris size is small, treat as point or small circle
-            const debrisRadius = 2.0 * this.VISUAL_SCALE;
+            // Use debris's actual radius (based on part width)
+            const debrisRadius = debris.radius * this.VISUAL_SCALE;
             const contactDist = visualRadius + debrisRadius;
 
             const dist = debris.position.distanceTo(body.position);
@@ -314,7 +317,7 @@ export class CollisionManager {
                 if (normalVel < 0) {
                     // Moving towards planet
                     const impactSpeed = Math.abs(normalVel);
-                    const CRASH_THRESHOLD = 50; // m/s
+                    const CRASH_THRESHOLD = 5; // m/s (Debris are fragile)
 
                     if (impactSpeed > CRASH_THRESHOLD) {
                         crashed = true;

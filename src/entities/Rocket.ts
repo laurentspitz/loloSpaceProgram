@@ -304,6 +304,24 @@ export class Rocket {
         if (input.deployParachute) {
             this.deployParachute();
         }
+
+        // Check for fairing ejection - defer to after physics step
+        if (input.ejectFairings) {
+            this.pendingFairingEjection = true;
+        }
+    }
+
+    // Flag to defer fairing ejection until after physics
+    pendingFairingEjection: boolean = false;
+
+    /**
+     * Execute any pending fairing ejection (called after physics step)
+     */
+    executePendingEjection() {
+        if (this.pendingFairingEjection) {
+            this.pendingFairingEjection = false;
+            this.ejectFairings();
+        }
     }
 
     /**
@@ -624,6 +642,20 @@ export class Rocket {
     }
 
     /**
+     * Get total width of rocket (including boosters)
+     */
+    getTotalWidth(): number {
+        if (this.partStack && this.partStack.length > 0) {
+            const positionsX = this.partStack.map(p => p.position.x || 0);
+            const widths = this.partStack.map(p => p.definition.width || 0);
+            const minX = Math.min(...positionsX.map((x, i) => x - widths[i] / 2));
+            const maxX = Math.max(...positionsX.map((x, i) => x + widths[i] / 2));
+            return maxX - minX;
+        }
+        return this.width;
+    }
+
+    /**
      * Get rocket info for UI display
      */
     getInfo() {
@@ -660,6 +692,118 @@ export class Rocket {
             console.log('Parachutes deployed!');
             this.meshVersion++; // Trigger visual update
         }
+    }
+
+    /**
+     * Eject fairings - creates debris for each fairing half
+     */
+    ejectFairings() {
+        if (!this.partStack) return;
+
+        // Find all fairing parts
+        const fairings = this.partStack.filter(p => p.definition.type === 'fairing');
+        if (fairings.length === 0) return;
+
+        // FIRST: Remove fairings and recalculate stats so collision radius shrinks
+        // This must happen BEFORE creating debris to avoid debris spawning inside rocket's collision sphere
+        this.partStack = this.partStack.filter(p => p.definition.type !== 'fairing');
+        this.stages = this.stages.map(stage =>
+            stage.filter(p => p.definition.type !== 'fairing')
+        );
+        this.recalculateStats();
+        this.meshVersion++;
+
+        // NOW create debris (rocket collision radius is now smaller)
+        fairings.forEach((fairing) => {
+            const debrisMass = fairing.definition.stats.mass / 2;
+            const ejectionSpeed = 2; // m/s latéral - lent
+
+            // LEFT half - part vers la gauche du rocket
+            const leftAngle = this.rotation + Math.PI / 2;
+            const leftDir = new Vector2(Math.cos(leftAngle), Math.sin(leftAngle));
+
+            // Calculate spawn position above the rocket's collision circle
+            // After recalculateStats(), this.body.radius is the new half-height without fairing
+            // Debris should spawn above this radius to avoid collision
+            const rocketDir = new Vector2(Math.cos(this.rotation), Math.sin(this.rotation));
+
+            // Debris collision radius (based on fairing width / 2)
+            const debrisRadius = (fairing.definition.width || 2) / 2;
+
+            // Also account for fairing height (debris visual extends beyond collision circle)
+            const fairingHalfHeight = (fairing.definition.height || 4) / 2;
+
+            // Spawn distance from rocket center = rocket radius + fairing half-height + margin
+            const spawnDistance = this.body.radius + fairingHalfHeight + 13.0;
+
+            // Spawn at top of rocket (in direction rocket is pointing) plus lateral offset
+            const spawnBasePos = this.body.position.add(rocketDir.scale(spawnDistance));
+
+            // Offset left debris to the left (use full width to properly separate them)
+            const lateralOffset = (fairing.definition.width || 2);
+            const leftSpawnPos = spawnBasePos.add(leftDir.scale(lateralOffset));
+
+            // Reset part position to (0,0) so mesh centers on the part
+            const leftPart = {
+                ...fairing,
+                position: new Vector2(0, 0),
+                definition: {
+                    ...fairing.definition,
+                    visual: { ...fairing.definition.visual, textureRight: undefined }
+                }
+            };
+
+            // Debris spawns at fairing position with left offset
+            const leftDebris = new Debris(
+                leftSpawnPos,
+                this.body.velocity.add(leftDir.scale(ejectionSpeed)),
+                debrisMass,
+                [leftPart],
+                60 // 60 seconds lifetime
+            );
+            leftDebris.angularVelocity = 0.1;
+            leftDebris.rotation = this.rotation;
+            leftDebris.acceleration = this.body.acceleration.clone();
+
+            if (this.onStageSeparation) {
+                this.onStageSeparation(leftDebris);
+            }
+
+            // RIGHT half - part vers la droite du rocket
+            const rightAngle = this.rotation - Math.PI / 2;
+            const rightDir = new Vector2(Math.cos(rightAngle), Math.sin(rightAngle));
+
+            // Offset right debris to the right (use same spawnBasePos and lateralOffset)
+            const rightSpawnPos = spawnBasePos.add(rightDir.scale(lateralOffset));
+
+            // Reset part position to (0,0) so mesh centers on the part
+            const rightPart = {
+                ...fairing,
+                position: new Vector2(0, 0),
+                definition: {
+                    ...fairing.definition,
+                    visual: { ...fairing.definition.visual, textureLeft: undefined }
+                }
+            };
+
+            // Debris spawns at fairing position with right offset
+            const rightDebris = new Debris(
+                rightSpawnPos,
+                this.body.velocity.add(rightDir.scale(ejectionSpeed)),
+                debrisMass,
+                [rightPart],
+                60 // 60 seconds lifetime
+            );
+            rightDebris.angularVelocity = -0.1;
+            rightDebris.rotation = this.rotation;
+            // Copy acceleration to prevent initial teleportation
+            rightDebris.acceleration = this.body.acceleration.clone();
+
+
+            if (this.onStageSeparation) {
+                this.onStageSeparation(rightDebris);
+            }
+        });
     }
 
     /**

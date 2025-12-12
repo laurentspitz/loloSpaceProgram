@@ -11,6 +11,7 @@ export interface RocketInput {
     rcsEnabled: boolean; // True if RCS is active
     sasEnabled: boolean; // True if Stability Assist is active
     deployParachute: boolean; // True if deployment requested
+    ejectFairings: boolean; // True if fairing ejection requested
 }
 
 export class RocketControls {
@@ -23,6 +24,7 @@ export class RocketControls {
     private rcsPressed: boolean = false; // Latch for RCS toggle
     private sasPressed: boolean = false; // Latch for SAS toggle
     private parachutePressed: boolean = false; // Latch for Parachute toggle
+    private fairingPressed: boolean = false; // Latch for Fairing ejection
 
     constructor() {
         this.setupEventListeners();
@@ -111,13 +113,25 @@ export class RocketControls {
             this.parachutePressed = false;
         }
 
+        // Fairing Ejection (J key - Jettison)
+        let ejectFairings = false;
+        if (this.keys.has('j')) {
+            if (!this.fairingPressed) {
+                ejectFairings = true;
+                this.fairingPressed = true;
+            }
+        } else {
+            this.fairingPressed = false;
+        }
+
         return {
             throttle: this.throttle,
             rotation: rotation * this.rotationSpeed,
             stage: stage,
             rcsEnabled: this.rcsEnabled,
             sasEnabled: this.sasEnabled,
-            deployParachute: deployParachute
+            deployParachute: deployParachute,
+            ejectFairings: ejectFairings
         };
     }
 

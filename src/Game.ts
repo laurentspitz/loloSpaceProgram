@@ -118,7 +118,11 @@ export class Game {
         this.renderer.followedBody = this.rocket!.body;
 
         // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
-        this.renderer.scale = Settings.GAMEPLAY.ROCKET.INITIAL_ZOOM; // Much closer zoom (was 1e-9)
+        // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
+        // Use auto-zoom function to properly focus the rocket
+        if (this.rocket) {
+            this.renderer.autoZoomToBody(this.rocket.body);
+        }
 
         // Don't start the loop yet - wait for start() to be called
         // This allows deserializeState to run before the simulation begins
@@ -178,6 +182,11 @@ export class Game {
             totalDt -= stepDt;
         }
 
+        // Execute deferred fairing ejection (after physics, so positions are synced)
+        if (this.rocket) {
+            this.rocket.executePendingEjection();
+        }
+
         // Apply normal contact force if rocket is resting on surface
         if (this.rocket && this.isRocketResting && this.restingOn) {
             this.collisionManager.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
@@ -199,11 +208,16 @@ export class Game {
             const d = this.debris[i];
             const crashed = this.collisionManager.preventDebrisPenetration(d, this.bodies);
 
-            if (crashed) {
-                console.log('💥 Debris exploded on impact!');
+            // Remove debris if crashed or expired
+            if (crashed || d.isExpired()) {
+                if (crashed) {
+                    console.log('💥 Debris exploded on impact!');
+                } else {
+                    console.log('🗑️ Debris expired and removed');
+                }
 
-                // Spawn explosion particles
-                const particleCount = 20;
+                // Spawn explosion particles (smaller for expiry)
+                const particleCount = crashed ? 20 : 5;
                 for (let j = 0; j < particleCount; j++) {
                     const angle = Math.random() * Math.PI * 2;
                     const speed = Math.random() * 50 + 20; // Fast explosion

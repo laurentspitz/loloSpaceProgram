@@ -60,6 +60,7 @@ export class ThreeRenderer {
     debugCollisionBox: THREE.Line | null = null;
     debugCollisionCircle: THREE.Line | null = null;
     debugPlanetColliders: Map<Body, THREE.Line> = new Map();
+    debrisColliderMeshes: Map<Body, THREE.Line> = new Map();
     cogMarker: THREE.Group | null = null; // Center of gravity marker
 
     // Maneuver Nodes
@@ -529,6 +530,36 @@ export class ThreeRenderer {
         // Render orbits using OrbitRenderer
         this.orbitRenderer.renderOrbits(bodies, center, this.showOrbits, this.showTrajectory);
 
+        // Garbage collection: Remove meshes for bodies that no longer exist (e.g. expired debris)
+        // We need to check debrisMeshes and remove any whose body is not in the current bodies list
+        if (this.debrisMeshes) {
+            // Use Array.from to avoid modification during iteration issues if any
+            Array.from(this.debrisMeshes.keys()).forEach(body => {
+                if (!bodies.includes(body)) {
+                    const mesh = this.debrisMeshes.get(body);
+                    if (mesh) {
+                        this.scene.remove(mesh);
+                        // Also dispose geometry/material if possible to avoid leaks
+                        // checking is done by GC mainly but explicit dispose is better in Three.js
+                        // Keeping it simple for now as per project style
+                    }
+                    this.debrisMeshes.delete(body);
+                }
+            });
+        }
+
+        if (this.debrisColliderMeshes) {
+            Array.from(this.debrisColliderMeshes.keys()).forEach(body => {
+                if (!bodies.includes(body)) {
+                    const mesh = this.debrisColliderMeshes!.get(body);
+                    if (mesh) {
+                        this.scene.remove(mesh);
+                    }
+                    this.debrisColliderMeshes!.delete(body);
+                }
+            });
+        }
+
         // Render bodies
         bodies.forEach(body => {
             // Skip rocket's physics body (we render it separately)
@@ -560,6 +591,39 @@ export class ThreeRenderer {
                 // Scale
                 const debrisScale = this.scale * this.visualScale;
                 mesh.scale.set(debrisScale, debrisScale, 1);
+
+                // Debug: Show collision circle for debris
+                if (this.showColliders) {
+                    let debugCircle = this.debrisColliderMeshes?.get(body);
+
+                    if (!debugCircle) {
+                        // Create unit circle, will be scaled dynamically
+                        const segments = 32;
+                        const geometry = new THREE.BufferGeometry();
+                        const vertices = [];
+
+                        for (let i = 0; i <= segments; i++) {
+                            const angle = (i / segments) * Math.PI * 2;
+                            vertices.push(
+                                Math.cos(angle),
+                                Math.sin(angle),
+                                0
+                            );
+                        }
+
+                        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+                        const material = new THREE.LineBasicMaterial({ color: 0xFF00FF }); // Magenta
+                        debugCircle = new THREE.Line(geometry, material);
+                        this.scene.add(debugCircle);
+                        this.debrisColliderMeshes.set(body, debugCircle);
+                    }
+
+                    debugCircle.position.set(worldX, worldY, 2); // z=2 in front
+                    // Scale by debris radius (based on part width) and visualScale
+                    const debrisCircleScale = this.scale * body.radius * this.visualScale;
+                    debugCircle.scale.set(debrisCircleScale, debrisCircleScale, 1);
+                    debugCircle.visible = true;
+                }
 
                 return;
             }
@@ -1090,17 +1154,14 @@ export class ThreeRenderer {
         // Render debug collision box if enabled
         if (this.showColliders) {
             if (!this.debugCollisionBox) {
-                // Create debug collision box
-                const width = rocket.width;
-                const height = rocket.getTotalHeight();
-
+                // Create debug collision box with unit dimensions (will be scaled)
                 const geometry = new THREE.BufferGeometry();
                 const vertices = new Float32Array([
-                    -width / 2, -height / 2, 0,
-                    width / 2, -height / 2, 0,
-                    width / 2, height / 2, 0,
-                    -width / 2, height / 2, 0,
-                    -width / 2, -height / 2, 0
+                    -0.5, -0.5, 0,
+                    0.5, -0.5, 0,
+                    0.5, 0.5, 0,
+                    -0.5, 0.5, 0,
+                    -0.5, -0.5, 0
                 ]);
 
                 geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
@@ -1112,7 +1173,11 @@ export class ThreeRenderer {
             // Update debug box position and rotation to match rocket visual position
             this.debugCollisionBox.position.copy(this.rocketMesh.position);
             this.debugCollisionBox.rotation.z = rocket.rotation - Math.PI / 2;
-            this.debugCollisionBox.scale.set(rocketScale, rocketScale, 1);
+
+            // Scale dynamically based on current rocket dimensions (including boosters)
+            const boxScaleX = rocketScale * rocket.getTotalWidth();
+            const boxScaleY = rocketScale * rocket.getTotalHeight();
+            this.debugCollisionBox.scale.set(boxScaleX, boxScaleY, 1);
             this.debugCollisionBox.visible = true;
         } else if (this.debugCollisionBox) {
             this.debugCollisionBox.visible = false;
@@ -1121,8 +1186,8 @@ export class ThreeRenderer {
         // Render debug collision circle if enabled
         if (this.showColliders) {
             if (!this.debugCollisionCircle) {
-                // Create debug collision circle
-                const radius = rocket.body.radius; // Physics radius
+                // Create debug collision circle with unit radius (will be scaled)
+                const radius = 1; // Unit radius, scaled dynamically
                 const segments = 64;
                 const geometry = new THREE.BufferGeometry();
                 const vertices = [];
@@ -1147,8 +1212,10 @@ export class ThreeRenderer {
             // Circle is rotation invariant, but let's rotate it with rocket just in case we add features
             this.debugCollisionCircle.rotation.z = rocket.rotation - Math.PI / 2;
 
-            // Scale
-            this.debugCollisionCircle.scale.set(rocketScale, rocketScale, 1);
+            // Scale dynamically based on current rocket.body.radius
+            // This updates when fairings are ejected and radius changes
+            const circleScale = rocketScale * rocket.body.radius;
+            this.debugCollisionCircle.scale.set(circleScale, circleScale, 1);
             this.debugCollisionCircle.visible = true;
         }
     }
