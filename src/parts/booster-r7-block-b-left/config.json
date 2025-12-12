@@ -1,6 +1,6 @@
 {
     "id": "booster-r7-block-b-left",
-    "name": "parts.booster_block_b.name",
+    "name": "parts.booster_block_b_left.name",
     "type": "booster",
     "description": "parts.booster_block_b.description",
     "dimensions": {
@@ -21,7 +21,7 @@
         {
             "id": "side",
             "position": {
-                "x": -0.5,
+                "x": 0.5,
                 "y": 0
             },
             "direction": {

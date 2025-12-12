@@ -1,6 +1,6 @@
 {
     "id": "booster-r7-block-b-right",
-    "name": "parts.booster_block_b.name",
+    "name": "parts.booster_block_b_right.name",
     "type": "booster",
     "description": "parts.booster_block_b.description",
     "dimensions": {

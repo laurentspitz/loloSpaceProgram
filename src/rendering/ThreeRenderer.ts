@@ -399,7 +399,7 @@ export class ThreeRenderer {
                 }
 
                 parts.forEach(part => {
-                    const isEngine = part.definition.type === 'engine';
+                    const isEngine = part.definition.type === 'engine' || part.definition.type === 'booster';
                     const isRCS = part.definition.type === 'rcs';
 
                     if (isEngine || (isRCS && part.active)) {
@@ -460,7 +460,11 @@ export class ThreeRenderer {
                         let type = 'standard';
 
                         if (isEngine) {
-                            currentPartThrottle = throttle; // Use the throttle from the rocket controls
+                            if (this.currentRocket!.engine.hasFuel()) {
+                                currentPartThrottle = throttle; // Use the throttle from the rocket controls
+                            } else {
+                                currentPartThrottle = 0;
+                            }
                             type = part.definition.effect || 'standard';
                         } else { // isRCS
                             currentPartThrottle = 1.0; // RCS is binary

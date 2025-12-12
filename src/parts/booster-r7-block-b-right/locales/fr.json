@@ -1,8 +1,8 @@
 {
     "parts": {
-        "booster_block_b": {
-            "name": "Block B (Booster)",
-            "description": "Booster conique latéral de la fusée R7. Combine réservoir et moteur RD-107. Se détache en croix de Korolev."
+        "booster_block_b_right": {
+            "name": "R7 Block B (Droit)",
+            "description": "Booster latéral conique pour la fusée R7 (Côté Droit). Combine réservoir et moteur RD-107. Se détache en Croix de Korolev."
         }
     }
 }
