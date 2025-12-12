@@ -219,18 +219,43 @@ export class HangarScene {
 
         const group = new THREE.Group();
 
-        // Load texture
-        const texture = this.textureLoader.load(def.texture);
+        // Special handling for fairings - render two halves
+        if (def.type === 'fairing' && def.visual?.textureLeft && def.visual?.textureRight) {
+            // Left half
+            const textureLeft = this.textureLoader.load(def.visual.textureLeft);
+            const geometryLeft = new THREE.PlaneGeometry(def.width / 2, def.height);
+            const materialLeft = new THREE.MeshBasicMaterial({
+                map: textureLeft,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const meshLeft = new THREE.Mesh(geometryLeft, materialLeft);
+            meshLeft.position.x = -def.width / 4; // Offset to left
+            group.add(meshLeft);
 
-        const geometry = new THREE.PlaneGeometry(def.width, def.height);
-        const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            side: THREE.DoubleSide
-        });
-
-        const mesh = new THREE.Mesh(geometry, material);
-        group.add(mesh);
+            // Right half
+            const textureRight = this.textureLoader.load(def.visual.textureRight);
+            const geometryRight = new THREE.PlaneGeometry(def.width / 2, def.height);
+            const materialRight = new THREE.MeshBasicMaterial({
+                map: textureRight,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const meshRight = new THREE.Mesh(geometryRight, materialRight);
+            meshRight.position.x = def.width / 4; // Offset to right
+            group.add(meshRight);
+        } else {
+            // Standard single texture
+            const texture = this.textureLoader.load(def.texture);
+            const geometry = new THREE.PlaneGeometry(def.width, def.height);
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            group.add(mesh);
+        }
 
         // Add Connection Nodes (Skip visuals for Radial Node as it has a custom texture)
         if (def.id !== 'radial_node') {

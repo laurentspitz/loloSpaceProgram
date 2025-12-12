@@ -1,0 +1,35 @@
+{
+    "id": "fairing-generic",
+    "name": "parts.fairing_generic.name",
+    "type": "fairing",
+    "description": "parts.fairing_generic.description",
+    "dimensions": {
+        "width": 2.5,
+        "height": 4.0
+    },
+    "creationYear": 1957,
+    "country": "USSR",
+    "stats": {
+        "mass": 100,
+        "cost": 5000,
+        "dragReduction": 0.5
+    },
+    "nodes": [
+        {
+            "id": "bottom",
+            "position": {
+                "x": 0,
+                "y": -2.0
+            },
+            "direction": {
+                "x": 0,
+                "y": -1
+            },
+            "type": "bottom"
+        }
+    ],
+    "visual": {
+        "textureLeft": "/textures/parts/fairing_left.png",
+        "textureRight": "/textures/parts/fairing_right.png"
+    }
+}

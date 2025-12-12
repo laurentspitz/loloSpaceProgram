@@ -49,42 +49,85 @@ export class RocketRenderer {
             // Render each part
             rocket.partStack.forEach(part => {
                 const def = part.definition;
-                const texture = this.textureLoader.load(def.texture);
-                const geometry = new THREE.PlaneGeometry(def.width, def.height);
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true,
-                    side: THREE.DoubleSide
-                });
-                const mesh = new THREE.Mesh(geometry, material);
 
-                // Position relative to Center of Mass
-                mesh.position.x = (part.position.x || 0) - centerOffsetX;
-                mesh.position.y = (part.position.y || 0) - centerOffsetY;
+                // Special handling for fairings - render two halves
+                if (def.type === 'fairing' && def.visual?.textureLeft && def.visual?.textureRight) {
+                    // Create a sub-group for the fairing halves
+                    const fairingGroup = new THREE.Group();
 
-                // Rotation
-                mesh.rotation.z = part.rotation || 0;
+                    // Left half
+                    const textureLeft = this.textureLoader.load(def.visual.textureLeft);
+                    const geometryLeft = new THREE.PlaneGeometry(def.width / 2, def.height);
+                    const materialLeft = new THREE.MeshBasicMaterial({
+                        map: textureLeft,
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    });
+                    const meshLeft = new THREE.Mesh(geometryLeft, materialLeft);
+                    meshLeft.position.x = -def.width / 4;
+                    fairingGroup.add(meshLeft);
 
-                // Mirror/Scale
-                if (part.flipped) {
-                    mesh.scale.x = -1;
-                }
+                    // Right half
+                    const textureRight = this.textureLoader.load(def.visual.textureRight);
+                    const geometryRight = new THREE.PlaneGeometry(def.width / 2, def.height);
+                    const materialRight = new THREE.MeshBasicMaterial({
+                        map: textureRight,
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    });
+                    const meshRight = new THREE.Mesh(geometryRight, materialRight);
+                    meshRight.position.x = def.width / 4;
+                    fairingGroup.add(meshRight);
 
-                group.add(mesh);
+                    // Position relative to Center of Mass
+                    fairingGroup.position.x = (part.position.x || 0) - centerOffsetX;
+                    fairingGroup.position.y = (part.position.y || 0) - centerOffsetY;
+                    fairingGroup.rotation.z = part.rotation || 0;
 
-                // Render deployed parachute
-                if (part.definition.type === 'parachute' && part.deployed) {
-                    const chute = this.createParachuteVisuals(part);
-                    chute.position.x = mesh.position.x;
-                    // Position chute above the part (relative to rotation?)
-                    // The createParachuteVisuals method will handle the offset relative to the part center
-                    chute.position.y = mesh.position.y;
-                    chute.rotation.z = mesh.rotation.z;
-                    // Flip if needed
                     if (part.flipped) {
-                        chute.scale.x = -1;
+                        fairingGroup.scale.x = -1;
                     }
-                    group.add(chute);
+
+                    group.add(fairingGroup);
+                } else {
+                    // Standard single texture rendering
+                    const texture = this.textureLoader.load(def.texture);
+                    const geometry = new THREE.PlaneGeometry(def.width, def.height);
+                    const material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    });
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    // Position relative to Center of Mass
+                    mesh.position.x = (part.position.x || 0) - centerOffsetX;
+                    mesh.position.y = (part.position.y || 0) - centerOffsetY;
+
+                    // Rotation
+                    mesh.rotation.z = part.rotation || 0;
+
+                    // Mirror/Scale
+                    if (part.flipped) {
+                        mesh.scale.x = -1;
+                    }
+
+                    group.add(mesh);
+
+                    // Render deployed parachute
+                    if (part.definition.type === 'parachute' && part.deployed) {
+                        const chute = this.createParachuteVisuals(part);
+                        chute.position.x = mesh.position.x;
+                        // Position chute above the part (relative to rotation?)
+                        // The createParachuteVisuals method will handle the offset relative to the part center
+                        chute.position.y = mesh.position.y;
+                        chute.rotation.z = mesh.rotation.z;
+                        // Flip if needed
+                        if (part.flipped) {
+                            chute.scale.x = -1;
+                        }
+                        group.add(chute);
+                    }
                 }
             });
 

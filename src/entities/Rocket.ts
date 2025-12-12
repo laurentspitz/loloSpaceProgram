@@ -727,21 +727,31 @@ export class Rocket {
         // Area (Cross Section)
         let area = Math.PI * (this.width / 2) * (this.width / 2); // ~7 m^2
 
-        // Modifiers based on parts (e.g. Parachute)
+        // Modifiers based on parts (e.g. Parachute, Fairing)
         if (this.partStack) {
             // Check if any parachute is active
             let parachuteDeployed = false;
+            let totalDragReduction = 0;
+
             this.partStack.forEach(p => {
                 // BUG FIX: Check .deployed instead of .active
                 // .active is reset every frame for engines/RCS. Parachutes set .deployed persistently.
                 if (p.definition.type === 'parachute' && p.deployed) {
                     parachuteDeployed = true;
                 }
+
+                // Check for fairings - they reduce drag
+                if (p.definition.type === 'fairing' && p.definition.stats.dragReduction) {
+                    totalDragReduction = Math.max(totalDragReduction, p.definition.stats.dragReduction);
+                }
             });
 
             if (parachuteDeployed) {
                 Cd = 1.5; // High drag
                 area = 50; // Big parachute area (approx 8m diameter)
+            } else if (totalDragReduction > 0) {
+                // Apply fairing drag reduction
+                Cd = Cd * (1 - totalDragReduction);
             }
         }
 

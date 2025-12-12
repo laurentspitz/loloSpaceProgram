@@ -91,7 +91,8 @@ export class PartLoader {
                 // Explicitly map electricity stats if they exist in config
                 electricity: part.config.stats.electricity,
                 chargeRate: part.config.stats.chargeRate,
-                sasConsumption: part.config.stats.sasConsumption
+                sasConsumption: part.config.stats.sasConsumption,
+                dragReduction: part.config.stats.dragReduction
             },
             nodes: part.config.nodes.map(node => ({
                 id: node.id,
@@ -103,7 +104,12 @@ export class PartLoader {
             cockpit: part.config.cockpit,
             creationYear: part.config.creationYear,
             country: part.config.country,
-            agency: part.config.agency
+            agency: part.config.agency,
+            // Fairing dual textures
+            visual: part.config.type === 'fairing' ? {
+                textureLeft: (part as any).loadTextureLeft?.() || textureUrl,
+                textureRight: (part as any).loadTextureRight?.() || textureUrl
+            } : undefined
         };
     }
 }

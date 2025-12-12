@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "fairing_generic": {
+            "name": "Coiffe Générique",
+            "description": "Carénage aérodynamique protecteur qui réduit la traînée pendant le vol atmosphérique. Se déploie en deux moitiés."
+        }
+    }
+}

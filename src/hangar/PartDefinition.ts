@@ -1,6 +1,6 @@
 import { Vector2 } from '../core/Vector2';
 
-export type PartType = 'capsule' | 'tank' | 'engine' | 'booster' | 'decoupler' | 'structure' | 'rcs' | 'parachute';
+export type PartType = 'capsule' | 'tank' | 'engine' | 'booster' | 'decoupler' | 'structure' | 'rcs' | 'parachute' | 'fairing';
 
 export interface PartStats {
     mass: number;       // kg
@@ -11,13 +11,14 @@ export interface PartStats {
     electricity?: number;     // Battery capacity (EC)
     chargeRate?: number;      // Generation/Consumption rate (EC/s)
     sasConsumption?: number;  // SAS Consumption (EC/s)
+    dragReduction?: number;   // Fairing drag reduction (0-1)
 }
 
 export interface ConnectionNode {
     id: string;
     position: Vector2;  // Relative to part center
     direction: Vector2; // Normal vector (usually (0,1) or (0,-1))
-    type: 'top' | 'bottom';
+    type: 'top' | 'bottom' | 'standard';
 }
 
 export interface PartDefinition {
@@ -36,5 +37,10 @@ export interface PartDefinition {
     effect?: 'standard' | 'blue_flame' | 'rcs';
     cockpit?: {
         themeId: string;
+    };
+    // Fairing-specific visual properties
+    visual?: {
+        textureLeft?: string;
+        textureRight?: string;
     };
 }

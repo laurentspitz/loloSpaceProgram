@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "fairing_generic": {
+            "name": "Generic Fairing",
+            "description": "Protective aerodynamic shell that reduces drag during atmospheric flight. Deploys in two halves."
+        }
+    }
+}

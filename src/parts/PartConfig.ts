@@ -6,7 +6,7 @@ import { Vector2 } from '../core/Vector2';
 export interface PartConfig {
     id: string;
     name: string;
-    type: 'capsule' | 'tank' | 'engine' | 'booster' | 'rcs' | 'decoupler' | 'structure' | 'parachute';
+    type: 'capsule' | 'tank' | 'engine' | 'booster' | 'rcs' | 'decoupler' | 'structure' | 'parachute' | 'fairing';
     description: string;
     dimensions: {
         width: number;    // meters
@@ -24,15 +24,18 @@ export interface PartConfig {
         electricity?: number;     // Battery capacity (Electric Charge - EC)
         chargeRate?: number;      // Generation/Consumption rate (per sec)
         sasConsumption?: number;  // Consumption per second when SAS active
+        dragReduction?: number;   // Fairing drag reduction multiplier (0-1)
     };
     nodes: Array<{
         id: string;
         position: { x: number; y: number };
         direction: { x: number; y: number };
-        type: 'top' | 'bottom';
+        type: 'top' | 'bottom' | 'standard';
     }>;
     visual?: {
         effect?: 'standard' | 'blue_flame' | 'rcs';
+        textureLeft?: string;   // Fairing left half texture
+        textureRight?: string;  // Fairing right half texture
     };
     dragSettings?: {
         dragCoeffStowed: number;
