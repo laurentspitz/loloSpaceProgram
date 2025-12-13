@@ -69,13 +69,13 @@ export class StagingSystem {
                     deployed: part.deployed,
                 };
 
-                // Tank fuel info
+                // Tank fuel info - use per-tank fuel tracking
                 if (def.type === 'tank' && def.stats.fuel) {
-                    item.fuelMax = def.stats.fuel;
-                    // Calculate current fuel based on rocket's engine fuel percent
-                    const fuelPercent = this.rocket?.engine.getFuelPercent() || 0;
-                    item.fuelCurrent = def.stats.fuel * (fuelPercent / 100);
-                    item.fuelPercent = fuelPercent;
+                    const maxFuel = def.stats.fuel;
+                    const currentFuel = part.currentFuel ?? maxFuel;
+                    item.fuelMax = maxFuel;
+                    item.fuelCurrent = currentFuel;
+                    item.fuelPercent = (currentFuel / maxFuel) * 100;
                 }
 
                 // Engine stats

@@ -45,6 +45,41 @@ export class StagingPanel {
         this.stagesContainer.style.gap = '8px';
         content.appendChild(this.stagesContainer);
 
+        // Crossfeed toggle button
+        const crossfeedContainer = document.createElement('div');
+        crossfeedContainer.style.display = 'flex';
+        crossfeedContainer.style.alignItems = 'center';
+        crossfeedContainer.style.justifyContent = 'space-between';
+        crossfeedContainer.style.padding = '8px';
+        crossfeedContainer.style.backgroundColor = 'rgba(50, 50, 50, 0.5)';
+        crossfeedContainer.style.borderRadius = '4px';
+        crossfeedContainer.style.marginTop = '8px';
+
+        const crossfeedLabel = document.createElement('span');
+        crossfeedLabel.textContent = 'Crossfeed';
+        crossfeedLabel.style.fontSize = '11px';
+        crossfeedLabel.style.color = '#aaa';
+        crossfeedContainer.appendChild(crossfeedLabel);
+
+        const crossfeedToggle = document.createElement('button');
+        crossfeedToggle.id = 'crossfeed-toggle';
+        crossfeedToggle.style.padding = '4px 10px';
+        crossfeedToggle.style.fontSize = '10px';
+        crossfeedToggle.style.border = 'none';
+        crossfeedToggle.style.borderRadius = '4px';
+        crossfeedToggle.style.cursor = 'pointer';
+        crossfeedToggle.style.backgroundColor = '#aa0000';
+        crossfeedToggle.textContent = 'OFF';
+        crossfeedToggle.onclick = () => {
+            if (this.rocket) {
+                this.rocket.crossfeedEnabled = !this.rocket.crossfeedEnabled;
+                crossfeedToggle.textContent = this.rocket.crossfeedEnabled ? 'ON' : 'OFF';
+                crossfeedToggle.style.backgroundColor = this.rocket.crossfeedEnabled ? '#00aa00' : '#aa0000';
+            }
+        };
+        crossfeedContainer.appendChild(crossfeedToggle);
+        content.appendChild(crossfeedContainer);
+
         // Create panel
         const { container } = createCollapsiblePanel('STAGING', content, false, '200px');
         container.id = 'staging-panel';
@@ -244,12 +279,10 @@ export class StagingPanel {
             toggle.onclick = () => {
                 // Toggle the state
                 currentState = !currentState;
-                console.log(`[StagingPanel] Toggle clicked! instanceId=${item.instanceId}, newState=${currentState}`);
                 stagingSystem.toggleEngine(item.instanceId, currentState);
                 // Update button visually immediately
                 toggle.style.backgroundColor = currentState ? '#00aa00' : '#aa0000';
                 toggle.textContent = currentState ? 'ON' : 'OFF';
-                console.log(`[StagingPanel] Button updated to ${currentState ? 'ON' : 'OFF'}`);
             };
             itemDiv.appendChild(toggle);
         } else if (item.type === 'tank' && item.fuelPercent !== undefined) {
@@ -322,31 +355,34 @@ export class StagingPanel {
 
         return itemDiv;
     }
-
     /**
      * Update fuel gauges without rebuilding
      */
     private updateFuelGauges(): void {
         if (!this.rocket || !this.stagesContainer) return;
 
-        const fuelPercent = this.rocket.engine.getFuelPercent();
-
-        // Get fresh stage data with actual part.active states
+        // Get fresh stage data with actual fuel states per tank
         const stages = stagingSystem.getStages();
 
-        // Update all fuel gauges
-        const gauges = this.stagesContainer.querySelectorAll('.fuel-gauge') as NodeListOf<HTMLElement>;
-        gauges.forEach(gauge => {
-            gauge.style.width = `${fuelPercent}%`;
-            gauge.style.backgroundColor = fuelPercent < 20 ? '#ff4444' : (fuelPercent < 50 ? '#ffbb33' : '#00C851');
-        });
-
-        // Update engine toggles based on actual part.active state
+        // Update fuel gauges and engine toggles per stage
         const stageBlocks = this.stagesContainer.querySelectorAll('.stage-block') as NodeListOf<HTMLElement>;
         stageBlocks.forEach(stageBlock => {
             const stageIndex = parseInt(stageBlock.dataset.stageIndex || '0');
             const stage = stages.find(s => s.index === stageIndex);
             if (!stage) return;
+
+            // Update fuel gauges for tanks in this stage
+            const gauges = stageBlock.querySelectorAll('.fuel-gauge') as NodeListOf<HTMLElement>;
+            const tanks = stage.items.filter(item => item.type === 'tank');
+
+            gauges.forEach((gauge, idx) => {
+                const tank = tanks[idx];
+                if (tank && tank.fuelPercent !== undefined) {
+                    const fuelPercent = tank.fuelPercent;
+                    gauge.style.width = `${fuelPercent}%`;
+                    gauge.style.backgroundColor = fuelPercent < 20 ? '#ff4444' : (fuelPercent < 50 ? '#ffbb33' : '#00C851');
+                }
+            });
 
             // Find engine items and update their toggles
             const toggles = stageBlock.querySelectorAll('.engine-toggle') as NodeListOf<HTMLButtonElement>;

@@ -148,7 +148,7 @@ export class ThemeManager {
         }
 
         if (this.currentTheme === 'scifi' && rocket) {
-            const fuelPct = rocket.engine.getFuelPercent();
+            const fuelPct = rocket.getTotalFuelPercent();
             const speed = rocket.body.velocity.mag();
 
             let alt = 0;

@@ -35,10 +35,10 @@ export class Rocket {
     readonly engineHeight: number = 1.8;   // Smaller engine
 
     // Part stack from assembly (if built in Hangar)
-    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean }>;
+    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean; currentFuel?: number }>;
 
     // Stages (arrays of parts, from top to bottom)
-    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean }>> = [];
+    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean; currentFuel?: number }>> = [];
     currentStageIndex: number = 0;
 
     // Callback for stage separation (to spawn debris)
@@ -47,8 +47,8 @@ export class Rocket {
     // Mesh version for renderer to detect changes
     meshVersion: number = 0;
 
-    // Debug flag
-    private _hasLoggedEngines: boolean = false;
+    // Crossfeed: allow fuel from upper stages to flow to current stage (disabled by default)
+    crossfeedEnabled: boolean = false;
 
     /**
      * Check if a part is in the CURRENT active stage
@@ -170,12 +170,9 @@ export class Rocket {
                         effectiveThrottle = part.manualEnabled ? 1.0 : 0;
                     }
 
-                    // DEBUG: Log all engines once when throttle applied
-                    if (input.throttle > 0 && !this._hasLoggedEngines) {
-                        console.log(`[ENGINE DEBUG] ${part.partId} pos=(${part.position.x?.toFixed(3)}, ${part.position.y?.toFixed(3)}) isInActiveStage=${isInActiveStage} manualEnabled=${part.manualEnabled}`);
-                    }
 
-                    if (effectiveThrottle > 0 && this.engine.hasFuel() && isInActiveStage) {
+
+                    if (effectiveThrottle > 0 && this.hasFuelInActiveStage() && isInActiveStage) {
                         const maxThrust = part.definition.stats.thrust;
                         const thrustMag = maxThrust * effectiveThrottle;
                         activeThrust += thrustMag;
@@ -213,7 +210,7 @@ export class Rocket {
                 if (part.definition.type === 'rcs' && part.definition.stats.thrust) {
                     part.active = false;
 
-                    if (input.rcsEnabled && input.rotation !== 0 && this.engine.hasFuel()) {
+                    if (input.rcsEnabled && input.rotation !== 0 && this.hasFuelInActiveStage()) {
                         const thrustMag = part.definition.stats.thrust;
 
                         // Force Vector
@@ -244,11 +241,7 @@ export class Rocket {
                 }
             });
 
-            // Set debug log flag after processing all engines
-            if (input.throttle > 0 && !this._hasLoggedEngines) {
-                console.log('[ENGINE DEBUG] === End of engine list ===');
-                this._hasLoggedEngines = true;
-            }
+
 
             // If no explicit engines in stack (fallback or simplified mode), use default
             if (activeThrust === 0 && totalRCSThrust === 0 && (!this.partStack || this.partStack.length === 0) && input.throttle > 0) {
@@ -258,12 +251,12 @@ export class Rocket {
                 // No torque for centered engine
             }
 
-            // Consume fuel
+            // Consume fuel from tanks in the current active stage
             // 1. Engines - use weighted effective throttle for consumption
             if (activeThrust > 0 && totalMaxThrust > 0) {
                 const avgEffectiveThrottle = weightedThrottleSum / totalMaxThrust;
-                const fuelData = this.engine.consumeFuel(avgEffectiveThrottle, physicsDeltaTime);
-                this.body.mass = Math.max(this.dryMass, this.body.mass - fuelData);
+                const fuelConsumed = this.consumeFuelFromActiveStage(avgEffectiveThrottle, physicsDeltaTime);
+                this.body.mass = Math.max(this.dryMass, this.body.mass - fuelConsumed);
             }
             // 2. RCS (Simplified consumption)
             if (totalRCSThrust > 0) {
@@ -551,15 +544,128 @@ export class Rocket {
         // stages[last] is the payload.
         this.currentStageIndex = 0;
 
-        // DEBUG: Log complete stage structure
-        console.log('=== ROCKET STAGES INITIALIZED ===');
-        console.log(`Total stages: ${this.stages.length}, currentStageIndex: ${this.currentStageIndex}`);
-        this.stages.forEach((stage, idx) => {
-            const parts = stage.map(p => `${p.partId}(${p.definition.type})`).join(', ');
-            console.log(`  Stage ${idx}: [${parts}]`);
+        // Initialize fuel on each tank part
+        this.stages.forEach(stage => {
+            stage.forEach(part => {
+                if (part.definition.type === 'tank' && part.definition.stats.fuel) {
+                    part.currentFuel = part.definition.stats.fuel;
+                }
+            });
         });
-        console.log('=================================');
 
+
+
+    }
+
+    /**
+     * Consume fuel from tanks in the current active stage
+     * Returns the amount of fuel consumed
+     */
+    consumeFuelFromActiveStage(throttle: number, deltaTime: number): number {
+        if (!this.stages || this.currentStageIndex >= this.stages.length) return 0;
+
+        // Get tanks from current stage
+        const currentStage = this.stages[this.currentStageIndex];
+        const tanks = currentStage.filter(p => p.definition.type === 'tank' && (p.currentFuel ?? 0) > 0);
+
+        // If no fuel in current stage and crossfeed is enabled, try next stages
+        if (tanks.length === 0 && this.crossfeedEnabled) {
+            for (let i = this.currentStageIndex + 1; i < this.stages.length; i++) {
+                const stageTanks = this.stages[i].filter(p => p.definition.type === 'tank' && (p.currentFuel ?? 0) > 0);
+                if (stageTanks.length > 0) {
+                    tanks.push(...stageTanks);
+                    break; // Only use first stage with fuel
+                }
+            }
+        }
+
+        if (tanks.length === 0) return 0;
+
+        // Calculate mass flow rate: thrust / (ISP * g0)
+        const thrust = this.engine.getThrust(throttle);
+        const massFlowRate = thrust / (this.engine.isp * 9.81);
+        const totalConsumption = massFlowRate * deltaTime;
+
+        // Distribute consumption evenly across tanks with fuel
+        const consumptionPerTank = totalConsumption / tanks.length;
+        let actualConsumed = 0;
+
+        tanks.forEach(tank => {
+            const available = tank.currentFuel ?? 0;
+            const consumed = Math.min(available, consumptionPerTank);
+            tank.currentFuel = available - consumed;
+            actualConsumed += consumed;
+        });
+
+        return actualConsumed;
+    }
+
+    /**
+     * Check if there's fuel available in active stage (or with crossfeed if enabled)
+     */
+    hasFuelInActiveStage(): boolean {
+        if (!this.stages || this.currentStageIndex >= this.stages.length) return false;
+
+        // Check current stage tanks first
+        const currentStageHasFuel = this.stages[this.currentStageIndex].some(p =>
+            p.definition.type === 'tank' && (p.currentFuel ?? 0) > 0.01
+        );
+        if (currentStageHasFuel) return true;
+
+        // If crossfeed enabled, check upper stages
+        if (this.crossfeedEnabled) {
+            for (let i = this.currentStageIndex + 1; i < this.stages.length; i++) {
+                const hasFuel = this.stages[i].some(p =>
+                    p.definition.type === 'tank' && (p.currentFuel ?? 0) > 0.01
+                );
+                if (hasFuel) return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get total fuel remaining across all attached stages
+     */
+    getTotalFuel(): number {
+        if (!this.stages) return 0;
+
+        let totalFuel = 0;
+        for (let i = this.currentStageIndex; i < this.stages.length; i++) {
+            this.stages[i].forEach(p => {
+                if (p.definition.type === 'tank') {
+                    totalFuel += p.currentFuel ?? 0;
+                }
+            });
+        }
+        return totalFuel;
+    }
+
+    /**
+     * Get total fuel capacity across all attached stages
+     */
+    getTotalFuelCapacity(): number {
+        if (!this.stages) return 0;
+
+        let totalCapacity = 0;
+        for (let i = this.currentStageIndex; i < this.stages.length; i++) {
+            this.stages[i].forEach(p => {
+                if (p.definition.type === 'tank' && p.definition.stats.fuel) {
+                    totalCapacity += p.definition.stats.fuel;
+                }
+            });
+        }
+        return totalCapacity;
+    }
+
+    /**
+     * Get total fuel percent remaining across all attached stages
+     */
+    getTotalFuelPercent(): number {
+        const capacity = this.getTotalFuelCapacity();
+        if (capacity === 0) return 0;
+        return (this.getTotalFuel() / capacity) * 100;
     }
 
     /**
@@ -730,7 +836,7 @@ export class Rocket {
      */
     getInfo() {
         return {
-            fuel: this.engine.getFuelPercent(),
+            fuel: this.getTotalFuelPercent(),
             deltaV: this.engine.getDeltaV(this.dryMass),
             mass: this.body.mass,
             throttle: this.controls.getThrottle(),
