@@ -35,10 +35,10 @@ export class Rocket {
     readonly engineHeight: number = 1.8;   // Smaller engine
 
     // Part stack from assembly (if built in Hangar)
-    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean }>;
+    partStack?: Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean }>;
 
     // Stages (arrays of parts, from top to bottom)
-    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean }>> = [];
+    stages: Array<Array<{ partId: string; definition: any; position: any; rotation?: number; flipped?: boolean; active?: boolean; deployed?: boolean; manualEnabled?: boolean }>> = [];
     currentStageIndex: number = 0;
 
     // Callback for stage separation (to spawn debris)
@@ -47,27 +47,32 @@ export class Rocket {
     // Mesh version for renderer to detect changes
     meshVersion: number = 0;
 
+    // Debug flag
+    private _hasLoggedEngines: boolean = false;
+
     /**
-     * Check if a part from partStack is in active stages (from currentStageIndex to end)
-     * Parts in stages[currentStageIndex] and above are still attached and can fire
+     * Check if a part is in the CURRENT active stage
+     * Only parts in stages[currentStageIndex] should fire (engines)
      */
     isPartActive(part: { partId: string; position: any }): boolean {
         if (!this.stages || this.stages.length === 0) return true;
 
+        // Only check the CURRENT stage (not all attached stages)
+        const currentStage = this.stages[this.currentStageIndex];
+        if (!currentStage) return false;
+
         // Tolerance for position comparison (floating point issues)
         const EPSILON = 0.001;
 
-        for (let i = this.currentStageIndex; i < this.stages.length; i++) {
-            const stage = this.stages[i];
-            for (const stagePart of stage) {
-                // Match by position with tolerance
-                const dx = Math.abs(stagePart.position.x - (part.position.x || 0));
-                const dy = Math.abs(stagePart.position.y - (part.position.y || 0));
-                if (dx < EPSILON && dy < EPSILON && stagePart.partId === part.partId) {
-                    return true;
-                }
+        for (const stagePart of currentStage) {
+            // Match by position with tolerance
+            const dx = Math.abs(stagePart.position.x - (part.position.x || 0));
+            const dy = Math.abs(stagePart.position.y - (part.position.y || 0));
+            if (dx < EPSILON && dy < EPSILON && stagePart.partId === part.partId) {
+                return true;
             }
         }
+
         return false;
     }
 
@@ -145,6 +150,8 @@ export class Rocket {
         if (this.partStack) {
             let activeThrust = 0;
             let totalRCSThrust = 0; // Track RCS usage for fuel
+            let totalMaxThrust = 0; // For calculating weighted throttle
+            let weightedThrottleSum = 0; // Sum of (thrust * effectiveThrottle) for fuel consumption
 
             this.partStack.forEach(part => {
                 // Reset active state
@@ -154,10 +161,28 @@ export class Rocket {
                 if ((part.definition.type === 'engine' || part.definition.type === 'booster') && part.definition.stats.thrust) {
                     const isInActiveStage = this.isPartActive(part);
 
-                    if (input.throttle > 0 && this.engine.hasFuel() && isInActiveStage) {
+                    // Determine effective throttle for this engine:
+                    // - If manualEnabled is true: fire at 100%
+                    // - If manualEnabled is false: don't fire
+                    // - If manualEnabled is undefined: use global throttle
+                    let effectiveThrottle = input.throttle;
+                    if (part.manualEnabled !== undefined) {
+                        effectiveThrottle = part.manualEnabled ? 1.0 : 0;
+                    }
+
+                    // DEBUG: Log all engines once when throttle applied
+                    if (input.throttle > 0 && !this._hasLoggedEngines) {
+                        console.log(`[ENGINE DEBUG] ${part.partId} pos=(${part.position.x?.toFixed(3)}, ${part.position.y?.toFixed(3)}) isInActiveStage=${isInActiveStage} manualEnabled=${part.manualEnabled}`);
+                    }
+
+                    if (effectiveThrottle > 0 && this.engine.hasFuel() && isInActiveStage) {
                         const maxThrust = part.definition.stats.thrust;
-                        const thrustMag = maxThrust * input.throttle;
+                        const thrustMag = maxThrust * effectiveThrottle;
                         activeThrust += thrustMag;
+
+                        // Track for weighted fuel consumption
+                        totalMaxThrust += maxThrust;
+                        weightedThrottleSum += maxThrust * effectiveThrottle;
 
                         // Force Direction in Part Frame: (0, 1) [Up/Forward]
                         // Rotate by Part Rotation
@@ -219,6 +244,12 @@ export class Rocket {
                 }
             });
 
+            // Set debug log flag after processing all engines
+            if (input.throttle > 0 && !this._hasLoggedEngines) {
+                console.log('[ENGINE DEBUG] === End of engine list ===');
+                this._hasLoggedEngines = true;
+            }
+
             // If no explicit engines in stack (fallback or simplified mode), use default
             if (activeThrust === 0 && totalRCSThrust === 0 && (!this.partStack || this.partStack.length === 0) && input.throttle > 0) {
                 // Fallback logic for simple rocket
@@ -228,9 +259,10 @@ export class Rocket {
             }
 
             // Consume fuel
-            // 1. Engines
-            if (activeThrust > 0) {
-                const fuelData = this.engine.consumeFuel(input.throttle, physicsDeltaTime);
+            // 1. Engines - use weighted effective throttle for consumption
+            if (activeThrust > 0 && totalMaxThrust > 0) {
+                const avgEffectiveThrottle = weightedThrottleSum / totalMaxThrust;
+                const fuelData = this.engine.consumeFuel(avgEffectiveThrottle, physicsDeltaTime);
                 this.body.mass = Math.max(this.dryMass, this.body.mass - fuelData);
             }
             // 2. RCS (Simplified consumption)
@@ -518,6 +550,15 @@ export class Rocket {
         // Now stages[0] is the bottom-most stage (first to drop).
         // stages[last] is the payload.
         this.currentStageIndex = 0;
+
+        // DEBUG: Log complete stage structure
+        console.log('=== ROCKET STAGES INITIALIZED ===');
+        console.log(`Total stages: ${this.stages.length}, currentStageIndex: ${this.currentStageIndex}`);
+        this.stages.forEach((stage, idx) => {
+            const parts = stage.map(p => `${p.partId}(${p.definition.type})`).join(', ');
+            console.log(`  Stage ${idx}: [${parts}]`);
+        });
+        console.log('=================================');
 
     }
 

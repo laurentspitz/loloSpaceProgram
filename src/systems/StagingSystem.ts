@@ -125,13 +125,34 @@ export class StagingSystem {
 
     /**
      * Toggle an engine on/off
-     * Note: Currently affects all engines via throttle, individual control would require
-     * additional implementation in Rocket.ts
+     * Finds the part by instanceId and sets its manual enabled state
      */
     toggleEngine(instanceId: string, on: boolean): void {
-        // For now, individual engine control is not implemented
-        // This would require changes to Rocket.update() to respect individual engine states
-        console.log(`[StagingSystem] Toggle engine ${instanceId}: ${on}`);
+        if (!this.rocket || !this.rocket.partStack) {
+            console.log(`[StagingSystem] No rocket or partStack`);
+            return;
+        }
+
+        // Parse instanceId: format is "partId-stageIndex-itemIndex"
+        const parts = instanceId.split('-');
+        if (parts.length < 3) {
+            console.log(`[StagingSystem] Invalid instanceId format: ${instanceId}`);
+            return;
+        }
+
+        const stageIndex = parseInt(parts[parts.length - 2]);
+        const itemIndex = parseInt(parts[parts.length - 1]);
+
+        // Find the part in stages
+        if (this.rocket.stages && this.rocket.stages[stageIndex]) {
+            const stage = this.rocket.stages[stageIndex];
+            if (stage[itemIndex]) {
+                const part = stage[itemIndex];
+                // Set manualEnabled state (undefined means use auto/throttle control)
+                part.manualEnabled = on;
+                console.log(`[StagingSystem] Engine ${part.partId} manual state set to ${on}`);
+            }
+        }
     }
 
     /**

@@ -238,11 +238,18 @@ export class StagingPanel {
             toggle.style.cursor = 'pointer';
             // Initial state: isStillAttached means this stage hasn't been dropped yet
             // item.active comes from Rocket and means engine is currently firing
-            const isOn = isStillAttached && (item.active ?? false);
-            toggle.style.backgroundColor = isOn ? '#00aa00' : '#aa0000';
-            toggle.textContent = isOn ? 'ON' : 'OFF';
+            let currentState = isStillAttached && (item.active ?? false);
+            toggle.style.backgroundColor = currentState ? '#00aa00' : '#aa0000';
+            toggle.textContent = currentState ? 'ON' : 'OFF';
             toggle.onclick = () => {
-                stagingSystem.toggleEngine(item.instanceId, !item.active);
+                // Toggle the state
+                currentState = !currentState;
+                console.log(`[StagingPanel] Toggle clicked! instanceId=${item.instanceId}, newState=${currentState}`);
+                stagingSystem.toggleEngine(item.instanceId, currentState);
+                // Update button visually immediately
+                toggle.style.backgroundColor = currentState ? '#00aa00' : '#aa0000';
+                toggle.textContent = currentState ? 'ON' : 'OFF';
+                console.log(`[StagingPanel] Button updated to ${currentState ? 'ON' : 'OFF'}`);
             };
             itemDiv.appendChild(toggle);
         } else if (item.type === 'tank' && item.fuelPercent !== undefined) {
@@ -323,8 +330,9 @@ export class StagingPanel {
         if (!this.rocket || !this.stagesContainer) return;
 
         const fuelPercent = this.rocket.engine.getFuelPercent();
-        const hasThrottle = this.rocket.controls.throttle > 0 && this.rocket.engine.hasFuel();
-        const currentStageIndex = this.rocket.currentStageIndex;
+
+        // Get fresh stage data with actual part.active states
+        const stages = stagingSystem.getStages();
 
         // Update all fuel gauges
         const gauges = this.stagesContainer.querySelectorAll('.fuel-gauge') as NodeListOf<HTMLElement>;
@@ -333,19 +341,25 @@ export class StagingPanel {
             gauge.style.backgroundColor = fuelPercent < 20 ? '#ff4444' : (fuelPercent < 50 ? '#ffbb33' : '#00C851');
         });
 
-        // Update engine toggles based on stage
-        // Get all stage blocks and their indices
+        // Update engine toggles based on actual part.active state
         const stageBlocks = this.stagesContainer.querySelectorAll('.stage-block') as NodeListOf<HTMLElement>;
         stageBlocks.forEach(stageBlock => {
             const stageIndex = parseInt(stageBlock.dataset.stageIndex || '0');
-            // Stage is active if it's >= currentStageIndex (hasn't been separated yet)
-            const isStageActive = stageIndex >= currentStageIndex;
+            const stage = stages.find(s => s.index === stageIndex);
+            if (!stage) return;
 
+            // Find engine items and update their toggles
             const toggles = stageBlock.querySelectorAll('.engine-toggle') as NodeListOf<HTMLButtonElement>;
-            toggles.forEach(toggle => {
-                const isOn = hasThrottle && isStageActive;
-                toggle.style.backgroundColor = isOn ? '#00aa00' : '#aa0000';
-                toggle.textContent = isOn ? 'ON' : 'OFF';
+            const engines = stage.items.filter(item => item.type === 'engine' || item.type === 'booster');
+
+            toggles.forEach((toggle, idx) => {
+                const engine = engines[idx];
+                if (engine) {
+                    // Use actual part.active state from Rocket
+                    const isOn = engine.active ?? false;
+                    toggle.style.backgroundColor = isOn ? '#00aa00' : '#aa0000';
+                    toggle.textContent = isOn ? 'ON' : 'OFF';
+                }
             });
         });
     }

@@ -403,7 +403,8 @@ export class ThreeRenderer {
                     const isEngine = part.definition.type === 'engine' || part.definition.type === 'booster';
                     const isRCS = part.definition.type === 'rcs';
 
-                    if (isEngine || (isRCS && part.active)) {
+                    // Only emit particles for ACTIVE parts (engines with part.active = true, or active RCS)
+                    if ((isEngine && part.active) || (isRCS && part.active)) {
                         const h = part.definition.height;
 
                         // Part center relative to rocket center (CoM) - in meters
@@ -461,8 +462,10 @@ export class ThreeRenderer {
                         let type = 'standard';
 
                         if (isEngine) {
-                            if (this.currentRocket!.engine.hasFuel()) {
-                                currentPartThrottle = throttle; // Use the throttle from the rocket controls
+                            // If part is active (set by Rocket.update), emit at full throttle
+                            // This respects both global throttle and manualEnabled
+                            if (part.active && this.currentRocket!.engine.hasFuel()) {
+                                currentPartThrottle = 1.0; // Full visual effect for active engine
                             } else {
                                 currentPartThrottle = 0;
                             }
