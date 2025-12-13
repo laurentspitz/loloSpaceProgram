@@ -2,6 +2,7 @@
     "id": "apollo_capsule",
     "name": "parts.apollo_capsule.name",
     "type": "capsule",
+    "family": "Saturn",
     "description": "parts.apollo_capsule.description",
     "dimensions": {
         "width": 3.9,

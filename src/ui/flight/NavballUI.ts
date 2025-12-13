@@ -28,6 +28,7 @@ export class NavballUI {
     private initialize(): void {
         const canvas = document.getElementById('navball') as HTMLCanvasElement;
         if (canvas) {
+            canvas.style.display = 'block';
             canvas.id = 'navball-canvas';
             this.navballRenderer = new NavballRenderer(canvas);
             this.createAutopilotButtons();
@@ -271,6 +272,9 @@ export class NavballUI {
     }
 
     dispose(): void {
+        const canvas = document.getElementById('navball');
+        if (canvas) canvas.style.display = 'none';
+
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }

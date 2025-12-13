@@ -5,6 +5,7 @@ import { Vector2 } from '../core/Vector2';
 import { Rocket } from '../entities/Rocket';
 import { ManeuverNodeManager } from '../systems/ManeuverNodeManager';
 import { MissionManager } from '../missions';
+import { GameTimeManager } from '../managers/GameTimeManager';
 import i18next from 'i18next';
 
 // Panels
@@ -74,7 +75,8 @@ export class UI {
             const { NotificationManager } = await import('./NotificationManager');
             const mission = e.detail.mission;
             const rewardText = mission.rewardMoney ? `+${mission.rewardMoney.toLocaleString()} $` : '';
-            NotificationManager.show(i18next.t('ui.missionAccomplished', { title: mission.title }) + (rewardText ? '\n💰 ' + rewardText : ''), 'success', 5000);
+            NotificationManager.show(i18next.t('ui.missionAccomplished', { title: i18next.t(mission.title) }) + (rewardText ? '\n💰 ' + rewardText : ''), 'success', 5000);
+            this.updateMissionHUD();
         });
 
         // Listen for language changes
@@ -168,6 +170,8 @@ export class UI {
             onOrbit: (body) => this.placeRocketInOrbit(body),
             onTarget: (body) => this.setTarget(body)
         });
+
+        this.updateMissionHUD();
     }
 
     private createMissionDisplay(): void {
@@ -392,7 +396,30 @@ export class UI {
         this.themeManager.update(this.currentRocket, this.bodies);
     }
 
+    updateMissionHUD(): void {
+        const titleEl = document.getElementById('mission-title');
+        if (!titleEl) return;
+
+        if (!this.missionManager) {
+            titleEl.innerText = i18next.t('ui.loading');
+            return;
+        }
+
+        const game = (window as any).game;
+        const currentYear = game ? GameTimeManager.getYear(game.elapsedGameTime) : 1957;
+
+        const mission = this.missionManager.getNextAvailableMission(currentYear);
+        if (mission) {
+            titleEl.innerText = i18next.t(mission.title);
+            titleEl.title = i18next.t(mission.description);
+        } else {
+            titleEl.innerText = i18next.t('ui.noActiveMission', 'No Active Mission');
+            titleEl.title = '';
+        }
+    }
+
     private updateTexts(): void {
+        this.updateMissionHUD();
         this.missionControlsPanel?.updateTexts();
         // Rebuild celestial bodies panel
         this.celestialBodiesPanel?.setBodies(this.bodies);
@@ -449,12 +476,12 @@ export class UI {
             const info = document.createElement('div');
 
             const title = document.createElement('div');
-            title.innerText = m.title;
+            title.innerText = i18next.t(m.title);
             title.style.fontWeight = 'bold';
             title.style.fontSize = '1.1em';
 
             const desc = document.createElement('div');
-            desc.innerText = m.description;
+            desc.innerText = i18next.t(m.description);
             desc.style.fontSize = '0.9em';
             desc.style.color = '#aaa';
 

@@ -38,6 +38,7 @@ export interface PartDefinition {
     cockpit?: {
         themeId: string;
     };
+    family?: string; // Rocket Family (e.g. "R7", "Atlas")
     // Fairing-specific visual properties
     visual?: {
         textureLeft?: string;

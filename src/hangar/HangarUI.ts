@@ -34,7 +34,14 @@ export class HangarUI {
     onToggleMirror: (active: boolean) => void;
     onToggleCoG: (active: boolean) => void;
 
+    // Sidebar State
+    private isPaletteOpen: boolean = true;
+    private currentGroupBy: 'type' | 'country' | 'agency' | 'year' | 'family' = 'type';
+    private collapsedGroups: Set<string> = new Set(); // Default all open (Opt-out)
+
+
     private languageChangeListener: (() => void) | null = null;
+    private getTime: () => number;
 
     constructor(
         assembly: RocketAssembly,
@@ -45,8 +52,10 @@ export class HangarUI {
         onBack: () => void,
         onNew: () => void,
         onToggleMirror: (active: boolean) => void,
-        onToggleCoG: (active: boolean) => void
+        onToggleCoG: (active: boolean) => void,
+        getTime: () => number // Injected time provider (Manual assignment)
     ) {
+        this.getTime = getTime;
         this.assembly = assembly;
         this.onPartSelected = onPartSelected;
         this.onLaunch = onLaunch;
@@ -231,124 +240,365 @@ export class HangarUI {
     }
 
     private createPalette(): HTMLDivElement {
+        // Root Container (Anchor)
+        const root = document.createElement('div');
+        root.style.position = 'absolute';
+        root.style.top = '20px';
+        root.style.left = '20px';
+        root.style.height = 'calc(100% - 40px)';
+        root.style.pointerEvents = 'none'; // Allow clicks to pass through spacer areas
+        root.style.zIndex = '100'; // Ensure above scene
+
+        // Sliding Wrapper (Moves both Palette and Button)
+        const slider = document.createElement('div');
+        slider.style.display = 'flex';
+        slider.style.alignItems = 'flex-start'; // Align top
+        slider.style.height = '100%';
+        slider.style.pointerEvents = 'auto'; // Re-enable clicks
+        slider.style.transition = 'transform 0.3s ease-in-out';
+        slider.style.transform = 'translateX(0)'; // Start open
+
+        // Palette Content (The List)
         const palette = document.createElement('div');
-        palette.style.position = 'absolute';
-        palette.style.top = '20px';
-        palette.style.left = '20px';
-        palette.style.width = '200px';
-        palette.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+        palette.id = 'hangar-palette';
+        palette.style.width = '260px'; // Palette width
+        palette.style.backgroundColor = 'rgba(30, 30, 30, 0.95)';
         palette.style.border = '1px solid #444';
         palette.style.borderRadius = '8px';
-        palette.style.padding = '10px';
-        palette.style.pointerEvents = 'auto'; // Re-enable clicks
         palette.style.display = 'flex';
         palette.style.flexDirection = 'column';
-        palette.style.gap = '10px';
+        palette.style.height = '100%';
+        palette.style.overflow = 'hidden';
+        palette.style.boxShadow = '0 4px 10px rgba(0,0,0,0.5)';
+
+        // Toggle Button (Outside palette, inside slider)
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '◀';
+        toggleBtn.style.width = '24px';
+        toggleBtn.style.height = '64px';
+        toggleBtn.style.marginTop = '20px'; // Fallback
+        toggleBtn.style.alignSelf = 'center'; // Proper flex centering
+        toggleBtn.style.backgroundColor = '#444';
+        toggleBtn.style.border = '1px solid #555';
+        toggleBtn.style.borderLeft = 'none';
+        toggleBtn.style.borderRadius = '0 6px 6px 0';
+        toggleBtn.style.color = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.display = 'flex';
+        toggleBtn.style.alignItems = 'center';
+        toggleBtn.style.justifyContent = 'center';
+        toggleBtn.style.fontSize = '12px';
+        toggleBtn.style.boxShadow = '2px 0 5px rgba(0,0,0,0.3)';
+
+        toggleBtn.onclick = () => {
+            this.isPaletteOpen = !this.isPaletteOpen;
+            if (this.isPaletteOpen) {
+                slider.style.transform = 'translateX(0)';
+                toggleBtn.textContent = '◀';
+            } else {
+                slider.style.transform = 'translateX(-262px)'; // Width + Border approx
+                toggleBtn.textContent = '▶';
+            }
+        };
+
+        slider.appendChild(palette);
+        slider.appendChild(toggleBtn);
+        root.appendChild(slider);
 
         this.renderPaletteContent(palette);
 
-        return palette;
+        return root;
     }
 
     private renderPaletteContent(palette: HTMLDivElement) {
+        palette.innerHTML = '';
 
-        const gameTime = (window as any).game?.elapsedGameTime;
-        const appTime = (window as any).app?.currentGameTime;
-        console.log('[HangarUI] Reading time - Game:', gameTime, 'App:', appTime);
-        const currentYear = GameTimeManager.getYear(gameTime || appTime || 0);
+        // 1. Header & Controls
+        const header = document.createElement('div');
+        header.style.padding = '10px';
+        header.style.borderBottom = '1px solid #444';
+        header.style.backgroundColor = '#222';
 
-        // Show year in title
         const title = document.createElement('h3');
+        const currentYear = GameTimeManager.getYear((window as any).game?.elapsedGameTime || 0);
         title.textContent = i18next.t('hangar.partsYear', { year: currentYear });
-        title.style.color = '#fff';
         title.style.margin = '0 0 10px 0';
+        title.style.fontSize = '14px';
         title.style.textAlign = 'center';
-        palette.appendChild(title);
+        title.style.color = '#aaa';
+        header.appendChild(title);
 
-        const parts = PartRegistry.getAll().filter(part => {
+        // Group By Selector
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.justifyContent = 'space-between';
+
+        const label = document.createElement('span');
+        label.textContent = i18next.t('hangar.groupBy', { defaultValue: 'Group:' });
+        label.style.fontSize = '12px';
+        label.style.color = '#ddd';
+        row.appendChild(label);
+
+        const select = document.createElement('select');
+        select.style.backgroundColor = '#444';
+        select.style.color = '#fff';
+        select.style.border = '1px solid #666';
+        select.style.borderRadius = '4px';
+        select.style.padding = '4px';
+        select.style.fontSize = '14px';
+
+        const options = ['type', 'country', 'agency', 'year', 'family'];
+        options.forEach(opt => {
+            const op = document.createElement('option');
+            op.value = opt;
+            op.textContent = i18next.t(`hangar.group.${opt}`, { defaultValue: opt.charAt(0).toUpperCase() + opt.slice(1) });
+            if (opt === this.currentGroupBy) op.selected = true;
+            select.appendChild(op);
+        });
+
+        select.onchange = () => {
+            this.currentGroupBy = select.value as any;
+            this.refreshPaletteList(listContainer);
+        };
+        row.appendChild(select);
+        header.appendChild(row);
+
+        palette.appendChild(header);
+
+        // 2. Scrollable List Area
+        const listContainer = document.createElement('div');
+        listContainer.style.flex = '1';
+        listContainer.style.overflowY = 'auto';
+        listContainer.style.overflowX = 'hidden';
+        listContainer.style.padding = '10px';
+
+        // Custom Scrollbar
+        const style = document.createElement('style');
+        style.textContent = `
+            #hangar-palette ::-webkit-scrollbar { width: 6px; }
+            #hangar-palette ::-webkit-scrollbar-track { background: #222; }
+            #hangar-palette ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+            #hangar-palette ::-webkit-scrollbar-thumb:hover { background: #777; }
+        `;
+        palette.appendChild(style);
+
+        palette.appendChild(listContainer);
+
+        this.refreshPaletteList(listContainer);
+    }
+
+    private refreshPaletteList(container: HTMLDivElement) {
+        container.innerHTML = '';
+
+        // Get time from injected provider
+        const effectiveTime = this.getTime();
+        const currentYear = GameTimeManager.getYear(effectiveTime);
+
+        const allParts = PartRegistry.getAll().filter(part => {
             const partYear = part.creationYear || 1957;
             return partYear <= currentYear;
         });
 
-        if (parts.length === 0) {
-            const empty = document.createElement('div');
-            empty.textContent = i18next.t('hangar.noParts');
-            empty.style.color = "#888";
-            empty.style.textAlign = "center";
-            palette.appendChild(empty);
+        console.log(`[HangarUI] Found ${allParts.length} parts for year ${currentYear}`, allParts);
+
+        if (allParts.length === 0) {
+            container.innerHTML = `<div style="color:#888;text-align:center">${i18next.t('hangar.noParts')}</div>`;
+            return;
         }
 
-        parts.forEach(part => {
-            const item = document.createElement('div');
-            item.style.display = 'flex';
-            item.style.alignItems = 'center';
-            item.style.gap = '10px';
-            item.style.padding = '8px';
-            item.style.backgroundColor = '#2a2a2a';
-            item.style.borderRadius = '4px';
-            item.style.cursor = 'pointer';
-            item.style.transition = 'background 0.2s';
+        // Group Parts
+        const groups = this.groupParts(allParts);
 
-            item.onmouseover = () => item.style.backgroundColor = '#3a3a3a';
-            item.onmouseout = () => item.style.backgroundColor = '#2a2a2a';
-
-            // Icon (using texture)
-            const icon = document.createElement('img');
-            icon.src = part.texture;
-            icon.style.width = '30px';
-            icon.style.height = '30px';
-            icon.style.objectFit = 'contain';
-            item.appendChild(icon);
-
-            // Name
-            const name = document.createElement('span');
-            name.textContent = i18next.t(part.name);
-            name.style.color = '#ddd';
-            name.style.fontSize = '14px';
-            item.appendChild(name);
-
-            // Use mousedown for drag-and-hold
-            item.onmousedown = (e) => {
-                e.preventDefault(); // Prevent text selection
-                this.onPartSelected(part.id);
-            };
-
-            // Add tooltip on hover
-            const tooltip = this.createTooltip(part);
-            item.onmouseenter = () => {
-                item.style.backgroundColor = '#3a3a3a';
-                document.body.appendChild(tooltip);
-
-                // Position tooltip next to palette
-                const rect = item.getBoundingClientRect();
-                tooltip.style.left = `${rect.right + 10}px`;
-                tooltip.style.top = `${rect.top}px`;
-            };
-            item.onmouseleave = () => {
-                item.style.backgroundColor = '#2a2a2a';
-                if (tooltip.parentElement) {
-                    document.body.removeChild(tooltip);
-                }
-            };
-
-            palette.appendChild(item);
+        // Render Groups
+        groups.forEach(group => {
+            this.rendergroupAccordion(container, group);
         });
 
-        // Trash Zone
+        // Add Trash at bottom
         const trash = document.createElement('div');
         trash.id = 'hangar-trash';
         trash.style.marginTop = '20px';
-        trash.style.padding = '15px';
+        trash.style.padding = '20px';
         trash.style.border = '2px dashed #ff4444';
-        trash.style.borderRadius = '4px';
+        trash.style.borderRadius = '8px';
         trash.style.color = '#ff4444';
         trash.style.textAlign = 'center';
         trash.style.fontWeight = 'bold';
         trash.textContent = i18next.t('hangar.dropToDelete');
-        palette.appendChild(trash);
-
-        return palette;
+        container.appendChild(trash);
     }
+
+    private groupParts(parts: PartDefinition[]): { name: string, parts: PartDefinition[] }[] {
+        const map = new Map<string, PartDefinition[]>();
+
+        parts.forEach(part => {
+            let key = 'Other';
+
+            switch (this.currentGroupBy) {
+                case 'type':
+                    key = i18next.t(`partType.${part.type}`, { defaultValue: part.type });
+                    break;
+                case 'country':
+                    key = part.country || 'Unknown';
+                    break;
+                case 'agency':
+                    key = part.agency ? (Agencies[part.agency]?.name || part.agency) : 'Unknown';
+                    break;
+                case 'year':
+                    key = part.creationYear ? part.creationYear.toString() : 'Unknown';
+                    break;
+                case 'family':
+                    key = part.family || 'Generic';
+                    break;
+            }
+
+            if (!map.has(key)) map.set(key, []);
+            map.get(key)!.push(part);
+        });
+
+        // Sort Groups
+        const sortedKeys = Array.from(map.keys()).sort();
+        // Custom sort for 'type' could be added here to prioritize capsules/tanks/engines
+
+        return sortedKeys.map(key => ({
+            name: key,
+            parts: map.get(key)!
+        }));
+    }
+
+    private rendergroupAccordion(container: HTMLDivElement, group: { name: string, parts: PartDefinition[] }) {
+        const isCollapsed = this.collapsedGroups.has(group.name);
+
+        const section = document.createElement('div');
+        section.style.marginBottom = '2px'; // Tighter spacing
+        section.style.border = '1px solid #444';
+        section.style.borderRadius = '4px';
+        section.style.overflow = 'hidden';
+
+        // Header
+        const header = document.createElement('div');
+        header.style.padding = '12px 10px'; // Larger touch target
+        header.style.backgroundColor = '#333';
+        header.style.cursor = 'pointer';
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.userSelect = 'none';
+        header.style.transition = 'background-color 0.2s';
+
+        header.onmouseover = () => header.style.backgroundColor = '#3a3a3a';
+        header.onmouseout = () => header.style.backgroundColor = '#333';
+
+        const title = document.createElement('span');
+        title.textContent = `${group.name} (${group.parts.length})`;
+        title.style.fontWeight = 'bold';
+        title.style.color = '#eee';
+        title.style.fontSize = '13px';
+
+        const arrow = document.createElement('span');
+        arrow.textContent = isCollapsed ? '▶' : '▼';
+        arrow.style.fontSize = '12px';
+        arrow.style.color = '#aaa';
+
+        header.appendChild(title);
+        header.appendChild(arrow);
+
+        header.onclick = () => {
+            if (this.collapsedGroups.has(group.name)) {
+                this.collapsedGroups.delete(group.name);
+            } else {
+                this.collapsedGroups.add(group.name);
+            }
+
+            // Re-render toggle
+            const body = section.querySelector('.group-body') as HTMLElement;
+            if (body) {
+                if (this.collapsedGroups.has(group.name)) {
+                    body.style.display = 'none';
+                    arrow.textContent = '▶';
+                } else {
+                    body.style.display = 'grid';
+                    arrow.textContent = '▼';
+                }
+            }
+        };
+
+        section.appendChild(header);
+
+        // Body (Items)
+        const body = document.createElement('div');
+        body.className = 'group-body';
+        body.style.display = isCollapsed ? 'none' : 'grid'; // Default open
+        body.style.gridTemplateColumns = 'repeat(auto-fill, minmax(60px, 1fr))';
+        body.style.gap = '8px';
+        body.style.padding = '10px';
+        body.style.backgroundColor = '#2a2a2a';
+
+        group.parts.forEach(part => {
+            const item = this.createPartItem(part);
+            body.appendChild(item);
+        });
+
+        section.appendChild(body);
+        container.appendChild(section);
+    }
+
+    private createPartItem(part: PartDefinition): HTMLDivElement {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'center';
+        item.style.padding = '5px';
+        item.style.backgroundColor = '#3a3a3a';
+        item.style.borderRadius = '4px';
+        item.style.cursor = 'pointer';
+
+        // Icon
+        const icon = document.createElement('img');
+        icon.src = part.texture;
+        icon.style.width = '40px';
+        icon.style.height = '40px';
+        icon.style.objectFit = 'contain';
+        item.appendChild(icon);
+
+        // Name (Truncated)
+        const name = document.createElement('span');
+        name.textContent = i18next.t(part.name);
+        name.style.fontSize = '10px';
+        name.style.color = '#ccc';
+        name.style.textAlign = 'center';
+        name.style.marginTop = '4px';
+        name.style.overflow = 'hidden';
+        name.style.textOverflow = 'ellipsis';
+        name.style.whiteSpace = 'nowrap';
+        name.style.maxWidth = '100%';
+        item.appendChild(name);
+
+        // Interaction
+        item.onmousedown = (e) => {
+            e.preventDefault();
+            this.onPartSelected(part.id);
+        };
+
+        // Tooltip
+        const tooltip = this.createTooltip(part);
+        item.onmouseenter = () => {
+            item.style.backgroundColor = '#555';
+            document.body.appendChild(tooltip);
+            const rect = item.getBoundingClientRect();
+            tooltip.style.left = `${rect.right + 10}px`;
+            tooltip.style.top = `${rect.top}px`;
+        };
+        item.onmouseleave = () => {
+            item.style.backgroundColor = '#3a3a3a';
+            if (tooltip.parentElement) document.body.removeChild(tooltip);
+        };
+
+        return item;
+    }
+
+
 
     createTooltip(part: PartDefinition): HTMLDivElement {
         const tooltip = document.createElement('div');

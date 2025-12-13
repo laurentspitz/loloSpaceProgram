@@ -2,6 +2,7 @@
     "id": "engine_rd0110",
     "name": "parts.engine_rd0110.name",
     "type": "engine",
+    "family": "R7 Semyorka",
     "description": "parts.engine_rd0110.description",
     "dimensions": {
         "width": 2,

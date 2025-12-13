@@ -13,6 +13,17 @@ export class HangarScene {
     public selectedInstanceIds: Set<string> = new Set();
     private textureLoader = new THREE.TextureLoader();
 
+    // Zoom & Pan controls
+    private minZoom = 0.5;
+    private maxZoom = 4;
+    private isPanning = false;
+    private lastPanPos = new THREE.Vector2();
+
+    // Touch controls
+    private touchDistance: number | null = null;
+    private touchPanStart = new THREE.Vector2();
+    private touchMode: 'none' | 'pan' | 'zoom' = 'none';
+
     // Center of Gravity visualization
     public showCoG: boolean = false;
     private cogMarker: THREE.Group | null = null;
@@ -38,7 +49,7 @@ export class HangarScene {
 
         // Setup Camera (Orthographic for 2D feel)
         const aspect = container.clientWidth / container.clientHeight;
-        const frustumSize = 20;
+        const frustumSize = 40; // Increased view area
         this.camera = new THREE.OrthographicCamera(
             frustumSize * aspect / -2,
             frustumSize * aspect / 2,
@@ -54,17 +65,26 @@ export class HangarScene {
         this.renderer.setSize(container.clientWidth, container.clientHeight);
         container.appendChild(this.renderer.domElement);
 
-        // Add Grid
-        const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x222222);
+        // Zoom & Input event listeners
+        this.renderer.domElement.addEventListener('wheel', this.handleWheel, { passive: false });
+
+        // Panning (Mouse)
+        this.renderer.domElement.addEventListener('mousedown', this.handleMouseDown);
+        window.addEventListener('mousemove', this.handleMouseMove);
+        window.addEventListener('mouseup', this.handleMouseUp);
+        this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault()); // Disable context menu
+
+        // Touch Events (Mobile)
+        this.renderer.domElement.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+        this.renderer.domElement.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+        this.renderer.domElement.addEventListener('touchend', this.handleTouchEnd);
+
+        // Add Grid (Larger)
+        const gridHelper = new THREE.GridHelper(200, 200, 0x444444, 0x222222);
         gridHelper.rotation.x = Math.PI / 2; // Rotate to face camera
         this.scene.add(gridHelper);
 
-        // Add Lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        this.scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
-        dirLight.position.set(5, 5, 10);
-        this.scene.add(dirLight);
+        // Lights removed as MeshBasicMaterial doesn't need them and they might cause artifacts
 
         // Handle Resize
         window.addEventListener('resize', () => {
@@ -78,6 +98,141 @@ export class HangarScene {
         });
 
         this.animate();
+    }
+
+    private handleWheel = (event: WheelEvent) => {
+        event.preventDefault();
+
+        const zoomSpeed = 0.001;
+        const newZoom = this.camera.zoom - event.deltaY * zoomSpeed;
+        this.setZoom(newZoom);
+    }
+
+    private setZoom(zoom: number) {
+        this.camera.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, zoom));
+        this.camera.updateProjectionMatrix();
+    }
+
+    // --- Mouse Panning ---
+
+    private handleMouseDown = (event: MouseEvent) => {
+        // Right Click (2) or Middle Click (1) for Panning
+        if (event.button === 2 || event.button === 1) {
+            this.isPanning = true;
+            this.lastPanPos.set(event.clientX, event.clientY);
+        }
+    }
+
+    private handleMouseMove = (event: MouseEvent) => {
+        if (this.isPanning) {
+            const currentX = event.clientX;
+            const currentY = event.clientY;
+
+            const deltaX = currentX - this.lastPanPos.x;
+            const deltaY = currentY - this.lastPanPos.y;
+
+            this.panCamera(deltaX, deltaY);
+
+            this.lastPanPos.set(currentX, currentY);
+        }
+    }
+
+    private handleMouseUp = (event: MouseEvent) => {
+        if (event.button === 2 || event.button === 1) {
+            this.isPanning = false;
+        }
+    }
+
+    // --- Touch Logic (Pinch Zoom + Pan) ---
+
+    private handleTouchStart = (event: TouchEvent) => {
+        // If 2 fingers -> ZOOM
+        if (event.touches.length === 2) {
+            event.preventDefault(); // Prevent browser zoom
+            this.touchMode = 'zoom';
+            const dx = event.touches[0].clientX - event.touches[1].clientX;
+            const dy = event.touches[0].clientY - event.touches[1].clientY;
+            this.touchDistance = Math.sqrt(dx * dx + dy * dy);
+        }
+        // If 1 finger -> PAN (Check if hitting part first?)
+        else if (event.touches.length === 1) {
+            // Check if we hit a part. If so, let DragDropManager handle it.
+            // DragDropManager listens to events too, so we need to be careful not to conflict.
+            // Simple approach: Raycast here. If part hit, do NOTHING (DragDrop will pick it up).
+            // If NO part hit, assume Pan.
+
+            const touch = event.touches[0];
+            const rect = this.renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((touch.clientX - rect.left) / rect.width) * 2 - 1,
+                -((touch.clientY - rect.top) / rect.height) * 2 + 1
+            );
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, this.camera);
+            const hit = this.getPartAt(raycaster);
+
+            if (!hit) {
+                // Background -> PAN
+                event.preventDefault(); // Prevent scroll
+                this.touchMode = 'pan';
+                this.touchPanStart.set(touch.clientX, touch.clientY);
+            } else {
+                this.touchMode = 'none'; // Part -> DragDropManager
+            }
+        }
+    }
+
+    private handleTouchMove = (event: TouchEvent) => {
+        if (this.touchMode === 'zoom' && event.touches.length === 2 && this.touchDistance !== null) {
+            event.preventDefault();
+            const dx = event.touches[0].clientX - event.touches[1].clientX;
+            const dy = event.touches[0].clientY - event.touches[1].clientY;
+            const newDist = Math.sqrt(dx * dx + dy * dy);
+
+            const delta = newDist - this.touchDistance;
+            const zoomSensitivity = 0.005;
+
+            // Zoom centered on previous LookAt? 
+            // Simple zoom adjustment:
+            const newZoom = this.camera.zoom + delta * zoomSensitivity;
+            this.setZoom(newZoom);
+
+            this.touchDistance = newDist;
+        } else if (this.touchMode === 'pan' && event.touches.length === 1) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const deltaX = touch.clientX - this.touchPanStart.x;
+            const deltaY = touch.clientY - this.touchPanStart.y;
+
+            this.panCamera(deltaX, deltaY);
+
+            this.touchPanStart.set(touch.clientX, touch.clientY);
+        }
+    }
+
+    private handleTouchEnd = (event: TouchEvent) => {
+        if (event.touches.length === 0) {
+            this.touchMode = 'none';
+            this.touchDistance = null;
+        }
+    }
+
+    private panCamera(deltaX: number, deltaY: number) {
+        // Convert screen delta to world delta
+        // Frustum height at any zoom = (top - bottom) / zoom? 
+        // OrthoCamera:
+        // Visible Height = (camera.top - camera.bottom) / camera.zoom
+        // Scale = Visible Height / Canvas Height
+
+        const frustumHeight = (this.camera.top - this.camera.bottom) / this.camera.zoom;
+        const scale = frustumHeight / this.renderer.domElement.clientHeight;
+
+        const worldDeltaX = -deltaX * scale;
+        const worldDeltaY = deltaY * scale; // Screen Y is down, World Y is up
+
+        this.camera.position.x += worldDeltaX;
+        this.camera.position.y += worldDeltaY;
     }
 
     updateSelectionBox(rect: { x: number, y: number, w: number, h: number } | null) {
@@ -334,6 +489,16 @@ export class HangarScene {
     }
 
     dispose() {
+        this.renderer.domElement.removeEventListener('wheel', this.handleWheel);
+
+        this.renderer.domElement.removeEventListener('mousedown', this.handleMouseDown);
+        window.removeEventListener('mousemove', this.handleMouseMove);
+        window.removeEventListener('mouseup', this.handleMouseUp);
+
+        this.renderer.domElement.removeEventListener('touchstart', this.handleTouchStart);
+        this.renderer.domElement.removeEventListener('touchmove', this.handleTouchMove);
+        this.renderer.domElement.removeEventListener('touchend', this.handleTouchEnd);
+
         this.renderer.dispose();
         // Remove event listeners if any
     }

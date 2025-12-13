@@ -17,6 +17,7 @@ export class App {
     public currentGameTime: number = 0;
 
     constructor() {
+        (window as any).app = this; // Expose for UI access
         this.showMenu();
 
         // Listen for navigation events from Hangar
@@ -111,6 +112,6 @@ export class App {
         const { PartRegistry } = await import('./hangar/PartRegistry');
         await PartRegistry.init();
 
-        this.hangar = await createHangar();
+        this.hangar = await createHangar(() => this.currentGameTime);
     }
 }

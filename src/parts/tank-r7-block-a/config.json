@@ -3,6 +3,7 @@
     "name": "parts.tank_block_a.name",
     "type": "tank",
     "description": "parts.tank_block_a.description",
+    "family": "R7 Semyorka",
     "dimensions": {
         "width": 2.5,
         "height": 10.0

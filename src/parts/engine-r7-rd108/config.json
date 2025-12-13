@@ -3,6 +3,7 @@
     "name": "parts.engine_rd108.name",
     "type": "engine",
     "description": "parts.engine_rd108.description",
+    "family": "R7 Semyorka",
     "dimensions": {
         "width": 2.6,
         "height": 2.0

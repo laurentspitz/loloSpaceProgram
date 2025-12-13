@@ -15,7 +15,10 @@ export class Hangar {
 
     private isDirty: boolean = false;
 
-    constructor() {
+    private getTime: () => number;
+
+    constructor(getTime: () => number) {
+        this.getTime = getTime;
         this.container = document.createElement('div');
         this.container.id = 'hangar-container';
         this.container.style.position = 'absolute';
@@ -182,7 +185,8 @@ export class Hangar {
                 this.ui.updateStats();
             },
             (active) => { this.dragDropManager.setMirrorMode(active); },
-            (active) => { this.scene.showCoG = active; }
+            (active) => { this.scene.showCoG = active; },
+            this.getTime
         );
 
         // Initialize Interaction
@@ -240,8 +244,8 @@ export class Hangar {
 /**
  * Factory function to create and initialize Hangar
  */
-export async function createHangar(): Promise<Hangar> {
-    const hangar = new Hangar();
+export async function createHangar(getTime: () => number): Promise<Hangar> {
+    const hangar = new Hangar(getTime);
     await hangar.init();
     return hangar;
 }

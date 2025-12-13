@@ -467,6 +467,7 @@ export class DragDropManager {
 
     private onMouseDown = (event: MouseEvent) => {
         if (this.draggedPartId) return; // Already dragging something?
+        if (event.button !== 0) return; // Only Left Click
 
         if (event.target !== this.scene.renderer.domElement) return;
 

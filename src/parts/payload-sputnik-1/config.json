@@ -3,6 +3,7 @@
     "name": "parts.sputnik.name",
     "type": "capsule",
     "description": "parts.sputnik.description",
+    "family": "R7 Semyorka",
     "dimensions": {
         "width": 0.58,
         "height": 0.58

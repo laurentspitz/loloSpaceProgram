@@ -2,6 +2,7 @@
     "id": "crew_dragon_pod",
     "name": "parts.crew_dragon_pod.name",
     "type": "capsule",
+    "family": "Falcon",
     "description": "parts.crew_dragon_pod.description",
     "dimensions": {
         "width": 4.0,

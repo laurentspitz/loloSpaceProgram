@@ -31,7 +31,6 @@ export class MissionManager {
                 completed: false
             }));
             this.initialized = true;
-            console.log(`[MissionManager] Initialized with ${this.missions.length} missions`);
         } catch (error) {
             console.error('[MissionManager] Failed to initialize missions:', error);
         }

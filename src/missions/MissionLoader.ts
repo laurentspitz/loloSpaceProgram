@@ -44,7 +44,6 @@ export class MissionLoader {
             console.error('[MissionLoader] Error during mission discovery:', error);
         }
 
-        console.log(`[MissionLoader] Loaded ${this.loadedMissions.length} missions/events`);
         return this.loadedMissions;
     }
 
@@ -82,7 +81,6 @@ export class MissionLoader {
                 }
 
                 this.loadedMissions.push(config);
-                console.log(`[MissionLoader] Loaded modular ${config.type}: ${config.id} (${config.year})`);
 
             } catch (error) {
                 console.error(`[MissionLoader] Failed to load modular mission from ${path}:`, error);
@@ -118,7 +116,6 @@ export class MissionLoader {
                             continue;
                         }
                         this.loadedMissions.push(mission);
-                        console.log(`[MissionLoader] Loaded flat ${mission.type}: ${mission.id} (${mission.year})`);
                     }
                 }
             } catch (error) {
@@ -138,7 +135,6 @@ export class MissionLoader {
                 i18next.addResourceBundle(lang, 'translation', translations);
             }
         }
-        console.log(`[MissionLoader] Registered locales for ${missionId}`);
     }
 
     /**

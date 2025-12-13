@@ -2,6 +2,7 @@
     "id": "engine_titan",
     "name": "parts.engine_titan.name",
     "type": "engine",
+    "family": "Titan",
     "description": "parts.engine_titan.description",
     "dimensions": {
         "width": 2.5,

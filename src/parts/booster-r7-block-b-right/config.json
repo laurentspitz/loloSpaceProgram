@@ -2,6 +2,7 @@
     "id": "booster-r7-block-b-right",
     "name": "parts.booster_block_b_right.name",
     "type": "booster",
+    "family": "R7 Semyorka",
     "description": "parts.booster_block_b.description",
     "dimensions": {
         "width": 2.5,
