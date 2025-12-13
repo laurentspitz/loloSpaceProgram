@@ -79,24 +79,11 @@ export class FuelSystem {
      * Returns the amount of fuel consumed
      */
     consumeFuel(throttle: number, deltaTime: number): number {
-        if (!this.stages || this.currentStageIndex >= this.stages.length) {
-            console.log('[FuelSystem] No stages or out of bounds', {
-                stagesLength: this.stages?.length,
-                currentStageIndex: this.currentStageIndex
-            });
-            return 0;
-        }
+        if (!this.stages || this.currentStageIndex >= this.stages.length) return 0;
 
         // Get tanks from current stage
         const currentStage = this.stages[this.currentStageIndex];
         const tanks = currentStage.filter(p => p.definition.type === 'tank' && (p.currentFuel ?? 0) > 0);
-
-        console.log('[FuelSystem] consumeFuel', {
-            currentStageIndex: this.currentStageIndex,
-            stagePartsCount: currentStage.length,
-            tanksWithFuel: tanks.length,
-            crossfeedEnabled: this.crossfeedEnabled
-        });
 
         // If no fuel in current stage and crossfeed is enabled, try next stages
         if (tanks.length === 0 && this.crossfeedEnabled) {
