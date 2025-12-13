@@ -28,6 +28,9 @@ export class HangarScene {
     public showCoG: boolean = false;
     private cogMarker: THREE.Group | null = null;
 
+    // Hover highlight for staging panel
+    private hoveredPartId: string | null = null;
+
     private selectionBox: HTMLDivElement;
 
     constructor(container: HTMLElement, assembly: RocketAssembly) {
@@ -366,6 +369,52 @@ export class HangarScene {
         } else if (this.cogMarker) {
             this.cogMarker.visible = false;
         }
+
+        // Update hover highlight
+        this.updateHoverHighlight();
+    }
+
+    /**
+     * Set the hovered part ID (from staging panel)
+     */
+    highlightHoveredPart(instanceId: string | null): void {
+        this.hoveredPartId = instanceId;
+    }
+
+    /**
+     * Update hover highlight visualization
+     */
+    private updateHoverHighlight(): void {
+        this.partMeshes.forEach((mesh, id) => {
+            let hoverHighlight = mesh.getObjectByName('hover_highlight');
+
+            if (id === this.hoveredPartId) {
+                // Add glow effect if not present
+                if (!hoverHighlight) {
+                    const part = this.assembly.parts.find(p => p.instanceId === id);
+                    if (part) {
+                        const def = PartRegistry.get(part.partId);
+                        if (def) {
+                            // Create a glowing outline
+                            const geo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(def.width + 0.2, def.height + 0.2));
+                            const mat = new THREE.LineBasicMaterial({
+                                color: 0x00ffff,  // Cyan glow
+                                linewidth: 2
+                            });
+                            hoverHighlight = new THREE.LineSegments(geo, mat);
+                            hoverHighlight.name = 'hover_highlight';
+                            hoverHighlight.position.z = 0.3; // Above selection highlight
+                            mesh.add(hoverHighlight);
+                        }
+                    }
+                }
+            } else {
+                // Remove hover highlight if present
+                if (hoverHighlight) {
+                    mesh.remove(hoverHighlight);
+                }
+            }
+        });
     }
 
     private createPartMesh(part: PlacedPart): THREE.Group {

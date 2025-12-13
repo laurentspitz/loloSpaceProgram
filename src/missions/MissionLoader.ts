@@ -127,7 +127,7 @@ export class MissionLoader {
     /**
      * Register mission locales with i18next
      */
-    private static registerLocales(missionId: string, locales: { [lang: string]: object }): void {
+    private static registerLocales(_missionId: string, locales: { [lang: string]: object }): void {
         for (const [lang, translations] of Object.entries(locales)) {
             if (i18next.hasResourceBundle(lang, 'translation')) {
                 i18next.addResourceBundle(lang, 'translation', translations, true, true);

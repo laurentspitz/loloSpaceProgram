@@ -14,6 +14,7 @@ import { RocketInfoPanel } from './panels/RocketInfoPanel';
 import { CelestialBodiesPanel } from './panels/CelestialBodiesPanel';
 import { MissionControlsPanel } from './panels/MissionControlsPanel';
 import { DebugPanel } from './panels/DebugPanel';
+import { StagingPanel } from './panels/StagingPanel';
 
 // Flight
 import { NavballUI } from './flight/NavballUI';
@@ -41,6 +42,7 @@ export class UI {
     private celestialBodiesPanel: CelestialBodiesPanel | null = null;
     private missionControlsPanel: MissionControlsPanel | null = null;
     private debugPanel: DebugPanel | null = null;
+    private stagingPanel: StagingPanel | null = null;
     private navballUI: NavballUI | null = null;
     private minimapRenderer: MinimapRenderer | null = null;
     private themeManager: ThemeManager;
@@ -157,6 +159,12 @@ export class UI {
 
         // Create Rocket Info Panel with bodies
         this.rocketInfoPanel = new RocketInfoPanel({ bodies: this.bodies });
+
+        // Create Staging Panel
+        this.stagingPanel = new StagingPanel();
+        if (rocket) {
+            this.stagingPanel.setRocket(rocket);
+        }
 
         // Create Celestial Bodies Panel
         this.celestialBodiesPanel = new CelestialBodiesPanel({
@@ -308,6 +316,9 @@ export class UI {
     updateRocketInfo(rocket: Rocket): void {
         if (!rocket) return;
         this.currentRocket = rocket;
+
+        // Update staging panel
+        this.stagingPanel?.update();
 
         const result = this.rocketInfoPanel?.update(rocket);
         const nearestBody = result?.nearestBody;
@@ -535,6 +546,7 @@ export class UI {
         this.celestialBodiesPanel?.dispose();
         this.missionControlsPanel?.dispose();
         this.debugPanel?.dispose();
+        this.stagingPanel?.dispose();
         this.navballUI?.dispose();
         this.minimapRenderer?.dispose();
 

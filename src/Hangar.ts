@@ -201,6 +201,11 @@ export class Hangar {
             (x, y) => this.ui.isOverPalette(x, y)
         );
 
+        // Connect staging panel hover to scene highlight
+        this.ui.setPartHoverCallback((instanceId) => {
+            this.scene.highlightHoveredPart(instanceId);
+        });
+
         // Auto-load initialization is done via init()
     }
 

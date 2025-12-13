@@ -47,6 +47,30 @@ export class Rocket {
     // Mesh version for renderer to detect changes
     meshVersion: number = 0;
 
+    /**
+     * Check if a part from partStack is in active stages (from currentStageIndex to end)
+     * Parts in stages[currentStageIndex] and above are still attached and can fire
+     */
+    isPartActive(part: { partId: string; position: any }): boolean {
+        if (!this.stages || this.stages.length === 0) return true;
+
+        // Tolerance for position comparison (floating point issues)
+        const EPSILON = 0.001;
+
+        for (let i = this.currentStageIndex; i < this.stages.length; i++) {
+            const stage = this.stages[i];
+            for (const stagePart of stage) {
+                // Match by position with tolerance
+                const dx = Math.abs(stagePart.position.x - (part.position.x || 0));
+                const dy = Math.abs(stagePart.position.y - (part.position.y || 0));
+                if (dx < EPSILON && dy < EPSILON && stagePart.partId === part.partId) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     constructor(position: Vector2, velocity: Vector2, assemblyConfig?: any) {
         // Use assembly config if provided, otherwise use defaults
         const fuelMass = assemblyConfig?.fuelMass || 500000;
@@ -126,9 +150,11 @@ export class Rocket {
                 // Reset active state
                 part.active = false;
 
-                // Main Engines & Boosters
+                // Main Engines & Boosters - Only fire if part is in active stages
                 if ((part.definition.type === 'engine' || part.definition.type === 'booster') && part.definition.stats.thrust) {
-                    if (input.throttle > 0 && this.engine.hasFuel()) {
+                    const isInActiveStage = this.isPartActive(part);
+
+                    if (input.throttle > 0 && this.engine.hasFuel() && isInActiveStage) {
                         const maxThrust = part.definition.stats.thrust;
                         const thrustMag = maxThrust * input.throttle;
                         activeThrust += thrustMag;
@@ -470,12 +496,15 @@ export class Rocket {
         const bottomUpParts = [...parts].sort((a, b) => a.position.y - b.position.y);
 
         for (const part of bottomUpParts) {
-            // If part is decoupler, it ends the current stage (bottom stage)
+            // If part is decoupler, it gets its OWN stage
             if (part.definition.type === 'decoupler') {
-                // Decoupler belongs to the stage being dropped (usually)
-                currentStage.push(part);
-                this.stages.push(currentStage);
-                currentStage = [];
+                // Push current stage (parts below decoupler)
+                if (currentStage.length > 0) {
+                    this.stages.push(currentStage);
+                    currentStage = [];
+                }
+                // Decoupler in its own stage
+                this.stages.push([part]);
             } else {
                 currentStage.push(part);
             }
@@ -727,8 +756,6 @@ export class Rocket {
             // Debris should spawn above this radius to avoid collision
             const rocketDir = new Vector2(Math.cos(this.rotation), Math.sin(this.rotation));
 
-            // Debris collision radius (based on fairing width / 2)
-            const debrisRadius = (fairing.definition.width || 2) / 2;
 
             // Also account for fairing height (debris visual extends beyond collision circle)
             const fairingHalfHeight = (fairing.definition.height || 4) / 2;

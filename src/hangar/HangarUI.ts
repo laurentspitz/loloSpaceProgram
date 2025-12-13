@@ -5,6 +5,7 @@ import { RocketSaveManager } from './RocketSaveManager';
 import { GameTimeManager } from '../managers/GameTimeManager';
 import i18next from 'i18next';
 import { Agencies } from '../config/Agencies';
+import { HangarStagingPanel } from './HangarStagingPanel';
 
 
 export class HangarUI {
@@ -38,6 +39,7 @@ export class HangarUI {
     private isPaletteOpen: boolean = true;
     private currentGroupBy: 'type' | 'country' | 'agency' | 'year' | 'family' = 'type';
     private collapsedGroups: Set<string> = new Set(); // Default all open (Opt-out)
+    private stagingPanel: HangarStagingPanel | null = null;
 
 
     private languageChangeListener: (() => void) | null = null;
@@ -87,6 +89,10 @@ export class HangarUI {
         this.container.appendChild(this.mirrorButton);
         this.container.appendChild(this.cogButton);
         this.container.appendChild(this.createBackButton());
+
+        // Staging Panel
+        this.stagingPanel = new HangarStagingPanel(this.assembly);
+        this.container.appendChild(this.stagingPanel.getContainer());
 
         document.body.appendChild(this.container);
 
@@ -810,6 +816,9 @@ export class HangarUI {
 
         // Update mass breakdown tooltip
         this.massValue.title = `Dry Mass: ${dryMass.toFixed(0)} kg\nFuel: ${(stats.fuel || 0).toFixed(0)} kg\nTotal: ${stats.mass.toFixed(0)} kg`;
+
+        // Update staging panel
+        this.stagingPanel?.update();
     }
 
     showSaveDialog() {
@@ -1118,8 +1127,20 @@ export class HangarUI {
         overlay.style.pointerEvents = 'auto';
         return overlay;
     }
+    /**
+     * Set callback for when a part is hovered in the staging panel
+     */
+    setPartHoverCallback(callback: (instanceId: string | null) => void): void {
+        if (this.stagingPanel) {
+            this.stagingPanel.onPartHover = callback;
+        }
+    }
 
     dispose() {
+        this.stagingPanel?.dispose();
+        if (this.languageChangeListener) {
+            i18next.off('languageChanged', this.languageChangeListener);
+        }
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
