@@ -51,11 +51,16 @@ export class DragDropManager {
         this.onPartPlaced = onPartPlaced;
         this.isOverTrash = isOverTrash;
 
-        // Event Listeners
+        // Mouse Event Listeners
         window.addEventListener('mousemove', this.onMouseMove);
         window.addEventListener('mouseup', this.onMouseUp);
         window.addEventListener('mousedown', this.onMouseDown);
         window.addEventListener('keydown', this.onKeyDown);
+
+        // Touch Event Listeners (for mobile)
+        window.addEventListener('touchmove', this.onTouchMove, { passive: false });
+        window.addEventListener('touchend', this.onTouchEnd);
+        window.addEventListener('touchcancel', this.onTouchEnd);
     }
 
     startDraggingNewPart(partId: string) {
@@ -266,6 +271,14 @@ export class DragDropManager {
         );
     }
 
+    private getTouchPosition(touch: Touch): THREE.Vector2 {
+        const rect = this.scene.renderer.domElement.getBoundingClientRect();
+        return new THREE.Vector2(
+            ((touch.clientX - rect.left) / rect.width) * 2 - 1,
+            -((touch.clientY - rect.top) / rect.height) * 2 + 1
+        );
+    }
+
     private isBoxSelecting: boolean = false;
     // ...
 
@@ -463,6 +476,108 @@ export class DragDropManager {
         this.pendingClickInstanceId = null;
         this.mouseDownPos = null;
         this.isDragging = false;
+    }
+
+    private onTouchMove = (event: TouchEvent) => {
+        if (!this.dragGhost) return;
+        if (event.touches.length === 0) return;
+
+        event.preventDefault(); // Prevent scrolling while dragging
+
+        const touch = event.touches[0];
+        this.mouse.copy(this.getTouchPosition(touch));
+
+        this.raycaster.setFromCamera(this.mouse, this.scene.camera);
+        const target = new THREE.Vector3();
+        this.raycaster.ray.intersectPlane(this.plane, target);
+
+        this.dragGhost.position.copy(target);
+
+        const snap = this.findSnapPosition(target);
+        if (snap) {
+            this.dragGhost.position.set(snap.pos.x, snap.pos.y, 1);
+            this.dragGhost.rotation.z = snap.rot;
+        } else {
+            this.dragGhost.rotation.z = 0;
+            this.dragGhost.position.z = 1;
+        }
+
+        if (this.mirrorGhost) {
+            const axisX = this.getSymmetryAxisX();
+            const distFromCenter = Math.abs(this.dragGhost.position.x - axisX);
+            if (distFromCenter < 0.1) {
+                this.mirrorGhost.visible = false;
+            } else {
+                this.mirrorGhost.visible = true;
+                this.mirrorGhost.position.x = 2 * axisX - this.dragGhost.position.x;
+                this.mirrorGhost.position.y = this.dragGhost.position.y;
+                this.mirrorGhost.position.z = 1;
+                this.mirrorGhost.scale.x = -1;
+                this.mirrorGhost.rotation.z = -this.dragGhost.rotation.z;
+            }
+        }
+    }
+
+    private onTouchEnd = (event: TouchEvent) => {
+        if (!this.dragGhost || !this.draggedPartId) return;
+
+        // Get last touch position for trash detection
+        const lastTouch = event.changedTouches[0];
+        const clientX = lastTouch?.clientX ?? 0;
+        const clientY = lastTouch?.clientY ?? 0;
+
+        if (this.isOverTrash(clientX, clientY)) {
+            this.scene.scene.remove(this.dragGhost);
+            if (this.mirrorGhost) {
+                this.scene.scene.remove(this.mirrorGhost);
+                this.mirrorGhost = null;
+            }
+        } else {
+            const anchorPos = new Vector2(this.dragGhost.position.x, this.dragGhost.position.y);
+            const anchorRot = this.dragGhost.rotation.z;
+
+            this.scene.selectedInstanceIds.clear();
+
+            this.draggedGroup.forEach(item => {
+                const v = new Vector2(item.offsetX, item.offsetY);
+                v.rotateAround(new Vector2(0, 0), anchorRot);
+
+                const finalPos = anchorPos.clone().add(v);
+                const finalRot = anchorRot + item.rotation;
+
+                const newPart = this.assembly.addPart(item.partId, finalPos, finalRot, item.flipped);
+                this.scene.selectedInstanceIds.add(newPart.instanceId);
+            });
+
+            // Place Mirror Part
+            if (this.mirrorGhost && this.isMirrorMode && this.mirrorGhost.visible) {
+                this.draggedGroup.forEach(item => {
+                    const normalV = new Vector2(item.offsetX, item.offsetY);
+                    normalV.rotateAround(new Vector2(0, 0), anchorRot);
+                    const normalWorldPos = anchorPos.clone().add(normalV);
+                    const normalWorldRot = anchorRot + item.rotation;
+
+                    const axisX = this.getSymmetryAxisX();
+                    const finalMirrorPos = new Vector2(2 * axisX - normalWorldPos.x, normalWorldPos.y);
+                    const finalMirrorRot = -normalWorldRot;
+
+                    const mirrorFlipped = !item.flipped;
+                    const newMirrorPart = this.assembly.addPart(item.partId, finalMirrorPos, finalMirrorRot, mirrorFlipped);
+                    this.scene.selectedInstanceIds.add(newMirrorPart.instanceId);
+                });
+
+                this.scene.scene.remove(this.mirrorGhost);
+                this.mirrorGhost = null;
+            }
+        }
+
+        // Cleanup
+        if (this.dragGhost) this.scene.scene.remove(this.dragGhost);
+        this.dragGhost = null;
+        this.draggedPartId = null;
+        this.draggedGroup = [];
+        this.isDragging = false;
+        this.onPartPlaced();
     }
 
     private onMouseDown = (event: MouseEvent) => {
@@ -694,5 +809,8 @@ export class DragDropManager {
         window.removeEventListener('mouseup', this.onMouseUp);
         window.removeEventListener('mousedown', this.onMouseDown);
         window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('touchmove', this.onTouchMove);
+        window.removeEventListener('touchend', this.onTouchEnd);
+        window.removeEventListener('touchcancel', this.onTouchEnd);
     }
 }

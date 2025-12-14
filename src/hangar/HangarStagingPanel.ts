@@ -49,21 +49,65 @@ export class HangarStagingPanel {
     }
 
     private create(): HTMLDivElement {
+        // Root wrapper (fixed position)
+        const root = document.createElement('div');
+        root.id = 'hangar-staging-panel';
+        root.style.position = 'absolute';
+        root.style.top = '70px';
+        root.style.right = '0';
+        root.style.height = 'auto';
+        root.style.maxHeight = '450px';
+        root.style.pointerEvents = 'auto';
+        root.style.display = 'flex';
+        root.style.alignItems = 'flex-start';
+
+        // Slider container (for animation)
+        const slider = document.createElement('div');
+        slider.style.display = 'flex';
+        slider.style.alignItems = 'flex-start';
+        slider.style.transition = 'transform 0.3s ease';
+
+        // Toggle Button (same size as parts palette: 24x64)
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '▶';
+        toggleBtn.style.width = '24px';
+        toggleBtn.style.height = '64px';
+        toggleBtn.style.marginTop = '20px';
+        toggleBtn.style.backgroundColor = '#444';
+        toggleBtn.style.border = '1px solid #555';
+        toggleBtn.style.borderRight = 'none';
+        toggleBtn.style.borderRadius = '6px 0 0 6px';
+        toggleBtn.style.color = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.display = 'flex';
+        toggleBtn.style.alignItems = 'center';
+        toggleBtn.style.justifyContent = 'center';
+        toggleBtn.style.fontSize = '12px';
+        toggleBtn.style.boxShadow = '-2px 0 5px rgba(0,0,0,0.3)';
+
+        // Panel content
         const panel = document.createElement('div');
-        panel.id = 'hangar-staging-panel';
-        panel.style.position = 'absolute';
-        panel.style.top = '70px';
-        panel.style.right = '20px';
         panel.style.width = '220px';
         panel.style.maxHeight = '450px';
         panel.style.backgroundColor = 'rgba(20, 25, 35, 0.95)';
         panel.style.border = '1px solid #444';
-        panel.style.borderRadius = '8px';
+        panel.style.borderRadius = '8px 0 0 8px';
         panel.style.padding = '10px';
         panel.style.color = '#fff';
-        panel.style.pointerEvents = 'auto';
         panel.style.overflowY = 'auto';
         panel.style.fontFamily = 'monospace';
+
+        let isOpen = true;
+        toggleBtn.onclick = () => {
+            isOpen = !isOpen;
+            if (isOpen) {
+                slider.style.transform = 'translateX(0)';
+                toggleBtn.textContent = '▶';
+            } else {
+                slider.style.transform = 'translateX(220px)';
+                toggleBtn.textContent = '◀';
+            }
+        };
 
         // Title row
         const titleRow = document.createElement('div');
@@ -127,7 +171,11 @@ export class HangarStagingPanel {
         this.stagesContainer.style.gap = '2px';
         panel.appendChild(this.stagesContainer);
 
-        return panel;
+        slider.appendChild(toggleBtn);
+        slider.appendChild(panel);
+        root.appendChild(slider);
+
+        return root;
     }
 
     /**

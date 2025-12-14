@@ -12,6 +12,7 @@ export class HangarUI {
     container: HTMLDivElement;
     palette: HTMLDivElement;
     statsPanel: HTMLDivElement;
+    actionsPanel: HTMLDivElement;
     assembly: RocketAssembly;
     onPartSelected: (partId: string) => void;
     onLaunch: () => void;
@@ -93,6 +94,10 @@ export class HangarUI {
         // Staging Panel
         this.stagingPanel = new HangarStagingPanel(this.assembly);
         this.container.appendChild(this.stagingPanel.getContainer());
+
+        // Actions Panel (right side)
+        this.actionsPanel = this.createActionsPanel();
+        this.container.appendChild(this.actionsPanel);
 
         document.body.appendChild(this.container);
 
@@ -581,14 +586,22 @@ export class HangarUI {
         name.style.maxWidth = '100%';
         item.appendChild(name);
 
-        // Interaction
+        // Interaction - Mouse
         item.onmousedown = (e) => {
             e.preventDefault();
             this.onPartSelected(part.id);
         };
 
-        // Tooltip
+        // Interaction - Touch (for mobile)
+        item.ontouchstart = (e) => {
+            e.preventDefault();
+            this.onPartSelected(part.id);
+        };
+
+        // Tooltip (desktop only - use long press for mobile)
         const tooltip = this.createTooltip(part);
+        let tooltipTimeout: number | null = null;
+
         item.onmouseenter = () => {
             item.style.backgroundColor = '#555';
             document.body.appendChild(tooltip);
@@ -598,6 +611,15 @@ export class HangarUI {
         };
         item.onmouseleave = () => {
             item.style.backgroundColor = '#3a3a3a';
+            if (tooltip.parentElement) document.body.removeChild(tooltip);
+        };
+
+        // Long press for tooltip on mobile
+        item.ontouchend = () => {
+            if (tooltipTimeout) {
+                clearTimeout(tooltipTimeout);
+                tooltipTimeout = null;
+            }
             if (tooltip.parentElement) document.body.removeChild(tooltip);
         };
 
@@ -666,21 +688,49 @@ export class HangarUI {
     }
 
     private createStatsPanel(): HTMLDivElement {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.bottom = '20px';
+        wrapper.style.left = '50%';
+        wrapper.style.transform = 'translateX(-50%)';
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.pointerEvents = 'auto';
+
+        // Toggle button (horizontal: 64x24, like flipped version of side panels)
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '▼';
+        toggleBtn.style.width = '64px';
+        toggleBtn.style.height = '24px';
+        toggleBtn.style.backgroundColor = '#444';
+        toggleBtn.style.border = '1px solid #555';
+        toggleBtn.style.borderBottom = 'none';
+        toggleBtn.style.borderRadius = '6px 6px 0 0';
+        toggleBtn.style.color = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.fontSize = '12px';
+
         const panel = document.createElement('div');
-        panel.style.position = 'absolute';
-        panel.style.bottom = '20px';
-        panel.style.right = '20px';
-        // panel.style.left = '20px'; // old position
-        panel.style.width = '200px';
+        panel.style.width = '280px';
         panel.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
         panel.style.border = '1px solid #444';
         panel.style.borderRadius = '8px';
         panel.style.padding = '10px';
         panel.style.color = '#fff';
-        panel.style.pointerEvents = 'auto';
+
+        let isOpen = true;
+        toggleBtn.onclick = () => {
+            isOpen = !isOpen;
+            panel.style.display = isOpen ? 'block' : 'none';
+            toggleBtn.textContent = isOpen ? '▼' : '▲';
+        };
+
+        wrapper.appendChild(toggleBtn);
+        wrapper.appendChild(panel);
 
         this.renderStatsPanelContent(panel);
-        return panel;
+        return wrapper;
     }
 
     private renderStatsPanelContent(panel: HTMLDivElement) {
@@ -718,10 +768,50 @@ export class HangarUI {
 
         this.twrValue = document.createElement('span');
         panel.appendChild(createStatRow(i18next.t('hangar.twr'), this.twrValue));
+    }
+
+    private createActionsPanel(): HTMLDivElement {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.bottom = '20px';
+        wrapper.style.right = '20px';
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'flex-end';
+        wrapper.style.pointerEvents = 'auto';
+
+        // Toggle button (vertical: 24x64, same as parts palette and staging panel)
+        const toggleBtn = document.createElement('button');
+        toggleBtn.textContent = '▶';
+        toggleBtn.style.width = '24px';
+        toggleBtn.style.height = '64px';
+        toggleBtn.style.backgroundColor = '#444';
+        toggleBtn.style.border = '1px solid #555';
+        toggleBtn.style.borderRight = 'none';
+        toggleBtn.style.borderRadius = '6px 0 0 6px';
+        toggleBtn.style.color = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.fontSize = '12px';
+
+        const panel = document.createElement('div');
+        panel.style.width = '140px';
+        panel.style.backgroundColor = 'rgba(30, 30, 30, 0.9)';
+        panel.style.border = '1px solid #444';
+        panel.style.borderRadius = '8px';
+        panel.style.padding = '10px';
+        panel.style.color = '#fff';
+        panel.style.display = 'flex';
+        panel.style.flexDirection = 'column';
+        panel.style.gap = '8px';
+
+        let isOpen = true;
+        toggleBtn.onclick = () => {
+            isOpen = !isOpen;
+            panel.style.display = isOpen ? 'flex' : 'none';
+            toggleBtn.textContent = isOpen ? '▶' : '◀';
+        };
 
         // New Button
         const newButton = document.createElement('button');
-        newButton.style.marginTop = '15px';
         newButton.style.width = '100%';
         newButton.style.padding = '8px';
         newButton.style.backgroundColor = '#ff9800';
@@ -745,7 +835,6 @@ export class HangarUI {
 
         // Load Button
         const loadButton = document.createElement('button');
-        loadButton.style.marginTop = '8px';
         loadButton.style.width = '100%';
         loadButton.style.padding = '8px';
         loadButton.style.backgroundColor = '#4a9eff';
@@ -760,7 +849,6 @@ export class HangarUI {
 
         // Save Button
         const saveButton = document.createElement('button');
-        saveButton.style.marginTop = '8px';
         saveButton.style.width = '100%';
         saveButton.style.padding = '8px';
         saveButton.style.backgroundColor = '#5a5a5a';
@@ -769,22 +857,13 @@ export class HangarUI {
         saveButton.style.borderRadius = '4px';
         saveButton.style.cursor = 'pointer';
         saveButton.style.fontWeight = 'bold';
-        saveButton.textContent = i18next.t('lib.save', { defaultValue: '💾 SAVE' }); // Using generic save if available, or just keeping emoji
-        saveButton.textContent = '💾 SAVE'; // Actually keep it simple or add to 'hangar'
-        saveButton.textContent = i18next.t('hangar.saveRocket'); // Wait, label button is SAVE
-        saveButton.textContent = '💾 SAVE'; // I dont have a clean key for this button label in my json plan, I used saveRocket for title. I'll stick to English emoji or add key.
-        // Actually, I missed adding a specific key for 'SAVE' button in Hangar. I have 'saveRocket' which is title.
-        // I'll add 'save' to hangar or use 'ui.saveGame' (but that's SAVE GAME).
-        // I used 'settings.save' for Settings.
-        // I'll just use literal '💾 SAVE' as it's universal enough or use i18next.t('settings.save') but preserving emoji?
-        // Let's use i18next.t('settings.save') which is 'Save' and prepend emoji.
         saveButton.textContent = '💾 ' + i18next.t('settings.save');
         saveButton.onclick = () => this.showSaveDialog();
         panel.appendChild(saveButton);
 
+        // Launch Button
         const launchButton = document.createElement('button');
         launchButton.id = 'launch-btn';
-        launchButton.style.marginTop = '8px';
         launchButton.style.width = '100%';
         launchButton.style.padding = '10px';
         launchButton.style.backgroundColor = '#00aaff';
@@ -793,14 +872,14 @@ export class HangarUI {
         launchButton.style.borderRadius = '4px';
         launchButton.style.cursor = 'pointer';
         launchButton.style.fontWeight = 'bold';
-        launchButton.style.fontSize = '16px';
-        launchButton.textContent = i18next.t('hangar.launch');
+        launchButton.style.fontSize = '14px';
+        launchButton.textContent = '🚀 ' + i18next.t('hangar.launch');
         launchButton.onclick = () => this.onLaunch();
         panel.appendChild(launchButton);
 
-        // Since we are returning panel but the method signature asks for it, 
-        // the original createStatsPanel returns the panel.
-        // renderStatsPanelContent just appends to it.
+        wrapper.appendChild(toggleBtn);
+        wrapper.appendChild(panel);
+        return wrapper;
     }
 
     updateStats() {
