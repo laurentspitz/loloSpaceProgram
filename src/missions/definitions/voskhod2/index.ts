@@ -15,7 +15,7 @@ const config: MissionConfig = {
     country: 'USSR',
     agency: 'okb1',
 
-    unlockedParts: ['RCS Thruster Block']
+    unlockedParts: ['rcs_block']
 };
 
 export const locales = { en, fr };

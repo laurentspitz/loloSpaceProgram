@@ -3,6 +3,7 @@ import type { MissionManager, Mission } from '../../missions';
 import type { YearGroup } from './types';
 import { getNodeColor, getFlag } from './ChronologyUtils';
 import { Agencies } from '../../config';
+import { PartRegistry } from '../../hangar/PartRegistry';
 
 export interface EventDetailPanelOptions {
     detailContainer: HTMLDivElement;
@@ -164,9 +165,12 @@ export class EventDetailPanel {
             // Unlocked parts
             if (mission.unlockedParts && mission.unlockedParts.length > 0) {
                 html += `<div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    ${mission.unlockedParts.map(p =>
-                    `<span style="background: #2E7D32; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">🔓 ${p}</span>`
-                ).join('')}
+                    ${mission.unlockedParts.map(partId => {
+                    // Resolve part ID to translated name, fallback to ID for placeholder parts
+                    const def = PartRegistry.get(partId);
+                    const name = def ? i18next.t(def.name) : partId;
+                    return `<span style="background: #2E7D32; color: #fff; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">🔓 ${name}</span>`;
+                }).join('')}
                 </div>`;
             }
 

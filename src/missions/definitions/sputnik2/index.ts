@@ -20,7 +20,7 @@ const config: MissionConfig = {
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 150000, 2000),
 
     rewardMoney: 10000,
-    unlockedParts: ['Mk1 Command Pod']
+    unlockedParts: ['mk1_pod']
 };
 
 export const locales = { en, fr };

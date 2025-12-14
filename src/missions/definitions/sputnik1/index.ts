@@ -20,7 +20,7 @@ const config: MissionConfig = {
     checkCondition: (rocket, bodies) => isInOrbit(rocket, bodies, 150000, 2000),
 
     rewardMoney: 10000,
-    unlockedParts: ['LV-T30 Engine', 'X200 Fuel Tank']
+    unlockedParts: ['engine_lvt30', 'fuel_tank_x200_32']
 };
 
 export const locales = { en, fr };

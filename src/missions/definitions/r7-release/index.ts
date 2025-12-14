@@ -19,15 +19,15 @@ const config: MissionConfig = {
     image: img,
 
     unlockedParts: [
-        'Sputnik 1',
-        'RD-108 Engine',
-        'R7 Block A',
-        'R7 Block B (Right)',
-        'R7 Block B (Left)',
-        'RD-0110 Engine',
-        'R7 Block E',
-        'R7 Guidance Unit',
-        'Generic Fairing'
+        'sputnik_1',
+        'engine_rd108',
+        'tank_block_a',
+        'booster-r7-block-b-right',
+        'booster-r7-block-b-left',
+        'engine_rd0110',
+        'tank_block_e',
+        'control_r7_sas',
+        'fairing-generic'
     ]
 };
 
