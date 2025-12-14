@@ -66,6 +66,9 @@ export class HangarScene {
         // Setup Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(container.clientWidth, container.clientHeight);
+        // Set linear color space to prevent sRGB double-correction that causes over-brightness
+        this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+        this.renderer.toneMapping = THREE.NoToneMapping;
         container.appendChild(this.renderer.domElement);
 
         // Zoom & Input event listeners

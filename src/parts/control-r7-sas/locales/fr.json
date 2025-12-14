@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "control_r7_sas": {
+            "name": "Module de Guidage R7",
+            "description": "Système de guidage autonome soviétique pour la fusée R7. Fournit le contrôle d'attitude et la stabilisation à l'aide de gyroscopes et de réactions de contrôle."
+        }
+    }
+}

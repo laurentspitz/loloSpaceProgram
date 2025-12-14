@@ -308,11 +308,12 @@ export class HangarStagingPanel {
             return;
         }
 
-        // Display stages from 0 (top/payload) to N (bottom/first to fire)
-        for (let i = 0; i < this.stages.length; i++) {
-            // Add "+" button above first stage
-            if (i === 0) {
-                this.stagesContainer.appendChild(this.createAddStageButton(0));
+        // Display stages in reverse order: last stage (payload) at top, first to fire at bottom
+        // This matches the flight staging order
+        for (let i = this.stages.length - 1; i >= 0; i--) {
+            // Add "+" button above each stage
+            if (i === this.stages.length - 1) {
+                this.stagesContainer.appendChild(this.createAddStageButton(this.stages.length));
             }
 
             const stage = this.stages[i];
@@ -320,7 +321,7 @@ export class HangarStagingPanel {
             this.stagesContainer.appendChild(stageEl);
 
             // Add "+" button below each stage
-            this.stagesContainer.appendChild(this.createAddStageButton(i + 1));
+            this.stagesContainer.appendChild(this.createAddStageButton(i));
         }
     }
 
@@ -379,8 +380,8 @@ export class HangarStagingPanel {
         stageDiv.dataset.stageIndex = displayIndex.toString();
         stageDiv.draggable = true;
 
-        // Styling
-        const isFirstToFire = displayIndex === this.stages.length - 1;
+        // Styling - stage 0 is first to fire (at bottom of display)
+        const isFirstToFire = displayIndex === 0;
         stageDiv.style.backgroundColor = isFirstToFire ? 'rgba(255, 100, 0, 0.15)' : 'rgba(40, 45, 60, 0.7)';
         stageDiv.style.border = isFirstToFire ? '2px solid #ff6600' : '2px solid #555';
         stageDiv.style.borderRadius = '6px';
@@ -425,7 +426,8 @@ export class HangarStagingPanel {
         rightSide.style.alignItems = 'center';
         rightSide.style.gap = '4px';
 
-        const activationOrder = this.stages.length - 1 - displayIndex;
+        // Stage index IS the activation order (0 = first to fire)
+        const activationOrder = displayIndex;
         const badge = document.createElement('span');
         badge.style.fontSize = '9px';
         badge.style.padding = '1px 4px';

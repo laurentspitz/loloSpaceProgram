@@ -26,6 +26,7 @@ const config: MissionConfig = {
         'R7 Block B (Left)',
         'RD-0110 Engine',
         'R7 Block E',
+        'R7 Guidance Unit',
         'Generic Fairing'
     ]
 };

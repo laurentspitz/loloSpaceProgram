@@ -118,6 +118,10 @@ export class ThreeRenderer {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         // Cap pixel ratio at 1.5 for performance (prevents 2x or 3x rendering on retina displays)
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        // Set linear color space to prevent sRGB double-correction that causes over-brightness
+        this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+        // Disable tone mapping to keep original texture colors
+        this.renderer.toneMapping = THREE.NoToneMapping;
 
         // Camera setup (orthographic for 2D view)
         const aspect = window.innerWidth / window.innerHeight;
@@ -386,18 +390,19 @@ export class ThreeRenderer {
 
             if (this.currentRocket.partStack && this.currentRocket.partStack.length > 0) {
                 const parts = this.currentRocket.partStack;
-                // Calculate center offset (must match RocketRenderer logic)
-                let centerOffsetY = 0;
-                let centerOffsetX = 0;
+                // Calculate center offset (MUST match RocketRenderer logic - use geometric center, not CoM)
+                // RocketRenderer uses geometric center for mesh positioning
+                const positionsY = parts.map(p => p.position?.y || 0);
+                const minY = Math.min(...positionsY.map((y, i) => y - parts[i].definition.height / 2));
+                const maxY = Math.max(...positionsY.map((y, i) => y + parts[i].definition.height / 2));
+                const centerOffsetY = (maxY + minY) / 2;
 
-                if (this.currentRocket.centerOfMass) {
-                    centerOffsetY = this.currentRocket.centerOfMass.y;
-                    centerOffsetX = this.currentRocket.centerOfMass.x;
-                } else {
-                    const minY = Math.min(...parts.map((p) => (p.position?.y || 0) - p.definition.height / 2));
-                    const maxY = Math.max(...parts.map((p) => (p.position?.y || 0) + p.definition.height / 2));
-                    centerOffsetY = (maxY + minY) / 2;
-                }
+                // Calculate X center as well
+                const positionsX = parts.map(p => p.position?.x || 0);
+                const widths = parts.map(p => p.definition.width || 0);
+                const minX = Math.min(...positionsX.map((x, i) => x - widths[i] / 2));
+                const maxX = Math.max(...positionsX.map((x, i) => x + widths[i] / 2));
+                const centerOffsetX = (maxX + minX) / 2;
 
                 parts.forEach(part => {
                     const isEngine = part.definition.type === 'engine' || part.definition.type === 'booster';

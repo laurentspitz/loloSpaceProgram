@@ -1,0 +1,8 @@
+{
+    "parts": {
+        "control_r7_sas": {
+            "name": "R7 Guidance Unit",
+            "description": "Soviet-era autonomous guidance system for the R7 rocket. Provides attitude control and stability augmentation using gyroscopes and reaction control."
+        }
+    }
+}
