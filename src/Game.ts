@@ -188,8 +188,17 @@ export class Game {
         }
 
         // Apply normal contact force if rocket is resting on surface
+        // BUT: Cancel resting state if rocket has throttle (allows liftoff)
         if (this.rocket && this.isRocketResting && this.restingOn) {
-            this.collisionManager.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
+            const throttle = this.rocket.controls.getThrottle();
+            if (throttle > 0 && this.rocket.engine.hasFuel()) {
+                // Thrust active - cancel resting to allow liftoff
+                this.isRocketResting = false;
+                this.restingOn = null;
+            } else {
+                // No thrust - apply contact force to stay on surface
+                this.collisionManager.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
+            }
         }
 
         // CRITICAL: Prevent rocket from penetrating planets (before Matter.js sync)
@@ -271,7 +280,9 @@ export class Game {
 
         // Render
         this.renderer.isRocketResting = this.isRocketResting; // Pass resting state for visual offset
-        this.renderer.render(this.bodies, this.particles, this.lastTime, dt);
+        // Pass 0 as deltaTime when paused (timeWarp = 0) to freeze particle effects
+        const renderDt = this.timeWarp === 0 ? 0 : dt;
+        this.renderer.render(this.bodies, this.particles, this.lastTime, renderDt);
         this.ui.renderMinimap(this.bodies);
 
         if (this.rocket) {
