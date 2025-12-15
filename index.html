@@ -14,8 +14,18 @@
       transform: translateX(-50%);
       border-radius: 50%;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-      z-index: 100;
+      z-index: 200;
       display: none;
+    }
+
+    /* When navball is inside wrapper, reset positioning */
+    #navball-wrapper #navball-canvas {
+      position: relative !important;
+      bottom: auto !important;
+      left: auto !important;
+      transform: none !important;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     }
   </style>
 </head>

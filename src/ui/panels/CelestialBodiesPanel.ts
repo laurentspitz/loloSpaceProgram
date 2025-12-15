@@ -1,6 +1,6 @@
 import { Body } from '../../core/Body';
 import { Tooltip } from '../components/Tooltip';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 import i18next from 'i18next';
 
 export interface CelestialBodiesPanelOptions {
@@ -8,6 +8,8 @@ export interface CelestialBodiesPanelOptions {
     onFocus: (body: Body) => void;
     onOrbit: (body: Body) => void;
     onTarget: (body: Body) => void;
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
 }
 
 /**
@@ -17,6 +19,7 @@ export class CelestialBodiesPanel {
     private container: HTMLDivElement | null = null;
     private bodyList: HTMLDivElement | null = null;
     private tooltip: Tooltip;
+    private embedded: boolean = false;
 
     private bodies: Body[];
     private onFocus: (body: Body) => void;
@@ -28,6 +31,7 @@ export class CelestialBodiesPanel {
         this.onFocus = options.onFocus;
         this.onOrbit = options.onOrbit;
         this.onTarget = options.onTarget;
+        this.embedded = options.embedded || false;
         this.tooltip = new Tooltip();
         this.create();
     }
@@ -40,17 +44,25 @@ export class CelestialBodiesPanel {
 
         this.buildHierarchy();
 
-        const { container } = createCollapsiblePanel(i18next.t('ui.celestialBodies'), this.bodyList, true);
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
 
-        const wrapper = document.createElement('div');
-        wrapper.id = 'celestial-bodies-panel';
-        wrapper.style.position = 'absolute';
-        wrapper.style.top = '170px';
-        wrapper.style.right = '10px';
-        wrapper.appendChild(container);
+        // Create Sliding Panel (slides right)
+        const { container } = createSlidingPanel({
+            title: i18next.t('ui.celestialBodies'),
+            content: this.bodyList,
+            direction: 'right',
+            width: '220px',
+            startOpen: false
+        });
+        container.id = 'celestial-bodies-panel';
+        container.style.top = '280px';
+        container.style.right = '10px';
 
-        document.body.appendChild(wrapper);
-        this.container = wrapper;
+        document.body.appendChild(container);
+        this.container = container;
     }
 
     private buildHierarchy(): void {
@@ -153,6 +165,11 @@ export class CelestialBodiesPanel {
     setBodies(bodies: Body[]): void {
         this.bodies = bodies;
         this.buildHierarchy();
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.bodyList;
     }
 
     dispose(): void {

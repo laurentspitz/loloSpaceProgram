@@ -1,10 +1,12 @@
 import { Body } from '../../core/Body';
 import { Rocket } from '../../entities/Rocket';
 import { SphereOfInfluence } from '../../physics/SphereOfInfluence';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 
 export interface RocketInfoPanelOptions {
     bodies: Body[];
+    /** If true, panel is embedded in a tabbed container - don't create sliding wrapper */
+    embedded?: boolean;
 }
 
 /**
@@ -12,7 +14,9 @@ export interface RocketInfoPanelOptions {
  */
 export class RocketInfoPanel {
     private container: HTMLDivElement | null = null;
+    private content: HTMLDivElement | null = null;
     private bodies: Body[] = [];
+    private embedded: boolean = false;
 
     // Display elements
     private fuelDisplay: HTMLElement | null = null;
@@ -29,6 +33,7 @@ export class RocketInfoPanel {
 
     constructor(options: RocketInfoPanelOptions) {
         this.bodies = options.bodies;
+        this.embedded = options.embedded || false;
         this.create();
     }
 
@@ -37,6 +42,17 @@ export class RocketInfoPanel {
         content.style.display = 'flex';
         content.style.flexDirection = 'column';
         content.style.gap = '8px';
+
+        if (this.embedded) {
+            content.style.fontSize = '12px';
+            content.style.width = '180px';
+            content.style.backgroundColor = 'rgba(30, 30, 30, 0.8)'; // Darker for better readability
+            content.style.padding = '10px';
+            content.style.borderRadius = '8px';
+            content.style.fontFamily = 'monospace';
+            content.style.color = '#eee';
+            content.style.border = '1px solid #444';
+        }
 
         // Fuel Row
         const fuelRow = document.createElement('div');
@@ -137,11 +153,24 @@ export class RocketInfoPanel {
         content.appendChild(soiRow);
         this.soiDisplay = soiRow.querySelector('#rocket-soi');
 
-        // Create Panel
-        const { container } = createCollapsiblePanel('ROCKET TELEMETRY', content, false, '240px');
+        // Store content for embedded mode
+        this.content = content;
+
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
+
+        // Create Sliding Panel (slides off-screen like Hangar)
+        const { container } = createSlidingPanel({
+            title: 'ROCKET TELEMETRY',
+            content,
+            direction: 'left',
+            width: '240px',
+            startOpen: true
+        });
         container.id = 'rocket-info-panel';
-        container.style.position = 'absolute';
-        container.style.bottom = '10px';
+        container.style.top = '60px';
         container.style.left = '10px';
 
         document.body.appendChild(container);
@@ -153,10 +182,12 @@ export class RocketInfoPanel {
     }
 
     update(rocket: Rocket): { nearestBody: Body | null } {
-        if (!rocket || !this.container) return { nearestBody: null };
+        // In embedded mode, container is null but content exists
+        const displayElement = this.container || this.content;
+        if (!rocket || !displayElement) return { nearestBody: null };
 
-        if (this.container.style.display === 'none') {
-            this.container.style.display = 'block';
+        if (displayElement.style.display === 'none') {
+            displayElement.style.display = 'block';
         }
 
         const info = rocket.getInfo();
@@ -257,6 +288,11 @@ export class RocketInfoPanel {
 
     getContainer(): HTMLDivElement | null {
         return this.container;
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.content;
     }
 
     dispose(): void {

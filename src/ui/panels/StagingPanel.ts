@@ -1,19 +1,27 @@
 import { Rocket } from '../../entities/Rocket';
 import { stagingSystem } from '../../systems/StagingSystem';
 import type { Stage, StageItem } from '../../systems/StagingSystem';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 import i18next from 'i18next';
+
+export interface StagingPanelOptions {
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
+}
 
 /**
  * StagingPanel - Displays staging info and controls during flight
  */
 export class StagingPanel {
     private container: HTMLDivElement | null = null;
+    private content: HTMLDivElement | null = null;
     private stagesContainer: HTMLDivElement | null = null;
     private rocket: Rocket | null = null;
     private lastMeshVersion: number = -1;
+    private embedded: boolean = false;
 
-    constructor() {
+    constructor(options: StagingPanelOptions = {}) {
+        this.embedded = options.embedded || false;
         this.create();
     }
 
@@ -80,11 +88,24 @@ export class StagingPanel {
         crossfeedContainer.appendChild(crossfeedToggle);
         content.appendChild(crossfeedContainer);
 
-        // Create panel
-        const { container } = createCollapsiblePanel('STAGING', content, false, '200px');
+        // Store content for embedded mode
+        this.content = content;
+
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
+
+        // Create Sliding Panel (slides off-screen like Hangar)
+        const { container } = createSlidingPanel({
+            title: 'STAGING',
+            content,
+            direction: 'right',
+            width: '200px',
+            startOpen: true
+        });
         container.id = 'staging-panel';
-        container.style.position = 'absolute';
-        container.style.top = '10px';
+        container.style.top = '60px';
         container.style.right = '10px';
         container.style.zIndex = '100';
 
@@ -423,6 +444,11 @@ export class StagingPanel {
      */
     getContainer(): HTMLDivElement | null {
         return this.container;
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.content;
     }
 
     /**

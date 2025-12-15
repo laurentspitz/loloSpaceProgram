@@ -93,22 +93,49 @@ export class ThemeManager {
             restoreToBody('time-controls-panel', '10px', undefined, undefined, '10px');
             restoreToBody('celestial-bodies-panel', '170px', undefined, undefined, '10px');
 
+            const navWrapper = document.getElementById('navball-wrapper');
+            const navContentRow = document.getElementById('navball-content-row');
             const navCanvas = document.getElementById('navball-canvas');
-            if (navCanvas) {
+            const navButtons = document.getElementById('navball-autopilot-buttons');
+
+            // If we have a wrapper (new collapsible UI), ensure canvas and buttons are inside it
+            if (navWrapper && navCanvas && navContentRow) {
+                if (navCanvas.parentElement !== navContentRow) {
+                    navContentRow.appendChild(navCanvas);
+                }
+                // Reset canvas styles to flow within wrapper
+                navCanvas.style.position = 'relative';
+                navCanvas.style.bottom = 'auto';
+                navCanvas.style.left = 'auto';
+                navCanvas.style.transform = 'none';
+
+                if (navButtons && navButtons.parentElement !== navContentRow) {
+                    navContentRow.appendChild(navButtons);
+                }
+                // Buttons grid style
+                if (navButtons) {
+                    navButtons.style.display = 'grid';
+                    navButtons.style.position = 'static'; // Flow in flex container
+                    navButtons.style.transform = 'none';
+                    navButtons.style.marginTop = '0px'; // Reset margins
+                }
+            }
+            // Legacy behavior (no wrapper)
+            else if (navCanvas) {
                 document.body.appendChild(navCanvas);
                 navCanvas.style.position = 'absolute';
                 navCanvas.style.bottom = '10px';
                 navCanvas.style.left = '50%';
                 navCanvas.style.transform = 'translateX(-50%)';
-            }
-            const navButtons = document.getElementById('navball-autopilot-buttons');
-            if (navButtons) {
-                document.body.appendChild(navButtons);
-                navButtons.style.display = 'grid';
-                navButtons.style.position = 'absolute';
-                navButtons.style.left = '50%';
-                navButtons.style.bottom = '20px';
-                navButtons.style.transform = 'translateX(-180px)';
+
+                if (navButtons) {
+                    document.body.appendChild(navButtons);
+                    navButtons.style.display = 'grid';
+                    navButtons.style.position = 'absolute';
+                    navButtons.style.left = '50%';
+                    navButtons.style.bottom = '20px';
+                    navButtons.style.transform = 'translateX(-180px)';
+                }
             }
         }
     }

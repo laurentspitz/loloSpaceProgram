@@ -1,11 +1,13 @@
 import { ThreeRenderer } from '../../rendering/ThreeRenderer';
 import { Renderer } from '../../Renderer';
 import { GameTimeManager } from '../../managers/GameTimeManager';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 
 export interface DebugPanelOptions {
     renderer: Renderer | ThreeRenderer;
     onYearChange?: (seconds: number) => void;
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
 }
 
 /**
@@ -13,12 +15,15 @@ export interface DebugPanelOptions {
  */
 export class DebugPanel {
     private container: HTMLDivElement | null = null;
+    private content: HTMLDivElement | null = null;
     private renderer: Renderer | ThreeRenderer;
     private onYearChange?: (seconds: number) => void;
+    private embedded: boolean = false;
 
     constructor(options: DebugPanelOptions) {
         this.renderer = options.renderer;
         this.onYearChange = options.onYearChange;
+        this.embedded = options.embedded || false;
         this.create();
     }
 
@@ -182,18 +187,32 @@ export class DebugPanel {
         };
         requestAnimationFrame(updateFPS);
 
-        // Wrap in collapsible panel
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'absolute';
-        wrapper.style.top = '300px';
-        wrapper.style.left = '10px';
-        wrapper.style.transform = 'none';
+        // Store content for embedded mode
+        this.content = debugContent;
 
-        const { container } = createCollapsiblePanel('DEBUG TOOLS', debugContent, true, '200px');
-        wrapper.appendChild(container);
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
 
-        document.body.appendChild(wrapper);
-        this.container = wrapper;
+        // Create Sliding Panel (slides left, bottom position)
+        const { container } = createSlidingPanel({
+            title: 'DEBUG TOOLS',
+            content: debugContent,
+            direction: 'left',
+            width: '200px',
+            startOpen: false
+        });
+        container.style.bottom = '10px';
+        container.style.left = '10px';
+
+        document.body.appendChild(container);
+        this.container = container;
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.content;
     }
 
     dispose(): void {

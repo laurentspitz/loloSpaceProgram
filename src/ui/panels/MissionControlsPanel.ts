@@ -1,6 +1,6 @@
 import { ThreeRenderer } from '../../rendering/ThreeRenderer';
 import { Renderer } from '../../Renderer';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 import i18next from 'i18next';
 
 export interface MissionControlsPanelOptions {
@@ -8,6 +8,8 @@ export interface MissionControlsPanelOptions {
     onTimeWarpChange?: (factor: number) => void;
     getCurrentTimeWarp?: () => number;
     setTimeWarp?: (value: number) => void;
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
 }
 
 /**
@@ -18,6 +20,7 @@ export class MissionControlsPanel {
     private contentContainer: HTMLElement | null = null;
     private renderer: Renderer | ThreeRenderer;
     private lastTimeWarp: number = 1;
+    private embedded: boolean = false;
 
     private getCurrentTimeWarp?: () => number;
     private setTimeWarp?: (value: number) => void;
@@ -26,6 +29,7 @@ export class MissionControlsPanel {
         this.renderer = options.renderer;
         this.getCurrentTimeWarp = options.getCurrentTimeWarp;
         this.setTimeWarp = options.setTimeWarp;
+        this.embedded = options.embedded || false;
         this.create();
     }
 
@@ -38,10 +42,21 @@ export class MissionControlsPanel {
         this.contentContainer = controlsContent;
         this.renderContent();
 
-        const { container } = createCollapsiblePanel(i18next.t('ui.missionControls'), controlsContent, true, '200px');
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
+
+        // Create Sliding Panel (slides left)
+        const { container } = createSlidingPanel({
+            title: i18next.t('ui.missionControls'),
+            content: controlsContent,
+            direction: 'left',
+            width: '200px',
+            startOpen: false
+        });
         container.id = 'mission-controls-panel';
-        container.style.position = 'absolute';
-        container.style.top = '10px';
+        container.style.top = '320px';
         container.style.left = '10px';
 
         document.body.appendChild(container);
@@ -168,6 +183,11 @@ export class MissionControlsPanel {
 
     updateTexts(): void {
         this.renderContent();
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLElement | null {
+        return this.contentContainer;
     }
 
     dispose(): void {

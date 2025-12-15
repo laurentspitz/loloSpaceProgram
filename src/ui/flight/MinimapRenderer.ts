@@ -1,6 +1,11 @@
 import { Body } from '../../core/Body';
 import { Vector2 } from '../../core/Vector2';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
+
+export interface MinimapRendererOptions {
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
+}
 
 /**
  * Minimap Renderer - Renders a 2D minimap of the solar system
@@ -9,11 +14,14 @@ export class MinimapRenderer {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private container: HTMLDivElement | null = null;
+    private content: HTMLDivElement | null = null;
     private scale: number = 1.0;
     private renderer: any;
+    private embedded: boolean = false;
 
-    constructor(renderer: any) {
+    constructor(renderer: any, options: MinimapRendererOptions = {}) {
         this.renderer = renderer;
+        this.embedded = options.embedded || false;
         this.canvas = document.createElement('canvas');
         this.canvas.width = 200;
         this.canvas.height = 200;
@@ -59,8 +67,22 @@ export class MinimapRenderer {
         controls.appendChild(minusBtn);
         mapContent.appendChild(controls);
 
-        const { container } = createCollapsiblePanel('MINIMAP', mapContent, true, '200px');
-        container.style.position = 'absolute';
+        // Store content for embedded mode
+        this.content = mapContent;
+
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
+
+        // Create Sliding Panel (slides down, bottom position)
+        const { container } = createSlidingPanel({
+            title: '',
+            content: mapContent,
+            direction: 'bottom',
+            width: '220px',
+            startOpen: false
+        });
         container.style.bottom = '10px';
         container.style.right = '10px';
         container.id = 'minimap-container';
@@ -133,6 +155,11 @@ export class MinimapRenderer {
             viewWidth,
             viewHeight
         );
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.content;
     }
 
     dispose(): void {

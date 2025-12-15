@@ -1,9 +1,11 @@
 import { GameTimeManager } from '../../managers/GameTimeManager';
-import { createCollapsiblePanel } from '../components/CollapsiblePanel';
+import { createSlidingPanel } from '../components/SlidingPanel';
 import i18next from 'i18next';
 
 export interface TimeControlsPanelOptions {
     onTimeWarpChange?: (factor: number) => void;
+    /** If true, panel is embedded in a tabbed container */
+    embedded?: boolean;
 }
 
 /**
@@ -11,13 +13,16 @@ export interface TimeControlsPanelOptions {
  */
 export class TimeControlsPanel {
     private container: HTMLDivElement | null = null;
+    private content: HTMLDivElement | null = null;
     private timeSpeedDisplay: HTMLElement | null = null;
     private currentTimeWarp: number = 1;
     private warpLevels: number[] = [0, 0.1, 0.2, 0.5, 1, 5, 10, 50, 100, 500, 1000, 5000];
     private onTimeWarpChange?: (factor: number) => void;
+    private embedded: boolean = false;
 
     constructor(options: TimeControlsPanelOptions = {}) {
         this.onTimeWarpChange = options.onTimeWarpChange;
+        this.embedded = options.embedded || false;
         this.create();
     }
 
@@ -114,9 +119,22 @@ export class TimeControlsPanel {
 
         content.appendChild(controlsRow);
 
-        // Create Collapsible Panel
-        const { container } = createCollapsiblePanel(i18next.t('ui.timeControl'), content, false, '160px');
-        container.style.position = 'absolute';
+        // Store content for embedded mode
+        this.content = content;
+
+        // In embedded mode, don't create sliding wrapper
+        if (this.embedded) {
+            return;
+        }
+
+        // Create Sliding Panel (slides off-screen like Hangar)
+        const { container } = createSlidingPanel({
+            title: '',
+            content,
+            direction: 'right',
+            width: '240px',
+            startOpen: true
+        });
         container.style.top = '10px';
         container.style.right = '10px';
         container.id = 'time-controls-panel';
@@ -196,6 +214,11 @@ export class TimeControlsPanel {
         if (elapsedDisplay) {
             elapsedDisplay.innerText = metString;
         }
+    }
+
+    /** Get the content element (for embedded mode) */
+    getContent(): HTMLDivElement | null {
+        return this.content;
     }
 
     dispose(): void {

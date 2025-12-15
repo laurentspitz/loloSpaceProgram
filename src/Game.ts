@@ -1,4 +1,3 @@
-import { Physics } from './physics/Physics';
 import { ThreeRenderer } from './rendering/ThreeRenderer';
 import { Body } from './core/Body';
 import { UI } from './ui/UI';
@@ -6,43 +5,48 @@ import { OrbitUtils } from './physics/OrbitUtils';
 import { Rocket } from './entities/Rocket';
 import { Debris } from './entities/Debris';
 import { Particle } from './entities/Particle';
-import { CollisionManager } from './physics/CollisionManager';
 import { SphereOfInfluence } from './physics/SphereOfInfluence';
 import { TrajectoryPredictor } from './systems/TrajectoryPredictor';
 import { Vector2 } from './core/Vector2';
-import { SceneSetup } from './SceneSetup';
 import { ManeuverNodeManager } from './systems/ManeuverNodeManager';
 import { Settings } from './config';
 import { GameTimeManager } from './managers/GameTimeManager';
 import type { RocketConfig } from './config';
 import i18next from './services/i18n';
+import { createSimulation } from './simulation';
+import type { ISimulation } from './simulation';
+import { Physics } from './physics/Physics'; // For deserializeState fast-forward
 
 import { MissionManager } from './missions';
 
 export class Game {
-    bodies: Body[];
-    debris: Debris[] = []; // Track debris separately
-    particles: Particle[] = []; // Track particles
+    // Game state (delegated from simulation)
+    get bodies(): Body[] { return this.simulation.getBodies(); }
+    get debris(): Debris[] { return this.simulation.getDebris(); }
+    get rocket(): Rocket | null { return this.simulation.getRocket(); }
+    get collisionManager() { return this.simulation.getCollisionManager(); }
+    get isRocketResting(): boolean { return this.simulation.isRocketResting(); }
+    get restingOn(): Body | null { return this.simulation.getRestingBody(); }
+
+    /** Break the resting state (when teleporting rocket to orbit, etc.) */
+    breakRestingState(): void { this.simulation.breakRestingState(); }
+
+    particles: Particle[] = []; // Track particles (game-level, not simulation)
     renderer: ThreeRenderer;
     ui: UI;
-    rocket: Rocket | null = null;
-    collisionManager: CollisionManager;
     maneuverNodeManager: ManeuverNodeManager;
-    isRocketResting: boolean = false; // Track if rocket is resting on surface
-    restingOn: Body | null = null; // Which body is rocket resting on
     lastTime: number = 0;
     timeScale: number = 1; // 1x = Real time
     timeWarp: number = 1;
     frameCount: number = 0;
-    orbitRecalcInterval: number = 1; // Recalculate orbits every frame for smooth visualization
+    orbitRecalcInterval: number = 1;
 
     // Systems
     public missionManager: MissionManager;
 
-    // Max physics step size for stability (e.g. 1 second)
-    // If we warp time, we take multiple steps of this size or smaller
-    readonly MAX_PHYSICS_STEP = Settings.PHYSICS.MAX_STEP;
-    private sceneSetup: typeof SceneSetup;
+    // Simulation module (V1 or V2 based on feature flag)
+    private simulation: ISimulation;
+
     private animationFrameId: number | null = null;
     private isDisposed: boolean = false;
     private lastOrbitUpdateTime: number = 0;
@@ -54,7 +58,6 @@ export class Game {
     gameMode: 'mission' | 'sandbox' = 'mission';
 
     constructor(assembly?: RocketConfig) {
-        this.sceneSetup = SceneSetup;
         this.missionManager = new MissionManager();
 
         // Initialize canvas
@@ -84,49 +87,37 @@ export class Game {
             this.timeWarp = factor;
         };
 
-        // Initialize collision manager
-        this.collisionManager = new CollisionManager();
-
-        // Setup collision handler
-        this.collisionManager.onCollision = (bodyA, bodyB) => {
-            this.handleCollision(bodyA, bodyB);
-        };
-
-        // Initialize scene
-        this.bodies = this.sceneSetup.initBodies(this.collisionManager);
-
-        // Create rocket (with assembly if provided)
+        // Create simulation (V1 or V2 based on feature flag)
         const rocketConfig = (assembly && typeof (assembly as any).getRocketConfig === 'function')
             ? (assembly as any).getRocketConfig()
             : assembly;
 
-        console.log('Game: Initializing rocket with config:', rocketConfig);
-        this.rocket = this.sceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig);
+        this.simulation = createSimulation();
+        this.simulation.init(rocketConfig);
 
-        // Handle stage separation
-        this.rocket.onStageSeparation = (debris: Debris) => {
-            this.bodies.push(debris);
-            this.debris.push(debris); // Add to debris list
+        // Setup collision handler
+        this.simulation.setCollisionHandler((bodyA, bodyB) => {
+            this.handleCollision(bodyA, bodyB);
+        });
+
+        // Setup stage separation handler (for particles)
+        this.simulation.setStageSeparationHandler((_debris: Debris) => {
             console.log('Debris added to simulation');
-        };
+        });
 
-        this.renderer.currentRocket = this.rocket;
-        if (this.rocket) {
-            this.ui.init(this.bodies, this.rocket, this.maneuverNodeManager, this.missionManager);
-        }
-        // Start with camera following rocket
-        this.renderer.followedBody = this.rocket!.body;
-
-        // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
-        // Zoom in on rocket (scale = meters to pixels, smaller = more zoomed in)
-        // Use auto-zoom function to properly focus the rocket
-        if (this.rocket) {
-            this.renderer.autoZoomToBody(this.rocket.body);
+        // Setup renderer
+        const rocket = this.simulation.getRocket();
+        if (rocket) {
+            this.renderer.currentRocket = rocket;
+            this.ui.init(this.bodies, rocket, this.maneuverNodeManager, this.missionManager);
+            this.renderer.followedBody = rocket.body;
+            this.renderer.autoZoomToBody(rocket.body);
         }
 
         // Don't start the loop yet - wait for start() to be called
         // This allows deserializeState to run before the simulation begins
     }
+
 
 
     /**
@@ -163,100 +154,12 @@ export class Game {
             this.missionManager.update(this.rocket, currentYear, this.bodies);
         }
 
-        // Update rocket controls
-        if (this.rocket) {
-            // Pass real time (dt) for controls, and scaled physics time (totalDt) for thrust
-            this.rocket.update(dt, totalDt, this.bodies);
-        }
+        // Step the simulation (handles all physics, collisions, debris)
+        this.simulation.step(dt, this.timeScale, this.timeWarp);
 
-        // Sub-stepping for stability
-        // Break the total time into safe chunks
-        while (totalDt > 0) {
-            const stepDt = Math.min(totalDt, this.MAX_PHYSICS_STEP);
-
-            // Apply physics to all bodies
-            // Rocket body is already in this.bodies (added in constructor)
-            const allBodies = this.bodies;
-            Physics.step(allBodies, stepDt);
-
-            totalDt -= stepDt;
-        }
-
-        // Execute deferred fairing ejection (after physics, so positions are synced)
+        // Execute deferred fairing ejection
         if (this.rocket) {
             this.rocket.executePendingEjection();
-        }
-
-        // Apply normal contact force if rocket is resting on surface
-        // BUT: Cancel resting state if rocket has throttle (allows liftoff)
-        if (this.rocket && this.isRocketResting && this.restingOn) {
-            const throttle = this.rocket.controls.getThrottle();
-            if (throttle > 0 && this.rocket.engine.hasFuel()) {
-                // Thrust active - cancel resting to allow liftoff
-                this.isRocketResting = false;
-                this.restingOn = null;
-            } else {
-                // No thrust - apply contact force to stay on surface
-                this.collisionManager.applyContactForce(this.rocket, this.restingOn, dt * this.timeScale * this.timeWarp);
-            }
-        }
-
-        // CRITICAL: Prevent rocket from penetrating planets (before Matter.js sync)
-        if (this.rocket) {
-            const result = this.collisionManager.preventPenetration(this.rocket, this.bodies);
-            this.isRocketResting = result.isResting;
-            this.restingOn = result.restingOn;
-        }
-
-        // Sync positions to Matter.js and check for collisions
-        this.collisionManager.syncPositions(this.bodies, this.rocket);
-        this.collisionManager.step(dt); // Use real dt, not scaled
-
-        // Handle debris collisions and explosions
-        for (let i = this.debris.length - 1; i >= 0; i--) {
-            const d = this.debris[i];
-            const crashed = this.collisionManager.preventDebrisPenetration(d, this.bodies);
-
-            // Remove debris if crashed or expired
-            if (crashed || d.isExpired()) {
-                if (crashed) {
-                    console.log('💥 Debris exploded on impact!');
-                } else {
-                    console.log('🗑️ Debris expired and removed');
-                }
-
-                // Spawn explosion particles (smaller for expiry)
-                const particleCount = crashed ? 20 : 5;
-                for (let j = 0; j < particleCount; j++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = Math.random() * 50 + 20; // Fast explosion
-                    const velocity = new Vector2(
-                        Math.cos(angle) * speed,
-                        Math.sin(angle) * speed
-                    ).add(d.velocity.scale(0.5)); // Inherit some velocity
-
-                    const color = Math.random() > 0.5 ? '#FF4500' : '#FFA500'; // Orange/Red
-                    const size = Math.random() * 2 + 1;
-                    const lifetime = Math.random() * 1.0 + 0.5; // 0.5-1.5s
-
-                    this.particles.push(new Particle(
-                        d.position.clone(),
-                        velocity,
-                        color,
-                        size,
-                        lifetime
-                    ));
-                }
-
-                // Remove from physics bodies
-                const bodyIndex = this.bodies.indexOf(d);
-                if (bodyIndex > -1) {
-                    this.bodies.splice(bodyIndex, 1);
-                }
-
-                // Remove from debris list
-                this.debris.splice(i, 1);
-            }
         }
 
         // Update particles
@@ -476,8 +379,10 @@ export class Game {
         const relVel = rocket.body.velocity.sub(planet.velocity);
         const impactSpeed = relVel.mag();
 
-        // IMPORTANT: Correct penetration first to prevent passing through
-        this.collisionManager.correctPenetration(rocket, planet, Settings.GAMEPLAY.COLLISION.PENETRATION_CORRECTION_SPEED);
+        // IMPORTANT: Correct penetration first to prevent passing through (V1 only)
+        if (this.collisionManager) {
+            this.collisionManager.correctPenetration(rocket, planet, Settings.GAMEPLAY.COLLISION.PENETRATION_CORRECTION_SPEED);
+        }
 
         // Collision response based on speed
         const SOFT_LANDING_THRESHOLD = Settings.GAMEPLAY.COLLISION.SOFT_LANDING_THRESHOLD;

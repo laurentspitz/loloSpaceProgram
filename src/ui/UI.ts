@@ -28,6 +28,8 @@ import type { CockpitTheme } from './types';
 
 // Other UI components
 import { ManeuverNodeUI } from './ManeuverNodeUI';
+import { getHamburgerMenu, type HamburgerMenu } from './components/HamburgerMenu';
+import { createTabbedSlidingPanel, type TabbedSlidingPanelResult, type TabDefinition } from './components/TabbedSlidingPanel';
 
 export class UI {
     renderer: Renderer | ThreeRenderer;
@@ -46,6 +48,11 @@ export class UI {
     private navballUI: NavballUI | null = null;
     private minimapRenderer: MinimapRenderer | null = null;
     private themeManager: ThemeManager;
+    private hamburgerMenu: HamburgerMenu | null = null;
+
+    // Tabbed sliding panels
+    private leftTabbedPanel: TabbedSlidingPanelResult | null = null;
+    private rightTabbedPanel: TabbedSlidingPanelResult | null = null;
 
     // Maneuver nodes
     maneuverNodeManager: ManeuverNodeManager | null = null;
@@ -88,8 +95,12 @@ export class UI {
     }
 
     private createPanels(): void {
-        // Time Controls
+        // Create panels in EMBEDDED mode (they won't create their own containers)
+
+        // Time Controls (embedded)
+        // Time Controls (standalone) - Top Right
         this.timeControlsPanel = new TimeControlsPanel({
+            embedded: false,
             onTimeWarpChange: (factor) => {
                 if (this.onTimeWarpChange) {
                     this.onTimeWarpChange(factor);
@@ -97,15 +108,17 @@ export class UI {
             }
         });
 
-        // Mission Controls
+        // Mission Controls (embedded)
         this.missionControlsPanel = new MissionControlsPanel({
+            embedded: true,
             renderer: this.renderer,
             getCurrentTimeWarp: () => this.timeControlsPanel?.getCurrentTimeWarp() || 1,
             setTimeWarp: (value) => this.timeControlsPanel?.setTimeWarp(value)
         });
 
-        // Debug Panel
+        // Debug Panel (embedded)
         this.debugPanel = new DebugPanel({
+            embedded: true,
             renderer: this.renderer,
             onYearChange: (seconds) => {
                 const game = (window as any).game;
@@ -116,8 +129,89 @@ export class UI {
             }
         });
 
-        // Minimap
-        this.minimapRenderer = new MinimapRenderer(this.renderer);
+        // Minimap (embedded)
+        // Minimap (standalone) - Bottom Right
+        this.minimapRenderer = new MinimapRenderer(this.renderer, { embedded: false });
+
+        // Hamburger menu for mobile (groups secondary panels)
+        this.hamburgerMenu = getHamburgerMenu();
+
+        // Note: RocketInfoPanel, StagingPanel, CelestialBodiesPanel are created in init()
+        // because they need bodies/rocket to be initialized first
+    }
+
+    /**
+     * Create the tabbed panel containers after init
+     */
+    private createTabbedPanels(): void {
+        // Create LEFT tabbed panel with: RocketInfo, MissionControls, Debug
+        const leftTabs = [];
+
+
+
+        if (this.missionControlsPanel?.getContent()) {
+            leftTabs.push({
+                id: 'view',
+                title: 'View',
+                icon: '👁️',
+                content: this.missionControlsPanel.getContent()!
+            });
+        }
+
+        if (this.debugPanel?.getContent()) {
+            leftTabs.push({
+                id: 'debug',
+                title: 'Debug',
+                icon: '🔧',
+                content: this.debugPanel.getContent()!
+            });
+        }
+
+        if (leftTabs.length > 0) {
+            this.leftTabbedPanel = createTabbedSlidingPanel({
+                tabs: leftTabs,
+                direction: 'left',
+                width: '240px',
+                startOpen: true
+                // defaultTab removed so it defaults to first tab (mission)
+            });
+            this.leftTabbedPanel.container.style.top = '60px';
+            this.leftTabbedPanel.container.style.left = '10px';
+            document.body.appendChild(this.leftTabbedPanel.container);
+        }
+
+        // Create RIGHT tabbed panel with: Staging, CelestialBodies (Middle Right)
+        const rightTabs: TabDefinition[] = [];
+
+        if (this.stagingPanel?.getContent()) {
+            rightTabs.push({
+                id: 'staging',
+                title: 'Staging',
+                icon: '🔥',
+                content: this.stagingPanel.getContent()!
+            });
+        }
+
+        if (this.celestialBodiesPanel?.getContent()) {
+            rightTabs.push({
+                id: 'bodies',
+                title: 'Bodies',
+                icon: '🌍',
+                content: this.celestialBodiesPanel.getContent()!
+            });
+        }
+
+        if (rightTabs.length > 0) {
+            this.rightTabbedPanel = createTabbedSlidingPanel({
+                tabs: rightTabs,
+                direction: 'right',
+                width: '220px',
+                startOpen: true
+            });
+            this.rightTabbedPanel.container.style.top = '120px'; // Move down to avoid overlap with TimeControls
+            this.rightTabbedPanel.container.style.right = '10px';
+            document.body.appendChild(this.rightTabbedPanel.container);
+        }
     }
 
     init(bodies: Body[], rocket?: Rocket, maneuverNodeManager?: ManeuverNodeManager, missionManager?: MissionManager) {
@@ -157,17 +251,18 @@ export class UI {
             };
         }
 
-        // Create Rocket Info Panel with bodies
-        this.rocketInfoPanel = new RocketInfoPanel({ bodies: this.bodies });
+        // Create Rocket Info Panel with bodies (embedded)
+        this.rocketInfoPanel = new RocketInfoPanel({ bodies: this.bodies, embedded: true });
 
-        // Create Staging Panel
-        this.stagingPanel = new StagingPanel();
+        // Create Staging Panel (embedded)
+        this.stagingPanel = new StagingPanel({ embedded: true });
         if (rocket) {
             this.stagingPanel.setRocket(rocket);
         }
 
-        // Create Celestial Bodies Panel
+        // Create Celestial Bodies Panel (embedded)
         this.celestialBodiesPanel = new CelestialBodiesPanel({
+            embedded: true,
             bodies: this.bodies,
             onFocus: (body) => {
                 this.renderer.followedBody = body;
@@ -178,6 +273,14 @@ export class UI {
             onOrbit: (body) => this.placeRocketInOrbit(body),
             onTarget: (body) => this.setTarget(body)
         });
+
+        // Integrate Telemetry into Navball
+        if (this.rocketInfoPanel?.getContent() && this.navballUI) {
+            this.navballUI.addLeftContent(this.rocketInfoPanel.getContent()!);
+        }
+
+        // Create the tabbed panel containers with all embedded panels
+        this.createTabbedPanels();
 
         this.updateMissionHUD();
     }
@@ -284,8 +387,7 @@ export class UI {
             if ((window as any).game?.collisionManager) {
                 const game = (window as any).game;
                 game.collisionManager.syncPositions([game.bodies || []], rocket);
-                game.isRocketResting = false;
-                game.restingOn = null;
+                game.breakRestingState(); // Use method instead of setting properties
             }
 
             this.renderer.followedBody = rocket.body;
@@ -549,6 +651,7 @@ export class UI {
         this.stagingPanel?.dispose();
         this.navballUI?.dispose();
         this.minimapRenderer?.dispose();
+        this.hamburgerMenu?.dispose();
 
         const missionDisplay = document.getElementById('mission-display');
         if (missionDisplay?.parentNode) {
