@@ -29,6 +29,10 @@ export class Vector2 {
         return new Vector2(this.x / m, this.y / m);
     }
 
+    dot(v: Vector2): number {
+        return this.x * v.x + this.y * v.y;
+    }
+
     distanceTo(v: Vector2): number {
         return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2));
     }

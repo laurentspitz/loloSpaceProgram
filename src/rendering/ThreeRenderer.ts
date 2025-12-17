@@ -61,6 +61,7 @@ export class ThreeRenderer {
     debugCollisionCircle: THREE.Line | null = null;
     debugPlanetColliders: Map<Body, THREE.Line> = new Map();
     debrisColliderMeshes: Map<Body, THREE.Line> = new Map();
+    debugFloorLine: THREE.Line | null = null; // Local floor debug line
     cogMarker: THREE.Group | null = null; // Center of gravity marker
 
     // Maneuver Nodes
@@ -1806,5 +1807,45 @@ export class ThreeRenderer {
         if (newScale !== this.scale) {
             this.scale = newScale;
         }
+    }
+
+    /**
+     * Render debug floor line for collision visualization.
+     * Shows the local floor where collision detection happens, in magenta.
+     */
+    renderDebugFloor(floorInfo: { start: { x: number; y: number }; end: { x: number; y: number } } | null): void {
+        // Hide if no floor info or colliders not shown
+        if (!floorInfo || !this.showColliders) {
+            if (this.debugFloorLine) {
+                this.debugFloorLine.visible = false;
+            }
+            return;
+        }
+
+        // Create or update floor line
+        if (!this.debugFloorLine) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([0, 0, 0, 1, 0, 0]);
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            const material = new THREE.LineBasicMaterial({ color: 0xFF00FF, linewidth: 3 }); // Magenta for floor
+            this.debugFloorLine = new THREE.Line(geometry, material);
+            this.scene.add(this.debugFloorLine);
+        }
+
+        // Use same center as other rendering
+        const center = this.getCenter();
+
+        // Update vertices
+        const positions = this.debugFloorLine.geometry.getAttribute('position');
+        const array = positions.array as Float32Array;
+        array[0] = (floorInfo.start.x - center.x) * this.scale;
+        array[1] = (floorInfo.start.y - center.y) * this.scale;
+        array[2] = 0.6; // Above planet colliders
+        array[3] = (floorInfo.end.x - center.x) * this.scale;
+        array[4] = (floorInfo.end.y - center.y) * this.scale;
+        array[5] = 0.6;
+        positions.needsUpdate = true;
+
+        this.debugFloorLine.visible = true;
     }
 }

@@ -3,7 +3,7 @@ import { Body } from '../core/Body';
 import { Rocket } from '../entities/Rocket';
 import { Debris } from '../entities/Debris';
 import { Physics } from '../physics/Physics';
-import { CollisionManager } from '../physics/CollisionManager';
+import { CollisionManager, type FloorDebugInfo } from '../physics/CollisionManager';
 import { SceneSetup } from '../SceneSetup';
 import { Settings } from '../config';
 import type { RocketConfig } from '../config';
@@ -22,6 +22,7 @@ export class Simulation implements ISimulation {
     // Resting state
     private _isRocketResting: boolean = false;
     private _restingOn: Body | null = null;
+    private _floorInfo: FloorDebugInfo | null = null;
 
     // Physics settings
     private readonly MAX_PHYSICS_STEP = Settings.PHYSICS.MAX_STEP;
@@ -108,18 +109,11 @@ export class Simulation implements ISimulation {
             }
         }
 
-        // Prevent rocket from penetrating planets
-        const velBefore = this.rocket.body.velocity.mag();
+        // Prevent rocket from penetrating planets (using local floor approach)
         const result = this.collisionManager.preventPenetration(this.rocket, this.bodies);
-        const velAfter = this.rocket.body.velocity.mag();
-
-        // Debug log if velocity changed significantly
-        if (Math.abs(velAfter - velBefore) > 1) {
-            console.log(`⚠️ preventPenetration: vel ${velBefore.toFixed(1)} → ${velAfter.toFixed(1)}, isResting=${result.isResting}`);
-        }
-
         this._isRocketResting = result.isResting;
         this._restingOn = result.restingOn;
+        this._floorInfo = result.floorInfo;
 
         // Sync positions to Matter.js and check for collisions
         this.collisionManager.syncPositions(this.bodies, this.rocket);
@@ -196,6 +190,10 @@ export class Simulation implements ISimulation {
     breakRestingState(): void {
         this._isRocketResting = false;
         this._restingOn = null;
+    }
+
+    getFloorInfo(): FloorDebugInfo | null {
+        return this._floorInfo;
     }
 
     // ========================================

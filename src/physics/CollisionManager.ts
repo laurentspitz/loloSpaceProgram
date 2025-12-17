@@ -5,6 +5,16 @@ import { Debris } from '../entities/Debris';
 import { Vector2 } from '../core/Vector2';
 
 /**
+ * Debug info for floor visualization
+ */
+export interface FloorDebugInfo {
+    start: Vector2;
+    end: Vector2;
+    normal: Vector2;
+    surfacePoint: Vector2;
+}
+
+/**
  * CollisionManager - Manages Matter.js physics engine for local collisions
  * 
  * Architecture:
@@ -203,94 +213,109 @@ export class CollisionManager {
 
     /**
      * Prevent rocket from penetrating any planet surface
-     * Called every frame to enforce surface boundary
+     * Uses local floor approach: calculates altitude above surface and treats it as a floor collision.
+     * This avoids numerical precision issues with large planet radii.
      */
-    preventPenetration(rocket: Rocket, bodies: Body[]): { isResting: boolean, restingOn: Body | null } {
+    preventPenetration(rocket: Rocket, bodies: Body[]): { isResting: boolean, restingOn: Body | null, floorInfo: FloorDebugInfo | null } {
         let isResting = false;
         let restingOn: Body | null = null;
+        let floorInfo: FloorDebugInfo | null = null;
 
-        // Check all bodies for potential penetration
-        bodies.forEach(body => {
-            if (body === rocket.body) return; // Skip rocket itself
-            if (body.name === 'Debris') return; // Ignore debris collision (requested by user)
+        // Find the nearest body (the one we might collide with)
+        let nearestBody: Body | null = null;
+        let minDist = Infinity;
 
-            const visualRadius = body.radius * this.VISUAL_SCALE;
-            const rocketHalfHeight = rocket.body.radius * this.VISUAL_SCALE;
-            const contactDist = visualRadius + rocketHalfHeight;
+        for (const body of bodies) {
+            if (body === rocket.body) continue;
+            if (body.name === 'Debris') continue;
 
             const dist = rocket.body.position.distanceTo(body.position);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestBody = body;
+            }
+        }
 
-            if (dist < contactDist + 1.0) { // +1m threshold to detect near-surface
-                // Rocket is near or penetrating surface
-                const direction = rocket.body.position.sub(body.position).normalize();
+        if (!nearestBody) {
+            return { isResting, restingOn, floorInfo };
+        }
 
-                // Calculate velocity relative to planet
-                const relVel = rocket.body.velocity.sub(body.velocity);
-                const normalVel = relVel.x * direction.x + relVel.y * direction.y; // dot product
+        // Calculate altitude above surface (local floor approach)
+        const planetRadius = nearestBody.radius * this.VISUAL_SCALE;
+        const rocketHalfHeight = rocket.body.radius; // Rocket's collision radius (half height)
+        const altitude = minDist - planetRadius; // Height above surface
 
-                // Only enforce surface position if:
-                // 1. Actually penetrating (dist < contactDist), OR
-                // 2. Moving towards surface (normalVel < 0)
-                const isPenetrating = dist < contactDist;
-                const isMovingTowardsSurface = normalVel < 0;
+        // Direction from planet center to rocket (surface normal)
+        const surfaceNormal = rocket.body.position.sub(nearestBody.position).normalize();
 
-                if (isPenetrating || (isMovingTowardsSurface && dist < contactDist + 0.5)) {
-                    // Push rocket to exact surface position
-                    rocket.body.position = body.position.add(direction.scale(contactDist));
+        // Floor debug info (surface point + tangent line)
+        const surfacePoint = nearestBody.position.add(surfaceNormal.scale(planetRadius));
+        const tangent = new Vector2(-surfaceNormal.y, surfaceNormal.x); // Perpendicular
+        const floorWidth = 500; // 500m wide debug line
+        floorInfo = {
+            start: surfacePoint.add(tangent.scale(-floorWidth)),
+            end: surfacePoint.add(tangent.scale(floorWidth)),
+            normal: surfaceNormal,
+            surfacePoint: surfacePoint
+        };
+
+        // Check if rocket is at or below floor level
+        if (altitude < rocketHalfHeight + 1.0) { // +1m threshold
+            // Calculate velocity relative to planet
+            const relVel = rocket.body.velocity.sub(nearestBody.velocity);
+            // Velocity component along surface normal (positive = moving away, negative = moving towards)
+            const normalVel = relVel.dot(surfaceNormal);
+
+            // Is rocket below floor?
+            const isPenetrating = altitude < rocketHalfHeight;
+
+            if (isPenetrating) {
+                // Push rocket up to floor level
+                const correctAltitude = rocketHalfHeight;
+                rocket.body.position = nearestBody.position.add(surfaceNormal.scale(planetRadius + correctAltitude));
+            }
+
+            // Apply collision physics if moving towards surface
+            if (normalVel < 0 || isPenetrating) {
+                const restitution = 0.3; // Bounciness (30% energy conserved)
+                const friction = 0.8; // Surface friction
+                const restThreshold = 5.0; // Below 5 m/s, stop bouncing
+
+                // Decompose velocity into normal and tangential
+                const normalComponent = surfaceNormal.scale(normalVel);
+                const normalSpeed = Math.abs(normalVel);
+                const tangentialVel = relVel.sub(normalComponent);
+                const tangentialSpeed = tangentialVel.mag();
+
+                // Apply friction to tangential velocity
+                let adjustedTangentialVel = tangentialVel;
+                if (tangentialSpeed > 0.1) {
+                    const frictionFactor = Math.max(0, 1 - friction);
+                    adjustedTangentialVel = tangentialVel.scale(frictionFactor);
                 }
 
-                if (normalVel < 0) {
-                    // Rocket is moving towards planet
-                    const restitution = 0.3; // Bounciness (30% energy conserved)
-                    const friction = 0.8; // Surface friction coefficient
-                    const restThreshold = 5.0; // Below 5 m/s, stop bouncing (m/s)
+                // Check if thrusting (don't rest if trying to liftoff)
+                const throttle = rocket.controls.getThrottle();
+                const hasFuel = rocket.engine.hasFuel();
+                const isThrusting = throttle > 0 && hasFuel;
 
-                    // 1. Calculate normal component (perpendicular to surface)
-                    const normalComponent = direction.scale(normalVel);
-                    const normalSpeed = Math.abs(normalVel);
-
-                    // 2. Calculate tangential component (parallel to surface)
-                    const tangentialVel = relVel.sub(normalComponent);
-                    const tangentialSpeed = tangentialVel.mag();
-
-                    // 3. Apply friction to tangential velocity
-                    let frictionForce = new Vector2(0, 0);
-                    if (tangentialSpeed > 0.1) { // Only apply if sliding
-                        const frictionMagnitude = Math.min(tangentialSpeed * friction, tangentialSpeed);
-                        const tangentialDirection = tangentialVel.scale(1 / tangentialSpeed);
-                        frictionForce = tangentialDirection.scale(-frictionMagnitude);
-                    }
-
-                    // 4. Determine if rocket should rest or bounce
-                    // IMPORTANT: Don't rest if throttle is active (trying to liftoff)
-                    const throttle = rocket.controls.getThrottle();
-                    const hasFuel = rocket.engine.hasFuel();
-                    const isThrusting = throttle > 0 && hasFuel;
-
-                    if (normalSpeed < restThreshold && tangentialSpeed < restThreshold && !isThrusting) {
-                        // Velocity too low and not thrusting - rocket rests on surface
-                        rocket.body.velocity = body.velocity.clone();
-                        isResting = true;
-                        restingOn = body;
-                    } else if (normalSpeed < restThreshold) {
-                        // Normal speed low but still sliding - no bounce, just friction
-                        const bounceVelocity = body.velocity
-                            .add(tangentialVel)
-                            .add(frictionForce);
-                        rocket.body.velocity = bounceVelocity;
-                    } else {
-                        // Normal bounce with friction
-                        const bounceVelocity = body.velocity
-                            .add(tangentialVel)
-                            .add(frictionForce)
-                            .sub(normalComponent.scale(restitution));
-                        rocket.body.velocity = bounceVelocity;
-                    }
+                if (normalSpeed < restThreshold && tangentialSpeed < restThreshold && !isThrusting) {
+                    // Rocket rests on surface
+                    rocket.body.velocity = nearestBody.velocity.clone();
+                    isResting = true;
+                    restingOn = nearestBody;
+                } else if (normalSpeed < restThreshold) {
+                    // Sliding on surface
+                    rocket.body.velocity = nearestBody.velocity.add(adjustedTangentialVel);
+                } else {
+                    // Bounce! Reflect normal component with restitution
+                    const bounceNormal = surfaceNormal.scale(normalSpeed * restitution);
+                    rocket.body.velocity = nearestBody.velocity.add(adjustedTangentialVel).add(bounceNormal);
                 }
             }
-        });
+        }
 
-        return { isResting, restingOn };
+        return { isResting, restingOn, floorInfo };
     }
 
     /**

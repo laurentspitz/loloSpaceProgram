@@ -188,6 +188,10 @@ export class Game {
         this.renderer.render(this.bodies, this.particles, this.lastTime, renderDt);
         this.ui.renderMinimap(this.bodies);
 
+        // Render debug floor line (magenta line at surface, visible when Show Colliders is on)
+        const floorInfo = (this.simulation as any).getFloorInfo?.();
+        this.renderer.renderDebugFloor(floorInfo);
+
         if (this.rocket) {
             this.ui.updateRocketInfo(this.rocket);
             this.ui.update(); // Update cockpit/theme logic
