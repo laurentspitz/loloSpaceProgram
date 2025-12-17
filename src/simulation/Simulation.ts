@@ -1,24 +1,19 @@
-import type { ISimulation } from '../ISimulation';
-import { Body } from '../../core/Body';
-import { Rocket } from '../../entities/Rocket';
-import { Debris } from '../../entities/Debris';
-import { Physics } from '../../physics/Physics';
-import { CollisionManager } from '../../physics/CollisionManager';
-import { SceneSetup } from '../../SceneSetup';
-import { Settings } from '../../config';
-import type { RocketConfig } from '../../config';
+import type { ISimulation } from './ISimulation';
+import { Body } from '../core/Body';
+import { Rocket } from '../entities/Rocket';
+import { Debris } from '../entities/Debris';
+import { Physics } from '../physics/Physics';
+import { CollisionManager } from '../physics/CollisionManager';
+import { SceneSetup } from '../SceneSetup';
+import { Settings } from '../config';
+import type { RocketConfig } from '../config';
 
 /**
- * SimulationV1 - Wrapper for existing V1 physics system
+ * Simulation - Main physics simulation
  * 
- * This encapsulates:
- * - N-body orbital physics
- * - CollisionManager (manual penetration prevention)
- * - Debris handling
- * 
- * This is the EXISTING behavior, just moved into a module.
+ * N-body orbital physics with CollisionManager for surface handling.
  */
-export class SimulationV1 implements ISimulation {
+export class Simulation implements ISimulation {
     private bodies: Body[] = [];
     private debris: Debris[] = [];
     private rocket: Rocket | null = null;
@@ -50,7 +45,7 @@ export class SimulationV1 implements ISimulation {
      * Initialize the simulation
      */
     init(rocketConfig?: RocketConfig): void {
-        console.log('🔧 SimulationV1 initializing (N-body + CollisionManager)');
+        console.log('🔧 Simulation initializing');
 
         // Initialize celestial bodies
         this.bodies = SceneSetup.initBodies(this.collisionManager);
@@ -71,7 +66,7 @@ export class SimulationV1 implements ISimulation {
             };
         }
 
-        console.log(`🌍 SimulationV1 initialized with ${this.bodies.length} bodies`);
+        console.log(`🌍 Simulation initialized with ${this.bodies.length} bodies`);
     }
 
     /**
@@ -158,7 +153,7 @@ export class SimulationV1 implements ISimulation {
         this.bodies = [];
         this.debris = [];
         this.rocket = null;
-        console.log('🧹 SimulationV1 disposed');
+        console.log('🧹 Simulation disposed');
     }
 
     // ========================================

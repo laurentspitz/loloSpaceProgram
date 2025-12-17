@@ -13,16 +13,13 @@ export const FeatureFlags = {
     // PHYSICS SYSTEMS
     // ============================================
 
-    /** Use Physics V2 (100% Matter.js) instead of V1 (N-body + manual collision) */
-    PHYSICS_V2: false,
-
-    /** N-body orbital physics (gravity between all bodies) - V1 only */
+    /** N-body orbital physics (gravity between all bodies) */
     PHYSICS_ORBITAL: true,
 
     /** Atmospheric drag on rockets */
     PHYSICS_ATMOSPHERE: true,
 
-    /** Surface collision detection and response - V1 only */
+    /** Surface collision detection and response */
     PHYSICS_COLLISION: true,
 
     // ============================================
