@@ -23,7 +23,7 @@ export function getAltitude(rocket: Rocket, bodies: Body[]): number {
     for (const body of bodies) {
         if (body === rocket.body || body.name === 'Rocket' || body.name.includes('Debris')) continue;
         const d = rocket.body.position.distanceTo(body.position);
-        const visualRadius = body.radius * 3.0;
+        const visualRadius = body.radius; // No visual scaling
         const alt = d - visualRadius;
         if (alt < minDist && alt < 2000000) {
             minDist = alt;
@@ -39,7 +39,7 @@ export function isInOrbit(rocket: Rocket, bodies: Body[], minAltitude: number, m
     for (const body of bodies) {
         if (body === rocket.body || body.name === 'Rocket' || body.name.includes('Debris')) continue;
         const d = rocket.body.position.distanceTo(body.position);
-        const visualRadius = body.radius * 3.0;
+        const visualRadius = body.radius; // No visual scaling
         const alt = d - visualRadius;
         if (alt < minDist && alt < 10000000) {
             minDist = alt;
@@ -56,7 +56,7 @@ export function isInOrbitAroundBody(rocket: Rocket, bodies: Body[], bodyName: st
     const targetBody = bodies.find(b => b.name === bodyName);
     if (!targetBody) return false;
     const d = rocket.body.position.distanceTo(targetBody.position);
-    const visualRadius = targetBody.radius * 3.0;
+    const visualRadius = targetBody.radius; // No visual scaling
     const alt = d - visualRadius;
     const velocity = rocket.body.velocity.mag();
     return alt > 0 && alt < minAltitude && velocity > minVelocity;
@@ -67,7 +67,7 @@ export function isNearBody(rocket: Rocket, bodies: Body[], bodyName: string, dis
     const targetBody = bodies.find(b => b.name === bodyName);
     if (!targetBody) return false;
     const d = rocket.body.position.distanceTo(targetBody.position);
-    const visualRadius = targetBody.radius * 3.0;
+    const visualRadius = targetBody.radius; // No visual scaling
     const alt = d - visualRadius;
     return alt >= 0 && alt < distance;
 }
@@ -77,7 +77,7 @@ export function isLandedOnBody(rocket: Rocket, bodies: Body[], bodyName: string)
     const targetBody = bodies.find(b => b.name === bodyName);
     if (!targetBody) return false;
     const d = rocket.body.position.distanceTo(targetBody.position);
-    const visualRadius = targetBody.radius * 3.0;
+    const visualRadius = targetBody.radius; // No visual scaling
     const alt = d - visualRadius;
     const velocity = rocket.body.velocity.mag();
     // On surface (within 500m) and slow (< 50 m/s)

@@ -8,9 +8,10 @@ export class SystemGenerator {
     static generate(config: StarSystemConfig): Body[] {
         const bodies: Body[] = [];
 
-        // Visual Scale Factor for Physics (preserved from original logic)
-        const VISUAL_PHYSICS_SCALE = 9.0;
-        const VELOCITY_SCALE = Math.sqrt(VISUAL_PHYSICS_SCALE); // 3.0
+        // Visual Scale Factor for Physics - now 1.0 since we removed visual scaling
+        // Previously was 9.0 to compensate for 3x visual radius (gravity = M/r² → 9M/(3r)² = M/r²)
+        const VISUAL_PHYSICS_SCALE = 1.0;
+        const VELOCITY_SCALE = Math.sqrt(VISUAL_PHYSICS_SCALE); // 1.0
 
         // Helper function to recursively create bodies
         const createBody = (bodyConfig: CelestialBodyConfig, parent: Body | null, systemPos: Vector2): Body => {

@@ -21,7 +21,7 @@ export class SceneSetup {
 
         // Create Matter.js bodies for all celestial bodies
         bodies.forEach(body => {
-            collisionManager.createCelestialBody(body, 3.0); // Visual scale = 3.0
+            collisionManager.createCelestialBody(body, 1.0); // No visual scaling
         });
 
         return bodies;
@@ -31,8 +31,8 @@ export class SceneSetup {
         // Create rocket on Earth's surface
         const earth = bodies.find(b => b.name === 'Earth')!;
 
-        // IMPORTANT: Planets are rendered with visualScale = 3.0
-        const visualRadius = earth.radius * 3.0;
+        // Planets are rendered at their real radius (no visual scaling)
+        const visualRadius = earth.radius; // No multiplier
 
         // Position: On surface, slightly above to avoid initial collision
         const launchAngle = Math.PI / 2; // Top of Earth (90 degrees)

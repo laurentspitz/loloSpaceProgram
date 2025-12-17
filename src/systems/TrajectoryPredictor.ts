@@ -58,7 +58,7 @@ export class TrajectoryPredictor {
 
             if (nearestBody) {
                 // Altitude above VISUAL radius
-                const PLANET_SCALE = 3.0;
+                const PLANET_SCALE = 1.0;
                 const altitude = minDist - (nearestBody.radius * PLANET_SCALE);
 
                 // Calculate density

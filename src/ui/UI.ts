@@ -366,7 +366,7 @@ export class UI {
         }
 
         const physicalRadius = body.radius;
-        const VISUAL_SCALE = 3.0;
+        const VISUAL_SCALE = 1.0;
         const visualRadius = physicalRadius * VISUAL_SCALE;
         const orbitAltitude = Math.max(200000, visualRadius * 0.1);
         const orbitRadius = visualRadius + orbitAltitude;

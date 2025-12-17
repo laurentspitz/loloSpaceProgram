@@ -99,6 +99,7 @@ export class Simulation implements ISimulation {
             const throttle = this.rocket.controls.getThrottle();
             if (throttle > 0 && this.rocket.engine.hasFuel()) {
                 // Thrust active - cancel resting to allow liftoff
+                console.log(`🚀 LIFTOFF! Breaking resting state, throttle=${throttle}`);
                 this._isRocketResting = false;
                 this._restingOn = null;
             } else {
@@ -108,7 +109,15 @@ export class Simulation implements ISimulation {
         }
 
         // Prevent rocket from penetrating planets
+        const velBefore = this.rocket.body.velocity.mag();
         const result = this.collisionManager.preventPenetration(this.rocket, this.bodies);
+        const velAfter = this.rocket.body.velocity.mag();
+
+        // Debug log if velocity changed significantly
+        if (Math.abs(velAfter - velBefore) > 1) {
+            console.log(`⚠️ preventPenetration: vel ${velBefore.toFixed(1)} → ${velAfter.toFixed(1)}, isResting=${result.isResting}`);
+        }
+
         this._isRocketResting = result.isResting;
         this._restingOn = result.restingOn;
 

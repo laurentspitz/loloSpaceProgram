@@ -36,7 +36,7 @@ export interface AeroRocketData {
  * Extracted from Rocket.ts for maintainability
  */
 export class AerodynamicsSystem {
-    private static readonly PLANET_SCALE = 3.0; // Must match SceneSetup.ts
+    private static readonly PLANET_SCALE = 1.0; // No visual scaling
     private static readonly DRAG_MULTIPLIER = 20.0; // Gameplay feel boost
 
     /**

@@ -37,7 +37,7 @@ export class ThreeRenderer {
     followedBody: Body | null = null;
 
     // Visual scale multiplier for planet sizes (makes them more visible)
-    visualScale: number = 3.0;
+    visualScale: number = 1.0; // No visual scaling - physics = rendering
     // Specific scale for moons to ensure they are not inside the planet visually
     moonScale: number = 1.0; // No artificial scaling for moons
 
@@ -819,9 +819,9 @@ export class ThreeRenderer {
                 colliderMesh.position.set(worldX, worldY, 0.5); // z=0.5 slightly in front
 
                 // Scale to match collision radius
-                // Collision detection uses: body.radius * VISUAL_SCALE (3.0) in world space
+                // Collision detection uses: body.radius * VISUAL_SCALE (1.0) in world space
                 // We need to convert to screen space: * this.scale
-                const collisionRadiusWorld = body.radius * 3.0; // VISUAL_SCALE from CollisionManager
+                const collisionRadiusWorld = body.radius; // No visual scaling
                 const collisionRadiusScreen = collisionRadiusWorld * this.scale;
                 colliderMesh.scale.set(collisionRadiusScreen, collisionRadiusScreen, 1);
                 colliderMesh.visible = true;

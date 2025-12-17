@@ -236,7 +236,7 @@ export class RocketInfoPanel {
 
         this.bodies.forEach(b => {
             if (b.name === 'Rocket') return;
-            const visualRadius = b.radius * 3.0;
+            const visualRadius = b.radius; // No visual scaling
             const dist = b.position.distanceTo(rocket.body.position) - visualRadius;
             if (dist < minDist) {
                 minDist = dist;

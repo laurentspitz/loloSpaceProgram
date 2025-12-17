@@ -233,7 +233,7 @@ export class Game {
 
                         // Check atmospheric depth
                         const dist = this.rocket.body.position.distanceTo(dominantBody.position);
-                        const PLANET_SCALE = 3.0; // Matching SceneSetup
+                        const PLANET_SCALE = 1.0;
                         const altitude = dist - (dominantBody.radius * PLANET_SCALE);
                         const inAtmosphere = dominantBody.atmosphereHeight && altitude < dominantBody.atmosphereHeight;
 
@@ -300,7 +300,7 @@ export class Game {
                     // If close to body (in atmosphere), use small steps for drag accuracy.
                     // If far, use large steps.
                     const distToParent = this.rocket.body.position.distanceTo(dominantBody.position);
-                    const PLANET_SCALE = 3.0;
+                    const PLANET_SCALE = 1.0;
                     const isInAtmo = dominantBody.atmosphereHeight && (distToParent < (dominantBody.radius * PLANET_SCALE) + dominantBody.atmosphereHeight);
 
                     // If in atmosphere, use 5s steps (high precision for drag).

@@ -20,7 +20,7 @@ export class CollisionManager {
     private bodyMap: Map<Body | Rocket, Matter.Body> = new Map();
 
     // Visual scale for collision consistency
-    private readonly VISUAL_SCALE = 3.0;
+    private readonly VISUAL_SCALE = 1.0; // No visual scaling - physics = rendering
 
     // Collision event handlers
     public onCollision?: (bodyA: Body | Rocket, bodyB: Body | Rocket) => void;
@@ -41,7 +41,7 @@ export class CollisionManager {
     /**
      * Create or update Matter body for a celestial body (planet/moon)
      */
-    createCelestialBody(body: Body, visualScale: number = 3.0): void {
+    createCelestialBody(body: Body, visualScale: number = 1.0): void {
         const visualRadius = body.radius * visualScale;
 
         // Create or update Matter body
@@ -182,7 +182,7 @@ export class CollisionManager {
     /**
      * Check if rocket is penetrating a planet and push it out
      */
-    correctPenetration(rocket: Rocket, planet: Body, visualScale: number = 3.0): void {
+    correctPenetration(rocket: Rocket, planet: Body, visualScale: number = 1.0): void {
         const visualRadius = planet.radius * visualScale;
         const dist = rocket.body.position.distanceTo(planet.position);
         const minDist = visualRadius + rocket.body.radius;
@@ -224,12 +224,20 @@ export class CollisionManager {
                 // Rocket is near or penetrating surface
                 const direction = rocket.body.position.sub(body.position).normalize();
 
-                // Push rocket to exact surface position
-                rocket.body.position = body.position.add(direction.scale(contactDist));
-
                 // Calculate velocity relative to planet
                 const relVel = rocket.body.velocity.sub(body.velocity);
                 const normalVel = relVel.x * direction.x + relVel.y * direction.y; // dot product
+
+                // Only enforce surface position if:
+                // 1. Actually penetrating (dist < contactDist), OR
+                // 2. Moving towards surface (normalVel < 0)
+                const isPenetrating = dist < contactDist;
+                const isMovingTowardsSurface = normalVel < 0;
+
+                if (isPenetrating || (isMovingTowardsSurface && dist < contactDist + 0.5)) {
+                    // Push rocket to exact surface position
+                    rocket.body.position = body.position.add(direction.scale(contactDist));
+                }
 
                 if (normalVel < 0) {
                     // Rocket is moving towards planet
@@ -254,8 +262,13 @@ export class CollisionManager {
                     }
 
                     // 4. Determine if rocket should rest or bounce
-                    if (normalSpeed < restThreshold && tangentialSpeed < restThreshold) {
-                        // Velocity too low - rocket rests on surface
+                    // IMPORTANT: Don't rest if throttle is active (trying to liftoff)
+                    const throttle = rocket.controls.getThrottle();
+                    const hasFuel = rocket.engine.hasFuel();
+                    const isThrusting = throttle > 0 && hasFuel;
+
+                    if (normalSpeed < restThreshold && tangentialSpeed < restThreshold && !isThrusting) {
+                        // Velocity too low and not thrusting - rocket rests on surface
                         rocket.body.velocity = body.velocity.clone();
                         isResting = true;
                         restingOn = body;
