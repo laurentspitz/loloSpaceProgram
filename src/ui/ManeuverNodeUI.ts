@@ -79,14 +79,11 @@ export class ManeuverNodeUI {
     private handleMouseDown(e: MouseEvent) {
         if (!this.renderer || !this.rocket) return;
 
-        console.log('[ManeuverNodeUI] MouseDown event fired');
-        console.log('[ManeuverNodeUI] Number of nodes:', this.manager.nodes.length);
+        if (!this.renderer || !this.rocket) return;
 
         const rect = this.renderer.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        // mousePos removed as it was unused
-        console.log('[ManeuverNodeUI] Click at screen position:', x, y);
 
         // 1. Check if clicking an existing node
         let clickedNodeId: string | null = null;
@@ -95,22 +92,15 @@ export class ManeuverNodeUI {
             const worldPos = node.getWorldPosition(this.rocket, this.renderer.currentBodies);
             const screenPos = this.renderer.worldToScreen(worldPos);
 
-            console.log('[ManeuverNodeUI] Node', node.id, 'at screen pos:', screenPos.x, screenPos.y);
-
             // Simple distance check (50px radius for easier clicking when zoomed out)
             const dx = screenPos.x - x;
             const dy = screenPos.y - y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            console.log('[ManeuverNodeUI] Distance to node:', distance, 'px');
 
             if (dx * dx + dy * dy < 2500) { // 50px radius
                 clickedNodeId = node.id;
-                console.log('[ManeuverNodeUI] Node clicked!');
                 break;
             }
         }
-
-        console.log('[ManeuverNodeUI] Clicked node ID:', clickedNodeId);
 
         if (clickedNodeId) {
             // Start dragging existing node
@@ -313,13 +303,13 @@ export class ManeuverNodeUI {
             const rotY = x * sinO + y * cosO;
             const finalWorldPos = new Vector2(parent.position.x + rotX, parent.position.y + rotY);
 
-            const dist = finalWorldPos.distanceTo(worldPos);
-
-            // Calculate distance in screen pixels
-            const frustumHeight = this.renderer.camera.top - this.renderer.camera.bottom;
-            const pixelToUnit = frustumHeight / this.renderer.height;
-            const minDistanceInUnits = dist * this.renderer.scale;
-            const screenDistPixels = minDistanceInUnits / pixelToUnit;
+            // Calculate distance in screen pixels using the renderer's projection
+            // This avoids double-scaling issues with manual calculation
+            const screenPos = this.renderer.worldToScreen(finalWorldPos);
+            // lastMouseScreenPos is already in canvas-relative coordinates
+            const dx = screenPos.x - this.lastMouseScreenPos.x;
+            const dy = screenPos.y - this.lastMouseScreenPos.y;
+            const screenDistPixels = Math.sqrt(dx * dx + dy * dy);
 
             if (screenDistPixels < 30) {
                 this.hoverNodeTime = timeToNode;

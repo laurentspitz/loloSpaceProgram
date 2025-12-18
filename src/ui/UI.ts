@@ -98,9 +98,9 @@ export class UI {
         // Create panels in EMBEDDED mode (they won't create their own containers)
 
         // Time Controls (embedded)
-        // Time Controls (standalone) - Top Right
+        // Time Controls (embedded)
         this.timeControlsPanel = new TimeControlsPanel({
-            embedded: false,
+            embedded: true,
             onTimeWarpChange: (factor) => {
                 if (this.onTimeWarpChange) {
                     this.onTimeWarpChange(factor);
@@ -206,9 +206,10 @@ export class UI {
                 tabs: rightTabs,
                 direction: 'right',
                 width: '220px',
-                startOpen: true
+                startOpen: true,
+                headerContent: this.timeControlsPanel?.getContent() || undefined
             });
-            this.rightTabbedPanel.container.style.top = '120px'; // Move down to avoid overlap with TimeControls
+            this.rightTabbedPanel.container.style.top = '10px'; // Aligned with top
             this.rightTabbedPanel.container.style.right = '10px';
             document.body.appendChild(this.rightTabbedPanel.container);
         }
@@ -313,49 +314,7 @@ export class UI {
     }
 
     private setupInput(): void {
-        let isDragging = false;
-        let lastPos = new Vector2(0, 0);
-
-        this.renderer.canvas.addEventListener('mousedown', (e) => {
-            const clickPos = new Vector2(e.clientX, e.clientY);
-            const clickedBody = this.renderer.selectBodyAt(clickPos, this.bodies);
-
-            if (clickedBody) {
-                this.renderer.followedBody = clickedBody;
-                return;
-            }
-
-            isDragging = true;
-            lastPos = new Vector2(e.clientX, e.clientY);
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const currentPos = new Vector2(e.clientX, e.clientY);
-            const delta = currentPos.sub(lastPos);
-
-            if (delta.mag() > 2 && this.renderer.followedBody) {
-                this.renderer.followedBody = null;
-                this.renderer.offset = this.renderer.getCenter();
-            }
-
-            const scaledDelta = delta.scale(1 / this.renderer.scale);
-            this.renderer.offset = new Vector2(
-                this.renderer.offset.x - scaledDelta.x,
-                this.renderer.offset.y + scaledDelta.y
-            );
-
-            lastPos = currentPos;
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        this.renderer.canvas.addEventListener('wheel', (e) => {
-            const zoomFactor = e.deltaY > 0 ? 1 / 1.1 : 1.1;
-            this.renderer.scale *= zoomFactor;
-        });
+        // Input is now handled by InputHandler in ThreeRenderer
     }
 
     private placeRocketInOrbit(body: Body): void {

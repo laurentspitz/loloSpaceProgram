@@ -1,110 +1,127 @@
-# 🚀 Lolo Space Program
+# 🚀 Ærospace Industries
 
-Un simulateur de vol spatial 2D inspiré de Kerbal Space Program, développé avec TypeScript et Three.js. Explorez le système solaire, gérez vos réacteurs, et naviguez dans les sphères d'influence gravitationnelles.
+### A Flat Spaceflight Simulation
 
-## ✨ Fonctionnalités
+> **“The Universe Is Flat. The Learning Curve Isn’t.”**
 
-- **Système Solaire Réaliste** : Soleil, planètes et lunes avec orbites correctes
-- **Physique Gravitationnelle** : Simulation N-corps avec détection dynamique de la sphère d'influence (SOI)
-- **Contrôle de Fusée** : Rotation, poussée réglable, et gestion du carburant
-- **Trajectoires Orbitales** : Visualisation des orbites elliptiques dynamiques
-- **Rendu 3D** : Graphics avec Three.js, textures procédurales des planètes
-- **Contrôle du Temps** : Accélération temporelle pour les longs voyages
-- **Interface HUD** : Télémétrie complète (carburant, vitesse, altitude, gravité)
-- **Minimap** : Vue d'ensemble du système solaire
+## 🎮 About the Game
 
-## 🎮 Contrôles
+**Ærospace Industries** is a 2D spaceflight simulation inspired by real orbital mechanics.
 
-### Fusée
-- **Z / Flèche Haut** : Poussée pleine puissance
-- **S / Flèche Bas** : Couper les moteurs
-- **Q / Flèche Gauche** : Rotation gauche
-- **D / Flèche Droite** : Rotation droite
-- **Shift** : Augmenter progressivement la poussée
-- **Ctrl** : Diminuer progressivement la poussée
-- **Slider Throttle** : Contrôle précis de la poussée via l'interface
+Design experimental spacecraft, manage thrust and trajectories, and learn to master gravity inside a simplified yet physically accurate flat solar system. Every launch is a test, every crash a valuable data point.
 
-### Caméra
-- **Molette de la souris** : Zoom avant/arrière
-- **Clic + Glisser** : Déplacer la caméra (désactive le suivi)
-- **Bouton "Focus Rocket"** : Centrer la caméra sur la fusée
-- **Dropdown de sélection** : Suivre un corps céleste spécifique
+Built in a two-dimensional universe where physics still matters, Ærospace Industries challenges players to reach orbit, land on the Moon, and explore space through experimentation, iteration, and failure.
 
-### Temps
-- **<< / >>** : Diminuer/Augmenter l'accélération temporelle
-- **||** : Pause
-- **>** : Vitesse normale (1x)
+Developed entirely with the help of artificial intelligence, the game embraces learning through simulation and controlled chaos.
+
+## 🧠 Lore
+
+**Ærospace Industries** is an experimental aerospace organization dedicated to simulation-based spaceflight research.
+
+After years of costly failures and destroyed prototypes, the company abandoned traditional engineering workflows and entrusted spacecraft design, testing, and mission planning to artificial intelligence.
+
+The result is a flat, controlled simulation environment where AI-generated concepts can be launched, analyzed, improved — and frequently lost to gravity.
+
+The universe may be flat.
+The physics are not.
+
+---
+
+## ✨ Features
+
+- **Realistic Solar System**: Sun, planets, and moons with correct orbits
+- **Gravitational Physics**: N-body simulation with dynamic Sphere of Influence (SOI) detection
+- **Rocket Control**: Rotation, adjustable thrust, and fuel management
+- **Orbital Trajectories**: Visualization of dynamic elliptical orbits
+- **3D Rendering**: Graphics with Three.js, procedural planet textures
+- **Time Control**: Time acceleration for long voyages
+- **HUD Interface**: Full telemetry (fuel, speed, altitude, gravity)
+- **Minimap**: Overview of the solar system
+
+## 🎮 Controls
+
+### Rocket
+- **W / Up Arrow**: Full thrust
+- **S / Down Arrow**: Cut engines
+- **A / Left Arrow**: Rotate left
+- **D / Right Arrow**: Rotate right
+- **Shift**: Gradually increase thrust
+- **Ctrl**: Gradually decrease thrust
+- **Throttle Slider**: Precise thrust control via interface
+
+### Camera
+- **Mouse Wheel**: Zoom in/out
+- **Click + Drag**: Move camera (disables tracking)
+- **"Focus Rocket" Button**: Center camera on rocket
+- **Selection Dropdown**: Follow specific celestial body
+
+### Time
+- **<< / >>**: Decrease/Increase time acceleration
+- **||**: Pause
+- **>** : Normal speed (1x)
 
 ### Debug
-- **Infinite Fuel** : Carburant illimité pour les tests
-- **Show Trajectory** : Afficher la trajectoire orbitale prédite
+- **Infinite Fuel**: Unlimited fuel for testing
+- **Show Trajectory**: Show predicted orbital trajectory
 
 ## 🛠️ Installation
 
 ```bash
-# Cloner le repository
-git clone <url-du-repo>
-cd loloSpaceProgram
+# Clone the repository
+git clone <repo-url>
+cd aerospace-industries
 
-# Installer les dépendances
+# Install dependencies
 npm install
 
-# Lancer le serveur de développement
+# Start development server
 npm run dev
 ```
 
-Le jeu sera disponible sur `http://localhost:5173` (ou le prochain port disponible).
+The game will be available at `http://localhost:5173` (or the next available port).
 
 ## 🏗️ Build
 
 ```bash
-# Créer une version de production
+# Create production build
 npm run build
 
-# Prévisualiser la version de production
+# Preview production build
 npm run preview
 ```
 
-## 🌌 Caractéristiques Techniques
+## 🌌 Technical Characteristics
 
 ### Technologies
-- **TypeScript** : Typage statique et meilleure maintenabilité
-- **Three.js** : Rendu 3D/2D pour les graphiques
-- **Vite** : Build tool moderne et rapide
-- **Matter.js** : Détection de collisions
-
-### Systèmes Physiques
-- **Gravitation N-corps** : Calcul des forces gravitationnelles entre tous les corps
-- **Sphère d'Influence (SOI)** : Détection automatique du corps dominant pour les trajectoires
-- **Orbites Keplériennes** : Calcul analytique des ellipses orbitales
-- **Intégration Euler Symplectique** : Stabilité numérique de la simulation
-- **Gestion des Collisions** : Atterrissages souples et crashs
+- **TypeScript**: Static typing and better maintainability
+- **Vite**: Modern and fast build tool
+- **Matter.js**: Collision detection
 
 ### Architecture
 ```
 src/
-├── core/          # Classes de base (Body, Vector2)
-├── entities/      # Fusée, moteur, contrôles
-├── physics/       # Physique, orbites, collisions, SOI
-├── rendering/     # Rendu Three.js, textures, orbites
-├── systems/       # Génération du système solaire
-├── ui/            # Interface utilisateur
-└── Game.ts        # Boucle de jeu principale
+├── core/          # Base classes (Body, Vector2)
+├── entities/      # Rocket, engine, controls
+├── physics/       # Physics, orbits, collisions, SOI
+├── rendering/     # Three.js rendering, textures, orbits
+├── systems/       # Solar system generation
+├── ui/            # User interface
+└── Game.ts        # Main game loop
 ```
 
-## 🎯 Prochaines Étapes
+## 🎯 Next Steps
 
-- [ ] Manœuvres de transfert de Hohmann
-- [ ] Système de staging (étages multiples)
-- [ ] Sauvegarde/Chargement de missions
-- [ ] Autres corps célestes (astéroïdes, comètes)
-- [ ] Sons et effets visuels améliorés
+- [ ] Hohmann transfer maneuvers
+- [ ] Staging system (multiple stages)
+- [ ] Mission Save/Load
+- [ ] Other celestial bodies (asteroids, comets)
+- [ ] Improved sounds and visual effects
 
 ## 📝 License
 
 © 2025 Laurent Spitz. All rights reserved.
 Source code is available for educational purposes only. Unauthorized copying, modification, distribution, or commercial use is strictly prohibited.
 
-## 🙏 Remerciements
+## 🙏 Acknowledgements
 
-Inspiré par [Kerbal Space Program](https://www.kerbalspaceprogram.com/)
+Inspired by [Kerbal Space Program](https://www.kerbalspaceprogram.com/)

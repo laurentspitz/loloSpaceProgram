@@ -11,7 +11,7 @@ export const Agencies: Record<string, AgencyConfig> = {
     esa: { id: 'esa', name: 'ESA', logoColor: '#003299', textColor: '#ffffff' },
     cnsa: { id: 'cnsa', name: 'CNSA', logoColor: '#d21f1f', textColor: '#ffffff' },
     spacex: { id: 'spacex', name: 'SpaceX', logoColor: '#000000', textColor: '#ffffff' },
-    lolo: { id: 'lolo', name: 'LOLO', logoColor: '#00aaff', textColor: '#ffffff' },
+    aerospace: { id: 'aerospace', name: 'Ærospace', logoColor: '#00aaff', textColor: '#ffffff' },
     mw: { id: 'mw', name: 'MW 18014', logoColor: '#333333', textColor: '#ffffff' }, // For V-2 / Karman line
     rsa: { id: 'rsa', name: 'Roscosmos', logoColor: '#d21f1f', textColor: '#ffffff' }, // Russian Space Agency
     jaxa: { id: 'jaxa', name: 'JAXA', logoColor: '#0055aa', textColor: '#ffffff' }, // Japan

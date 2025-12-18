@@ -119,7 +119,7 @@ export class ControlsManager {
      */
     private saveToLocalStorage(): void {
         try {
-            localStorage.setItem('lolosp_controls', JSON.stringify(this.controls));
+            localStorage.setItem('aerospace_controls', JSON.stringify(this.controls));
         } catch (e) {
             console.warn('Failed to save controls:', e);
         }
@@ -130,7 +130,7 @@ export class ControlsManager {
      */
     private loadFromLocalStorage(): void {
         try {
-            const saved = localStorage.getItem('lolosp_controls');
+            const saved = localStorage.getItem('aerospace_controls');
             if (saved) {
                 const parsed = JSON.parse(saved);
                 // Merge with defaults to handle new controls added in updates
