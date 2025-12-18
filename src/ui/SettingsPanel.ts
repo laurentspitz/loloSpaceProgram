@@ -139,39 +139,128 @@ export class SettingsPanel {
         languageLabel.style.color = '#ccc';
         languageRow.appendChild(languageLabel);
 
-        const languageSelect = document.createElement('select');
-        languageSelect.id = 'language-select';
-        languageSelect.style.backgroundColor = '#333';
-        languageSelect.style.border = '1px solid #555';
-        languageSelect.style.color = '#fff';
-        languageSelect.style.padding = '8px 12px';
-        languageSelect.style.borderRadius = '4px';
-        languageSelect.style.fontSize = '16px';
-        languageSelect.style.cursor = 'pointer';
-
         const languages = [
-            { code: 'en', name: '🇬🇧 English' },
-            { code: 'fr', name: '🇫🇷 Français' }
+            { code: 'en', name: 'English', flag: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCAzMCI+PGNsaXBQYXRoIGlkPSJ0Ij48cGF0aCBkPSJNMzAsMTVoMzB2MTV6djE1aC0zMHpoLTMwdi0xNXp2LTE1aDMweiIvPjwvY2xpcFBhdGg+PHBhdGggZD0iTTAsMHYzMGg2MHYtMzB6IiBmaWxsPSIjMDEyMTY5Ii8+PHBhdGggZD0iTTAsMGw2MCwzMG0wLTMwbC02MCwzMCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjYiLz48cGF0aCBkPSJdMCwwbDYwLDMwbTAtMzBsLTYwLDMwIiBjbGlwLXBhdGg9InVybCgjdCkiIHN0cm9rZT0iI0M4MTAyRSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBhdGggZD0iTTMwLDB2MzBNMCwxNWg2MCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEwIi8+PHBhdGggZD0iTTMwLDB2MzBNMCwxNWg2MCIgc3Ryb2tlPSIjQzgxMDJFIiBzdHJva2Utd2lkdGg9IjYiLz48L3N2Zz4=' },
+            { code: 'fr', name: 'Français', flag: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjxyZWN0IHdpZHRoPSIzIiBoZWlnaHQ9IjIiIGZpbGw9IiNFRDI5MzkiLz48cmVjdCB3aWR0aD0iMiIgaGVpZ2h0PSIyIiBmaWxsPSIjZmZmIi8+PHJlY3Qgd2lkdGg9IjEiIGhlaWdodD0iMiIgZmlsbD0iIzAwMjM5NSIvPjwvc3ZnPg==' }
         ];
 
+        // Custom Dropdown Container
+        const dropdownContainer = document.createElement('div');
+        dropdownContainer.style.position = 'relative';
+        dropdownContainer.style.width = '200px';
+        dropdownContainer.style.fontFamily = "'Segoe UI', sans-serif";
+
+        // Selected Item Display
+        const selectedDisplay = document.createElement('div');
+        selectedDisplay.style.backgroundColor = '#333';
+        selectedDisplay.style.border = '1px solid #555';
+        selectedDisplay.style.color = '#fff';
+        selectedDisplay.style.padding = '8px 12px';
+        selectedDisplay.style.borderRadius = '4px';
+        selectedDisplay.style.cursor = 'pointer';
+        selectedDisplay.style.display = 'flex';
+        selectedDisplay.style.alignItems = 'center';
+        selectedDisplay.style.justifyContent = 'space-between';
+
+        const currentLang = languages.find(l => l.code === i18next.language) || languages[0];
+
+        const selectedContent = document.createElement('div');
+        selectedContent.style.display = 'flex';
+        selectedContent.style.alignItems = 'center';
+        selectedContent.style.gap = '10px';
+
+        const selectedFlag = document.createElement('img');
+        selectedFlag.src = currentLang.flag;
+        selectedFlag.style.width = '24px';
+        selectedFlag.style.height = '16px';
+
+        const selectedName = document.createElement('span');
+        selectedName.textContent = currentLang.name;
+
+        selectedContent.appendChild(selectedFlag);
+        selectedContent.appendChild(selectedName);
+        selectedDisplay.appendChild(selectedContent);
+
+        // Arrow icon
+        const arrow = document.createElement('span');
+        arrow.textContent = '▼';
+        arrow.style.fontSize = '10px';
+        arrow.style.color = '#aaa';
+        selectedDisplay.appendChild(arrow);
+
+        // Dropdown Options List
+        const optionsList = document.createElement('div');
+        optionsList.style.display = 'none';
+        optionsList.style.position = 'absolute';
+        optionsList.style.top = '100%';
+        optionsList.style.left = '0';
+        optionsList.style.width = '100%';
+        optionsList.style.backgroundColor = '#2a2a2a';
+        optionsList.style.border = '1px solid #555';
+        optionsList.style.borderRadius = '4px';
+        optionsList.style.marginTop = '4px';
+        optionsList.style.zIndex = '100';
+        optionsList.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+
         languages.forEach(lang => {
-            const option = document.createElement('option');
-            option.value = lang.code;
-            option.textContent = lang.name;
-            if (i18next.language === lang.code) {
-                option.selected = true;
-            }
-            languageSelect.appendChild(option);
+            const option = document.createElement('div');
+            option.style.padding = '8px 12px';
+            option.style.cursor = 'pointer';
+            option.style.display = 'flex';
+            option.style.alignItems = 'center';
+            option.style.gap = '10px';
+            option.style.color = '#fff';
+            option.style.transition = 'background-color 0.2s';
+
+            const flag = document.createElement('img');
+            flag.src = lang.flag;
+            flag.style.width = '24px';
+            flag.style.height = '16px';
+
+            const name = document.createElement('span');
+            name.textContent = lang.name;
+
+            option.appendChild(flag);
+            option.appendChild(name);
+
+            option.onmouseover = () => option.style.backgroundColor = '#3a3a3a';
+            option.onmouseout = () => option.style.backgroundColor = 'transparent';
+
+            option.onclick = () => {
+                // Update selection
+                selectedFlag.src = lang.flag;
+                selectedName.textContent = lang.name;
+                optionsList.style.display = 'none';
+
+                // Trigger change
+                if (i18next.language !== lang.code) {
+                    i18next.changeLanguage(lang.code);
+                    this.settings.language = lang.code;
+                    localStorage.setItem('user_settings', JSON.stringify(this.settings));
+                }
+            };
+
+            optionsList.appendChild(option);
         });
 
-        languageSelect.onchange = () => {
-            i18next.changeLanguage(languageSelect.value);
-            this.settings.language = languageSelect.value;
-            // Save immediately to localStorage
-            localStorage.setItem('user_settings', JSON.stringify(this.settings));
+        // Toggle dropdown
+        selectedDisplay.onclick = (e) => {
+            e.stopPropagation();
+            optionsList.style.display = optionsList.style.display === 'block' ? 'none' : 'block';
         };
 
-        languageRow.appendChild(languageSelect);
+        // Close when clicking outside
+        const closeDropdown = () => {
+            optionsList.style.display = 'none';
+        };
+        // Use a timeout to avoid immediate closing if the click event propagates
+        setTimeout(() => {
+            document.addEventListener('click', closeDropdown);
+        }, 0);
+
+        dropdownContainer.appendChild(selectedDisplay);
+        dropdownContainer.appendChild(optionsList);
+        languageRow.appendChild(dropdownContainer);
         languageSection.appendChild(languageRow);
         panel.appendChild(languageSection);
         // ------------------------

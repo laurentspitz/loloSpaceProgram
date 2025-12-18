@@ -141,5 +141,10 @@
         "condition": "Condition de réussite",
         "reward": "Récompense",
         "completed": "Terminée"
+    },
+    "auth": {
+        "notLoggedIn": "Non connecté",
+        "loginWithGoogle": "Se connecter avec Google",
+        "logout": "Se déconnecter"
     }
 }
