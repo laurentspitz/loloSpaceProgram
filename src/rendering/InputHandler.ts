@@ -112,7 +112,7 @@ export class InputHandler {
         window.removeEventListener('mouseup', this.handleMouseUp);
     }
 
-    private handleTouchEnd = (e: TouchEvent) => {
+    private handleTouchEnd = (_e: TouchEvent) => {
         // For touch end, we might not have clientX/Y of the lifted finger
         // But we don't need it for click detection if we track hasMoved
         this.handleEnd(this.lastX, this.lastY);

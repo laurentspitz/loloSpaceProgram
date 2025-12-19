@@ -13,6 +13,7 @@ import { Debris } from '../entities/Debris';
 import { Particle } from '../entities/Particle';
 import { ThrustParticleSystem } from './ThrustParticleSystem';
 import { ManeuverNode } from '../systems/ManeuverNode';
+import { findFeature, type CloudFeature, type RingFeature } from '../systems/CelestialBodyFeatures';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -51,6 +52,7 @@ export class ThreeRenderer {
     bodyMeshes: Map<Body, THREE.Mesh> = new Map();
     ringMeshes: Map<Body, THREE.Mesh> = new Map();
     cloudMeshes: Map<Body, THREE.Mesh> = new Map();
+    atmosphereCloudMeshes: Map<Body, THREE.Mesh> = new Map();
     debrisMeshes: Map<Body, THREE.Group> = new Map();
     particleMeshes: Map<Particle, THREE.Mesh> = new Map();
 
@@ -690,19 +692,23 @@ export class ThreeRenderer {
                 this.scene.add(mesh);
                 this.bodyMeshes.set(body, mesh);
 
-                // Add rings for Saturn and Uranus
-                if (body.ringColor && body.ringInnerRadius && body.ringOuterRadius) {
+                // Add rings based on RingFeature
+                const ringFeature = findFeature<RingFeature>(body.features, 'rings');
+                if (ringFeature) {
+                    const ringInnerRadius = body.radius * ringFeature.innerRadius;
+                    const ringOuterRadius = body.radius * ringFeature.outerRadius;
+
                     const ringGeometry = new THREE.RingGeometry(
-                        body.ringInnerRadius * this.scale * this.visualScale,
-                        body.ringOuterRadius * this.scale * this.visualScale,
+                        ringInnerRadius * this.scale * this.visualScale,
+                        ringOuterRadius * this.scale * this.visualScale,
                         512
                     );
 
-                    const ringTexture = TextureGenerator.createRingTexture(body);
+                    const ringTexture = TextureGenerator.createRingTexture(body, ringFeature);
                     const ringMaterial = new THREE.MeshBasicMaterial({
                         map: ringTexture,
                         transparent: true,
-                        opacity: 0.8,
+                        opacity: ringFeature.opacity || 0.8,
                         side: THREE.DoubleSide
                     });
 
@@ -722,19 +728,39 @@ export class ThreeRenderer {
                     this.ringMeshes.set(body, ringMesh);
                 }
 
-                // Add clouds for Earth and Venus
-                if (body.name === 'Earth' || body.name === 'Venus') {
-                    const cloudGeometry = new THREE.CircleGeometry(radius * 1.15, 6144); // Match atmosphere size
-                    const cloudTexture = TextureGenerator.createCloudTexture(body);
-                    const cloudMaterial = new THREE.MeshBasicMaterial({
-                        map: cloudTexture,
-                        transparent: true,
-                        opacity: 0.8
-                    });
-                    const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-                    cloudMesh.position.z = 0.1; // Slightly in front
-                    mesh.add(cloudMesh);
-                    this.cloudMeshes.set(body, cloudMesh);
+                // Add clouds based on CloudFeature
+                const cloudFeature = findFeature<CloudFeature>(body.features, 'clouds');
+                if (cloudFeature) {
+                    // Surface clouds - stay on the planet surface
+                    if (cloudFeature.surfaceClouds) {
+                        const cloudGeometry = new THREE.CircleGeometry(radius * 1.0, 6144);
+                        const cloudTexture = TextureGenerator.createCloudTexture(body);
+                        const cloudMaterial = new THREE.MeshBasicMaterial({
+                            map: cloudTexture,
+                            transparent: true,
+                            opacity: cloudFeature.opacity || 0.8
+                        });
+                        const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                        cloudMesh.position.z = 0.1; // Slightly in front
+                        mesh.add(cloudMesh);
+                        this.cloudMeshes.set(body, cloudMesh);
+                    }
+
+                    // Atmospheric clouds - between altitudeMin and altitudeMax
+                    if (cloudFeature.atmosphericClouds) {
+                        const atmosScale = body.atmosphereRadiusScale || 1.15;
+                        const atmosCloudGeometry = new THREE.CircleGeometry(radius * atmosScale, 6144);
+                        const atmosCloudTexture = TextureGenerator.createAtmosphericCloudTexture(body, cloudFeature);
+                        const atmosCloudMaterial = new THREE.MeshBasicMaterial({
+                            map: atmosCloudTexture,
+                            transparent: true,
+                            opacity: (cloudFeature.opacity || 0.5) * 0.8
+                        });
+                        const atmosCloudMesh = new THREE.Mesh(atmosCloudGeometry, atmosCloudMaterial);
+                        atmosCloudMesh.position.z = 0.05; // Between planet and surface clouds
+                        mesh.add(atmosCloudMesh);
+                        this.atmosphereCloudMeshes.set(body, atmosCloudMesh);
+                    }
                 }
             }
 
@@ -779,9 +805,16 @@ export class ThreeRenderer {
             const cloudMesh = this.cloudMeshes.get(body);
             if (cloudMesh) {
                 // Cloud mesh is a child of the planet mesh, so it inherits scale automatically.
-                // We only need to handle animation.
-                const rotationSpeed = body.name === 'Venus' ? 0.00005 : 0.0001;
+                // We only need to handle animation - slower for realistic look
+                const rotationSpeed = body.name === 'Venus' ? 0.00001 : 0.00002;
                 cloudMesh.rotation.z = _time * rotationSpeed;
+            }
+
+            // Update atmospheric cloud animation if present (even slower for depth effect)
+            const atmosCloudMesh = this.atmosphereCloudMeshes.get(body);
+            if (atmosCloudMesh) {
+                const atmosRotationSpeed = body.name === 'Venus' ? 0.000006 : 0.000012;
+                atmosCloudMesh.rotation.z = _time * atmosRotationSpeed;
             }
 
             // Update texture if zoom changed significantly
@@ -1634,6 +1667,20 @@ export class ThreeRenderer {
             }
         });
         this.cloudMeshes.clear();
+
+        // Dispose atmospheric cloud meshes
+        this.atmosphereCloudMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else {
+                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
+                    mesh.material.dispose();
+                }
+            }
+        });
+        this.atmosphereCloudMeshes.clear();
 
         // Dispose debris meshes
         this.debrisMeshes.forEach(mesh => {

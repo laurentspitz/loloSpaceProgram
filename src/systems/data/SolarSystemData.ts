@@ -1,4 +1,5 @@
 import type { StarSystemConfig } from '../SystemConfig';
+import type { CloudFeature, RingFeature, StormFeature } from '../CelestialBodyFeatures';
 import { Vector2 } from '../../core/Vector2';
 
 export const SolarSystemData: StarSystemConfig = {
@@ -42,7 +43,18 @@ export const SolarSystemData: StarSystemConfig = {
                     atmosphereHeight: 250000,
                     atmosphereFalloff: 15900,
                     description: "The second planet from the Sun. It has a thick, toxic atmosphere.",
-                    satellites: []
+                    satellites: [],
+                    features: [
+                        {
+                            type: 'clouds',
+                            surfaceClouds: true,
+                            atmosphericClouds: true,
+                            altitudeMin: 1000,
+                            altitudeMax: 200000,
+                            color: 'rgba(243, 200, 100, 0.4)',
+                            opacity: 0.6
+                        } as CloudFeature
+                    ]
                 },
                 {
                     name: "Earth",
@@ -74,6 +86,17 @@ export const SolarSystemData: StarSystemConfig = {
                             type: 'moon',
                             description: "Earth's only natural satellite.",
                         }
+                    ],
+                    features: [
+                        {
+                            type: 'clouds',
+                            surfaceClouds: true,
+                            atmosphericClouds: true,
+                            altitudeMin: 1000,
+                            altitudeMax: 80000,
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            opacity: 0.5
+                        } as CloudFeature
                     ]
                 },
                 {
@@ -104,26 +127,28 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 778.5e9,
                     initialVelocity: 13070,
                     type: 'gas_giant',
-                    hasStorms: true,
                     description: "The largest planet in the Solar System. A gas giant with a Great Red Spot.",
                     satellites: [
                         { name: "Io", mass: 8.93e22, radius: 1821600, color: "#FFFF00", distanceFromParent: 421700000, initialVelocity: 17334, type: 'moon', description: "The most geologically active object in the Solar System." },
                         { name: "Europa", mass: 4.8e22, radius: 1560800, color: "#F5F5DC", distanceFromParent: 671034000, initialVelocity: 13740, type: 'moon', description: "The smallest of the four Galilean moons orbiting Jupiter." },
                         { name: "Ganymede", mass: 1.48e23, radius: 2634100, color: "#D3D3D3", distanceFromParent: 1070412000, initialVelocity: 10880, type: 'moon', description: "The largest and most massive moon of Jupiter and in the Solar System." },
                         { name: "Callisto", mass: 1.08e23, radius: 2410300, color: "#696969", distanceFromParent: 1882709000, initialVelocity: 8204, type: 'moon', description: "The second-largest moon of Jupiter and the third-largest in the Solar System." }
+                    ],
+                    features: [
+                        {
+                            type: 'storms',
+                            hasGreatSpot: true
+                        } as StormFeature
                     ]
                 },
                 {
                     name: "Saturn",
                     mass: 5.683e26,
-                    radius: 58232000, // Reduced visual slightly to make rings pop? No, keeping original data
+                    radius: 58232000,
                     color: "#F39C12",
                     distanceFromParent: 1434e9,
                     initialVelocity: 9680,
                     type: 'gas_giant',
-                    ringColor: "rgba(241, 196, 15, 0.6)",
-                    ringInner: 1.2,
-                    ringOuter: 2.3,
                     atmosphereColor: "rgba(241, 196, 15, 0.2)",
                     description: "The sixth planet from the Sun and the second-largest in the Solar System, famous for its ring system.",
                     satellites: [
@@ -143,6 +168,14 @@ export const SolarSystemData: StarSystemConfig = {
                             atmosphereFalloff: 40000,
                             description: "The largest moon of Saturn and the second-largest natural satellite in the Solar System."
                         }
+                    ],
+                    features: [
+                        {
+                            type: 'rings',
+                            innerRadius: 1.2,
+                            outerRadius: 2.3,
+                            color: 'rgba(241, 196, 15, 0.6)'
+                        } as RingFeature
                     ]
                 },
                 {
@@ -153,13 +186,18 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 2871e9,
                     initialVelocity: 6800,
                     type: 'gas_giant',
-                    ringColor: "rgba(26, 188, 156, 0.3)",
-                    ringInner: 1.5,
-                    ringOuter: 2.0,
                     description: "The seventh planet from the Sun. Its name is a reference to the Greek god of the sky.",
                     satellites: [
                         { name: "Titania", mass: 3.527e21, radius: 788400, color: "#D3D3D3", distanceFromParent: 435910000, initialVelocity: 3645, type: 'moon', description: "The largest of the moons of Uranus and the eighth largest moon in the Solar System." },
                         { name: "Oberon", mass: 3.014e21, radius: 761400, color: "#A9A9A9", distanceFromParent: 583520000, initialVelocity: 3152, type: 'moon', description: "The outermost major moon of the planet Uranus." }
+                    ],
+                    features: [
+                        {
+                            type: 'rings',
+                            innerRadius: 1.5,
+                            outerRadius: 2.0,
+                            color: 'rgba(26, 188, 156, 0.3)'
+                        } as RingFeature
                     ]
                 },
                 {

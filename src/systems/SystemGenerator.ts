@@ -66,13 +66,6 @@ export class SystemGenerator {
 
             body.description = bodyConfig.description;
 
-            // Rings
-            if (bodyConfig.ringColor) {
-                body.ringColor = bodyConfig.ringColor;
-                body.ringInnerRadius = bodyConfig.radius * (bodyConfig.ringInner || 1.2);
-                body.ringOuterRadius = bodyConfig.radius * (bodyConfig.ringOuter || 2.0);
-            }
-
             // Parent/Child relationship
             if (parent) {
                 body.parent = parent;
@@ -87,15 +80,9 @@ export class SystemGenerator {
                 parent.children.push(body);
             }
 
-            // Procedural Generation Checks (Preserving original logic)
-            // Ideally this would be config-driven, but mapping by name is safer for migration
-            if (body.name === "Venus") {
-                body.clouds = ProceduralUtils.generateClouds(789, 30);
-            } else if (body.name === "Earth") {
-                body.clouds = ProceduralUtils.generateClouds(123, 20);
-            } else if (body.name === "Jupiter") {
-                body.hasStorms = true;
-            }
+            // Copy modular features from config
+            // Features replace legacy properties (hasStorms, ringColor, etc.)
+            body.features = bodyConfig.features || [];
 
             // Craters
             // Original logic: "Add craters to other moons randomly... if type === moon and name !== Moon"

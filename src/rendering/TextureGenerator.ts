@@ -296,6 +296,7 @@ export class TextureGenerator {
 
     /**
      * Create animated cloud texture for Earth and Venus
+     * Now includes edge fade to prevent hard clipping at planet boundary
      */
     static createCloudTexture(body: Body): THREE.CanvasTexture {
         const size = 512;
@@ -305,51 +306,227 @@ export class TextureGenerator {
         const ctx = canvas.getContext('2d')!;
         const rng = this.getSeededRandom(body.name + "_clouds");
 
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const maxRadius = size / 2;
+
         if (body.name === 'Earth') {
-            // Earth clouds - smaller and more numerous for better scale
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            const cloudCount = 150;
+            // Earth clouds - uniform distribution using sqrt for radius
+            // This prevents concentration in the center
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            const cloudCount = 200;
             for (let i = 0; i < cloudCount; i++) {
-                const x = rng() * size;
-                const y = rng() * size;
-                const r = (0.005 + rng() * 0.02) * size; // Much smaller clouds
+                const angle = rng() * Math.PI * 2;
+                // sqrt(rng) gives uniform distribution in a circle
+                const dist = Math.sqrt(rng()) * 0.92 * maxRadius;
+                const x = centerX + Math.cos(angle) * dist;
+                const y = centerY + Math.sin(angle) * dist;
+                const r = (0.008 + rng() * 0.025) * size;
 
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Add some fluffiness
-                for (let j = 0; j < 4; j++) {
+                // Draw cloud as group of overlapping circles for fluffy look
+                const blobCount = 3 + Math.floor(rng() * 4);
+                for (let b = 0; b < blobCount; b++) {
+                    const bx = x + (rng() - 0.5) * r * 2;
+                    const by = y + (rng() - 0.5) * r * 2;
+                    const br = r * (0.5 + rng() * 0.5);
                     ctx.beginPath();
-                    ctx.arc(x + (rng() - 0.5) * r * 1.5, y + (rng() - 0.5) * r * 1.5, r * 0.7, 0, Math.PI * 2);
+                    ctx.arc(bx, by, br, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
         } else if (body.name === 'Venus') {
-            // Venus thick clouds
-            ctx.fillStyle = 'rgba(243, 200, 100, 0.4)';
-            for (let i = 0; i < 30; i++) {
-                const x = rng() * size;
-                const y = rng() * size;
-                const width = 40 + rng() * 120;
-                const height = 15 + rng() * 40;
-                const angle = rng() * Math.PI;
+            // Venus thick clouds - bands
+            ctx.fillStyle = 'rgba(243, 200, 100, 0.35)';
+            for (let i = 0; i < 40; i++) {
+                const angle = rng() * Math.PI * 2;
+                const dist = Math.sqrt(rng()) * 0.9 * maxRadius;
+                const x = centerX + Math.cos(angle) * dist;
+                const y = centerY + Math.sin(angle) * dist;
+                const width = 30 + rng() * 80;
+                const height = 8 + rng() * 20;
+                const rotAngle = rng() * Math.PI;
 
                 ctx.save();
                 ctx.translate(x, y);
-                ctx.rotate(angle);
-                ctx.fillRect(-width / 2, -height / 2, width, height);
+                ctx.rotate(rotAngle);
+                // Rounded rectangle for softer look
+                ctx.beginPath();
+                ctx.roundRect(-width / 2, -height / 2, width, height, height / 2);
+                ctx.fill();
                 ctx.restore();
             }
         }
+
+        // Apply circular mask with soft edge fade to prevent clouds being cut
+        const imageData = ctx.getImageData(0, 0, size, size);
+        const data = imageData.data;
+        const fadeStart = 0.85; // Start fading at 85% of radius
+
+        for (let py = 0; py < size; py++) {
+            for (let px = 0; px < size; px++) {
+                const dx = px - centerX;
+                const dy = py - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy) / maxRadius;
+
+                let alpha = 1.0;
+                if (dist > fadeStart) {
+                    // Smooth quadratic fade from fadeStart to 1.0
+                    const t = (dist - fadeStart) / (1.0 - fadeStart);
+                    alpha = 1.0 - (t * t);
+                }
+                if (dist > 1.0) {
+                    alpha = 0;
+                }
+
+                const idx = (py * size + px) * 4;
+                data[idx + 3] = Math.floor(data[idx + 3] * Math.max(0, alpha));
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    /**
+     * Create atmospheric cloud texture for clouds between configurable altitudes
+     * Uses a ring-shaped texture with smooth fade at inner and outer edges
+     * @param body The celestial body (Earth or Venus)
+     * @param cloudFeature Optional CloudFeature with altitude configuration
+     */
+    static createAtmosphericCloudTexture(body: Body, cloudFeature?: { altitudeMin?: number; altitudeMax?: number }): THREE.CanvasTexture {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+        const rng = this.getSeededRandom(body.name + "_atmos_clouds");
+
+        // Clear canvas
+        ctx.clearRect(0, 0, size, size);
+
+        const centerX = size / 2;
+        const centerY = size / 2;
+        const maxRadius = size / 2;
+
+        // Calculate correct ratios based on actual altitudes
+        // Use CloudFeature altitudes if provided, otherwise defaults
+        const atmosScale = body.atmosphereRadiusScale || 1.15;
+        const bodyRadius = body.radius; // in meters
+
+        // Use feature altitudes or defaults
+        const innerAltitude = cloudFeature?.altitudeMin ?? 1000; // Default 1km
+        const outerAltitude = cloudFeature?.altitudeMax ?? 80000; // Default 80km
+
+        // Calculate the ratios within the texture
+        // Texture goes from 0 (center) to 1.0 (at atmosScale radius)
+        // Ratio = (bodyRadius + altitude) / (bodyRadius * atmosScale)
+        const innerCloudRatio = (bodyRadius + innerAltitude) / (bodyRadius * atmosScale);
+        const outerCloudRatio = (bodyRadius + outerAltitude) / (bodyRadius * atmosScale);
+
+        // Fade margins for soft edges (in ratio space)
+        const fadeMargin = 0.02; // Soft transition zone
+
+        // Draw fluffy atmospheric clouds with organic shapes
+        ctx.fillStyle = 'rgba(255, 255, 255, 1.0)';
+
+        const cloudCount = 80; // Fewer but larger cloud formations
+        for (let i = 0; i < cloudCount; i++) {
+            // Position cloud formation within the altitude band
+            const angle = rng() * Math.PI * 2;
+            const radiusRatio = innerCloudRatio + rng() * (outerCloudRatio - innerCloudRatio);
+            const cloudRadius = radiusRatio * maxRadius;
+
+            const cx = centerX + Math.cos(angle) * cloudRadius;
+            const cy = centerY + Math.sin(angle) * cloudRadius;
+
+            // Calculate opacity based on distance from boundaries
+            const normalizedPos = (radiusRatio - innerCloudRatio) / (outerCloudRatio - innerCloudRatio);
+            const innerFade = Math.min(1.0, normalizedPos * 3);
+            const outerFade = Math.min(1.0, (1.0 - normalizedPos) * 3);
+            const edgeFade = Math.min(innerFade, outerFade);
+
+            ctx.globalAlpha = 0.15 * edgeFade;
+
+            // Draw cloud as cluster of overlapping circles (fluffy shape)
+            const blobCount = 4 + Math.floor(rng() * 6);
+            const cloudSize = (0.015 + rng() * 0.03) * size;
+
+            for (let b = 0; b < blobCount; b++) {
+                // Blobs arranged in elongated pattern (like real clouds)
+                const blobAngle = angle + (rng() - 0.5) * 0.3;
+                const blobOffset = (rng() - 0.5) * cloudSize * 2;
+                const bx = cx + Math.cos(blobAngle) * blobOffset + (rng() - 0.5) * cloudSize;
+                const by = cy + Math.sin(blobAngle) * blobOffset + (rng() - 0.5) * cloudSize;
+                const br = cloudSize * (0.4 + rng() * 0.6);
+
+                ctx.beginPath();
+                ctx.arc(bx, by, br, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Add wispy extensions
+            for (let w = 0; w < 2; w++) {
+                const wispAngle = angle + (rng() - 0.5) * 0.4;
+                const wispDist = cloudSize * (1.5 + rng() * 1.5);
+                const wx = cx + Math.cos(wispAngle) * wispDist;
+                const wy = cy + Math.sin(wispAngle) * wispDist;
+                const wr = cloudSize * (0.2 + rng() * 0.3);
+
+                ctx.globalAlpha = 0.08 * edgeFade;
+                ctx.beginPath();
+                ctx.arc(wx, wy, wr, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        ctx.globalAlpha = 1.0;
+
+        // Apply radial mask with very gradual fade at boundaries
+        const imageData = ctx.getImageData(0, 0, size, size);
+        const data = imageData.data;
+
+        for (let py = 0; py < size; py++) {
+            for (let px = 0; px < size; px++) {
+                const dx = px - centerX;
+                const dy = py - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy) / maxRadius;
+
+                // Smooth fade using cosine interpolation for natural look
+                let alpha = 1.0;
+
+                if (dist < innerCloudRatio - fadeMargin) {
+                    // Fully transparent inside planet
+                    alpha = 0;
+                } else if (dist < innerCloudRatio + fadeMargin) {
+                    // Smooth fade-in at inner edge
+                    const t = (dist - (innerCloudRatio - fadeMargin)) / (fadeMargin * 2);
+                    alpha = t * t; // Quadratic ease-in
+                } else if (dist > outerCloudRatio - fadeMargin && dist <= outerCloudRatio + fadeMargin) {
+                    // Smooth fade-out at outer edge
+                    const t = (dist - (outerCloudRatio - fadeMargin)) / (fadeMargin * 2);
+                    alpha = 1.0 - (t * t); // Quadratic ease-out
+                } else if (dist > outerCloudRatio + fadeMargin) {
+                    // Fully transparent beyond outer edge
+                    alpha = 0;
+                }
+
+                const idx = (py * size + px) * 4;
+                data[idx + 3] = Math.floor(data[idx + 3] * Math.max(0, Math.min(1, alpha)));
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
 
         return new THREE.CanvasTexture(canvas);
     }
 
     /**
      * Create ring texture for Saturn and Uranus
+     * @param body The celestial body
+     * @param ringFeature Optional RingFeature with color configuration
      */
-    static createRingTexture(body: Body): THREE.CanvasTexture {
+    static createRingTexture(body: Body, ringFeature?: { color?: string }): THREE.CanvasTexture {
         const rng = this.getSeededRandom(body.name);
         const size = 512;
         const canvas = document.createElement('canvas');
@@ -374,8 +551,8 @@ export class TextureGenerator {
             // Alternate opacity for band effect
             const opacity = 0.3 + (i % 3) * 0.2 + rng() * 0.1;
 
-            // Parse ring color
-            const ringColor = body.ringColor || body.color;
+            // Use RingFeature color if provided, otherwise fall back to body color
+            const ringColor = ringFeature?.color || body.color;
             const colorMatch = ringColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
             let r = 241, g = 196, b = 15; // Default Saturn color
             if (colorMatch) {
