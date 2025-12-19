@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { IconGenerator } from '../ui/IconGenerator';
 import { Body } from '../core/Body';
+import type { SurfaceFeature, ContinentFeature, IceCapFeature } from '../systems/CelestialBodyFeatures';
+import { isSurfaceFeature, isContinentFeature, isIceCapFeature } from '../systems/CelestialBodyFeatures';
 
 /**
  * TextureGenerator - Handles all procedural texture generation for celestial bodies
@@ -27,6 +29,7 @@ export class TextureGenerator {
 
     /**
      * Main entry point - creates appropriate texture for any celestial body
+     * Uses feature-based rendering when features are defined
      */
     static createPlanetTexture(body: Body): THREE.CanvasTexture {
         const size = 512;
@@ -35,52 +38,237 @@ export class TextureGenerator {
         canvas.height = size;
         const ctx = canvas.getContext('2d')!;
 
-        // Create radial gradient for basic shading
+        // Check if body has surface features defined
+        const surfaceFeature = body.features?.find(isSurfaceFeature);
+        const continentFeature = body.features?.find(isContinentFeature);
+        const iceCapFeature = body.features?.find(isIceCapFeature);
+
+        if (body.name === 'Sun') {
+            this.drawSun(ctx, size, body);
+        } else if (body.type === 'gas_giant') {
+            this.drawGasGiantBands(ctx, size, body);
+        } else if (surfaceFeature) {
+            // Feature-based rendering
+            this.drawSurfaceFeature(ctx, size, surfaceFeature);
+            if (continentFeature) {
+                this.drawContinentFeature(ctx, size, continentFeature);
+            }
+            if (iceCapFeature) {
+                this.drawIceCapFeature(ctx, size, iceCapFeature);
+            }
+        } else if (body.type === 'moon' || body.name === 'Mercury') {
+            this.drawCrateredSurface(ctx, size, body);
+        } else {
+            // Default: simple gradient
+            this.drawDefaultSurface(ctx, size, body);
+        }
+
+        return new THREE.CanvasTexture(canvas);
+    }
+
+    /**
+     * Draw the Sun with corona effect
+     */
+    private static drawSun(ctx: CanvasRenderingContext2D, size: number, body: Body) {
+        const rng = this.getSeededRandom(body.name);
+        const gradient = ctx.createRadialGradient(
+            size * 0.35, size * 0.35, size * 0.1,
+            size * 0.5, size * 0.5, size * 0.5
+        );
+        gradient.addColorStop(0, '#ffffcc');
+        gradient.addColorStop(0.3, '#ffff88');
+        gradient.addColorStop(0.6, '#ffaa00');
+        gradient.addColorStop(1, '#ff6600');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+
+        // Add some solar texture
+        for (let i = 0; i < 50; i++) {
+            const x = rng() * size;
+            const y = rng() * size;
+            const radius = 5 + rng() * 15;
+            ctx.fillStyle = `rgba(255, 200, 0, ${0.1 + rng() * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    /**
+     * Draw surface based on SurfaceFeature
+     */
+    private static drawSurfaceFeature(ctx: CanvasRenderingContext2D, size: number, feature: SurfaceFeature) {
         const gradient = ctx.createRadialGradient(
             size * 0.35, size * 0.35, size * 0.1,
             size * 0.5, size * 0.5, size * 0.5
         );
 
-        if (body.name === 'Sun') {
-            const rng = this.getSeededRandom(body.name);
-            // Sun: bright yellow-orange gradient with corona effect
-            gradient.addColorStop(0, '#ffffcc');
-            gradient.addColorStop(0.3, '#ffff88');
-            gradient.addColorStop(0.6, '#ffaa00');
-            gradient.addColorStop(1, '#ff6600');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, size, size);
+        gradient.addColorStop(0, feature.primaryColor);
+        gradient.addColorStop(0.7, feature.secondaryColor || feature.primaryColor);
+        gradient.addColorStop(1, feature.tertiaryColor || this.darkenColor(feature.primaryColor, 30));
 
-            // Add some solar texture
-            for (let i = 0; i < 50; i++) {
-                const x = rng() * size;
-                const y = rng() * size;
-                const radius = 5 + rng() * 15;
-                ctx.fillStyle = `rgba(255, 200, 0, ${0.1 + rng() * 0.2})`;
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+    }
+
+    /**
+     * Draw continents based on ContinentFeature
+     * Supports SVG-based rendering or fallback to ellipse shapes
+     */
+    private static drawContinentFeature(ctx: CanvasRenderingContext2D, size: number, feature: ContinentFeature) {
+        ctx.fillStyle = feature.color;
+
+        // If SVG is specified, we need to handle it asynchronously
+        // For now, check if the SVG is already cached
+        if (feature.svgUrl && TextureGenerator.svgCache.has(feature.svgUrl)) {
+            const svgImage = TextureGenerator.svgCache.get(feature.svgUrl)!;
+            const longitudeOffset = TextureGenerator.debugLongitudeOffset ?? (feature.longitudeOffset || 0);
+
+            // The SVG is a world map with 2:1 aspect ratio (360° x 180°)
+            // We need to show only half of it (one hemisphere = 180°)
+            // The texture size is square, so we need to:
+            // 1. Calculate the source width that represents 180° (half of the SVG)
+            // 2. Draw that portion into the full texture height
+
+            const svgWidth = svgImage.width;
+            const svgHeight = svgImage.height;
+
+            // Source: half of the SVG width (180° of 360° = hemisphere)
+            const hemisphereWidth = svgWidth / 2;
+
+            // Calculate offset in SVG coordinates
+            // longitudeOffset 0-360 maps to 0-svgWidth
+            const srcOffsetX = (longitudeOffset / 360) * svgWidth;
+
+            // Create a temporary canvas to colorize the SVG
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            const tempCtx = tempCanvas.getContext('2d')!;
+
+            // Draw the hemisphere portion with correct aspect ratio
+            // We need to draw from srcOffsetX, taking hemisphereWidth of pixels
+            // But we might wrap around the edge, so we draw in two parts if needed
+
+            const srcX1 = srcOffsetX;
+            const srcWidth1 = Math.min(hemisphereWidth, svgWidth - srcOffsetX);
+            const dstWidth1 = (srcWidth1 / hemisphereWidth) * size;
+
+            // First part: from srcOffsetX to end of SVG (or full hemisphere if it fits)
+            tempCtx.drawImage(
+                svgImage,
+                srcX1, 0, srcWidth1, svgHeight,  // source rectangle
+                0, 0, dstWidth1, size            // destination rectangle
+            );
+
+            // Second part: wrap around from start of SVG (if needed)
+            if (srcWidth1 < hemisphereWidth) {
+                const srcWidth2 = hemisphereWidth - srcWidth1;
+                const dstX2 = dstWidth1;
+                const dstWidth2 = size - dstWidth1;
+
+                tempCtx.drawImage(
+                    svgImage,
+                    0, 0, srcWidth2, svgHeight,           // source rectangle
+                    dstX2, 0, dstWidth2, size              // destination rectangle
+                );
+            }
+
+            // Apply the green color to the black SVG using composite operation
+            // 'source-in' keeps only the parts where both the source and destination overlap
+            tempCtx.globalCompositeOperation = 'source-in';
+            tempCtx.fillStyle = feature.color;
+            tempCtx.fillRect(0, 0, size, size);
+
+            // Now draw the colorized SVG onto the main canvas (on top of the ocean)
+            ctx.drawImage(tempCanvas, 0, 0);
+        } else if (feature.shapes) {
+            // Fallback to ellipse shapes
+            for (const shape of feature.shapes) {
                 ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.ellipse(
+                    shape.x * size,
+                    shape.y * size,
+                    shape.rx * size,
+                    shape.ry * size,
+                    shape.rotation || 0,
+                    0,
+                    Math.PI * 2
+                );
                 ctx.fill();
             }
-        } else if (body.type === 'gas_giant') {
-            this.drawGasGiantBands(ctx, size, body);
-        } else if (body.name === 'Earth') {
-            this.drawEarth(ctx, size);
-        } else if (body.name === 'Mars') {
-            this.drawMars(ctx, size);
-        } else if (body.name === 'Venus') {
-            this.drawVenus(ctx, size);
-        } else if (body.type === 'moon' || body.name === 'Mercury') {
-            this.drawCrateredSurface(ctx, size, body);
-        } else {
-            // Default: simple gradient
-            gradient.addColorStop(0, this.lightenColor(body.color, 30));
-            gradient.addColorStop(0.7, body.color);
-            gradient.addColorStop(1, this.darkenColor(body.color, 30));
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, size, size);
+        }
+    }
+
+    // Debug: allows runtime adjustment of longitude offset
+    public static debugLongitudeOffset: number | null = null;
+
+    // Cache for loaded SVG images
+    private static svgCache: Map<string, HTMLImageElement> = new Map();
+
+    /**
+     * Preload an SVG for use in continent rendering
+     * @param id - Identifier to reference this SVG (e.g., 'earth')
+     * @param url - URL to load the SVG from (use Vite import for correct path)
+     */
+    public static async preloadSvg(id: string, url: string): Promise<void> {
+        if (TextureGenerator.svgCache.has(id)) {
+            return; // Already loaded
         }
 
-        return new THREE.CanvasTexture(canvas);
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                TextureGenerator.svgCache.set(id, img);
+                console.log(`[TextureGenerator] Loaded SVG '${id}' from: ${url}`);
+                resolve();
+            };
+            img.onerror = (err) => {
+                console.error(`[TextureGenerator] Failed to load SVG '${id}' from: ${url}`, err);
+                reject(err);
+            };
+            img.src = url;
+        });
+    }
+
+    /**
+     * Draw ice caps based on IceCapFeature
+     */
+    private static drawIceCapFeature(ctx: CanvasRenderingContext2D, size: number, feature: IceCapFeature) {
+        const opacity = feature.opacity || 1.0;
+        const capSize = feature.size || 0.15;
+
+        // Use solid white for clean edges
+        ctx.fillStyle = feature.color || `rgba(255, 255, 255, ${opacity})`;
+
+        if (feature.northPole) {
+            ctx.beginPath();
+            // Position at top edge (y=0) to avoid blue edge showing
+            ctx.ellipse(size * 0.5, size * 0.02, size * capSize * 2.5, size * capSize * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (feature.southPole) {
+            ctx.beginPath();
+            // Position at bottom edge (y=size) to avoid blue edge
+            ctx.ellipse(size * 0.5, size * 0.98, size * capSize * 2.2, size * capSize * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    /**
+     * Draw default surface for bodies without features
+     */
+    private static drawDefaultSurface(ctx: CanvasRenderingContext2D, size: number, body: Body) {
+        const gradient = ctx.createRadialGradient(
+            size * 0.35, size * 0.35, size * 0.1,
+            size * 0.5, size * 0.5, size * 0.5
+        );
+        gradient.addColorStop(0, this.lightenColor(body.color, 30));
+        gradient.addColorStop(0.7, body.color);
+        gradient.addColorStop(1, this.darkenColor(body.color, 30));
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
     }
 
     /**
@@ -141,158 +329,156 @@ export class TextureGenerator {
     }
 
     /**
-     * Draw cratered surface for moons and Mercury
+     * Draw cratered surface with 3D lighting effect for moons and Mercury
+     * Simulates spherical lighting and crater depth
      */
     private static drawCrateredSurface(ctx: CanvasRenderingContext2D, size: number, body: Body) {
         const rng = this.getSeededRandom(body.name);
-        // Base gradient
-        const gradient = ctx.createRadialGradient(
-            size * 0.35, size * 0.35, size * 0.1,
-            size * 0.5, size * 0.5, size * 0.5
-        );
-        gradient.addColorStop(0, this.lightenColor(body.color, 30));
-        gradient.addColorStop(0.7, body.color);
-        gradient.addColorStop(1, this.darkenColor(body.color, 30));
-        ctx.fillStyle = gradient;
+        const center = size / 2;
+
+        // Light direction (from top-left, simulating sun)
+        const lightAngle = -Math.PI / 4; // 45 degrees from top-left
+        const lightX = Math.cos(lightAngle);
+        const lightY = Math.sin(lightAngle);
+
+        // Step 1: Base color fill
+        ctx.fillStyle = body.color;
         ctx.fillRect(0, 0, size, size);
 
-        // Draw craters
-        const craterCount = body.craters ? body.craters.length * 3 : 40; // More craters
+        // Step 2: Spherical shading - dark shadow on opposite side of light
+        // This creates the "terminator" effect
+        const shadowGradient = ctx.createLinearGradient(
+            center + size * 0.5 * lightX,
+            center + size * 0.5 * lightY,
+            center - size * 0.5 * lightX,
+            center - size * 0.5 * lightY
+        );
+        shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        shadowGradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.1)');
+        shadowGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.35)');
+        shadowGradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.55)');
+        shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
+        ctx.fillStyle = shadowGradient;
+        ctx.fillRect(0, 0, size, size);
+
+        // Step 3: Bright highlight spot where light hits (specular)
+        const highlightX = center + size * 0.25 * lightX;
+        const highlightY = center + size * 0.25 * lightY;
+        const highlightGradient = ctx.createRadialGradient(
+            highlightX, highlightY, 0,
+            highlightX, highlightY, size * 0.4
+        );
+        highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        highlightGradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.2)');
+        highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+        highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = highlightGradient;
+        ctx.fillRect(0, 0, size, size);
+
+        // Step 4: Limb darkening (edges of sphere appear darker)
+        const limbGradient = ctx.createRadialGradient(
+            center, center, size * 0.3,
+            center, center, size * 0.5
+        );
+        limbGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        limbGradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.1)');
+        limbGradient.addColorStop(0.85, 'rgba(0, 0, 0, 0.25)');
+        limbGradient.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+        ctx.fillStyle = limbGradient;
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw craters with 3D depth effect
+        const craterCount = body.craters ? body.craters.length * 3 : 50;
+
+        // Sort craters by size (draw big ones first, small ones on top)
+        const craters: { x: number; y: number; radius: number }[] = [];
         for (let i = 0; i < craterCount; i++) {
-            const x = rng() * size;
-            const y = rng() * size;
-            const radius = 5 + rng() * 25;
+            craters.push({
+                x: rng() * size,
+                y: rng() * size,
+                radius: 3 + rng() * 30
+            });
+        }
+        craters.sort((a, b) => b.radius - a.radius);
 
-            // Crater shadow
-            ctx.fillStyle = `rgba(0, 0, 0, ${0.3 + rng() * 0.2})`;
+        for (const crater of craters) {
+            const { x, y, radius } = crater;
+
+            // Crater floor - offset gradient creates concave illusion
+            const craterGradient = ctx.createRadialGradient(
+                x + radius * 0.35 * lightX,
+                y + radius * 0.35 * lightY,
+                0,
+                x, y, radius
+            );
+            craterGradient.addColorStop(0, this.darkenColor(body.color, 40));
+            craterGradient.addColorStop(0.5, this.darkenColor(body.color, 25));
+            craterGradient.addColorStop(0.85, this.darkenColor(body.color, 10));
+            craterGradient.addColorStop(1, body.color);
+
+            ctx.fillStyle = craterGradient;
             ctx.beginPath();
             ctx.arc(x, y, radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Crater rim highlight
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + rng() * 0.1})`;
-            ctx.beginPath();
-            ctx.arc(x - radius * 0.2, y - radius * 0.2, radius * 0.3, 0, Math.PI * 2);
-            ctx.fill();
+            // Smooth angular gradient around crater rim using filled wedges
+            // Wedges don't have anti-aliased edges between segments
+            const rimWidth = radius * 0.15;
+            const innerRadius = radius - rimWidth;
+            const segments = 36;
+            const segmentAngle = (Math.PI * 2) / segments;
+
+            for (let i = 0; i < segments; i++) {
+                const angle = i * segmentAngle;
+                const startAngle = angle;
+                const endAngle = angle + segmentAngle;
+
+                // Calculate lighting based on angle relative to light source
+                const midAngle = angle + segmentAngle / 2;
+                const angleFromLight = midAngle - lightAngle;
+                const litFactor = Math.cos(angleFromLight);
+
+                if (litFactor > 0) {
+                    const opacity = litFactor * 0.25;
+                    ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+                } else {
+                    const opacity = -litFactor * 0.12;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                }
+
+                // Draw filled wedge (annular sector)
+                ctx.beginPath();
+                ctx.arc(x, y, radius, startAngle, endAngle);
+                ctx.arc(x, y, innerRadius, endAngle, startAngle, true);
+                ctx.closePath();
+                ctx.fill();
+            }
         }
-    }
 
-    /**
-     * Draw Earth with continents and ice caps
-     */
-    private static drawEarth(ctx: CanvasRenderingContext2D, size: number) {
-        // Ocean base
-        const gradient = ctx.createRadialGradient(
-            size * 0.35, size * 0.35, size * 0.1,
-            size * 0.5, size * 0.5, size * 0.5
-        );
-        gradient.addColorStop(0, '#4da6ff');
-        gradient.addColorStop(0.7, '#0066cc');
-        gradient.addColorStop(1, '#004080');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
+        // Add subtle surface texture (small bumps/rocks)
+        for (let i = 0; i < 200; i++) {
+            const tx = rng() * size;
+            const ty = rng() * size;
+            const tr = 1 + rng() * 2;
+            const brightness = rng() > 0.5 ? 0.05 : -0.08;
 
-        // Continents (simplified)
-        ctx.fillStyle = '#7cb342';
-
-        // North America
-        ctx.beginPath();
-        ctx.ellipse(size * 0.25, size * 0.3, size * 0.12, size * 0.15, -0.3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // South America
-        ctx.beginPath();
-        ctx.ellipse(size * 0.3, size * 0.55, size * 0.08, size * 0.12, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Europe/Africa
-        ctx.beginPath();
-        ctx.ellipse(size * 0.52, size * 0.35, size * 0.1, size * 0.18, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Asia
-        ctx.beginPath();
-        ctx.ellipse(size * 0.7, size * 0.3, size * 0.15, size * 0.12, 0.1, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Australia
-        ctx.beginPath();
-        ctx.ellipse(size * 0.75, size * 0.6, size * 0.08, size * 0.06, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Arctic ice cap
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.beginPath();
-        ctx.ellipse(size * 0.5, size * 0.08, size * 0.4, size * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Antarctica (bottom, partial)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.beginPath();
-        ctx.ellipse(size * 0.5, size * 0.92, size * 0.35, size * 0.08, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Clouds are now drawn in a separate layer
-    }
-
-    /**
-     * Draw Mars with reddish surface and polar ice caps
-     */
-    private static drawMars(ctx: CanvasRenderingContext2D, size: number) {
-        const rng = this.getSeededRandom('Mars');
-        // Reddish base with gradient
-        const gradient = ctx.createRadialGradient(
-            size * 0.35, size * 0.35, size * 0.1,
-            size * 0.5, size * 0.5, size * 0.5
-        );
-        gradient.addColorStop(0, '#ff6b4a');
-        gradient.addColorStop(0.7, '#E74C3C');
-        gradient.addColorStop(1, '#a83226');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
-
-        // Darker regions (maria)
-        ctx.fillStyle = 'rgba(100, 30, 20, 0.3)';
-        for (let i = 0; i < 8; i++) {
-            const x = rng() * size;
-            const y = rng() * size;
-            const radius = 30 + rng() * 60;
+            ctx.fillStyle = brightness > 0
+                ? `rgba(255, 255, 255, ${brightness})`
+                : `rgba(0, 0, 0, ${-brightness})`;
             ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.arc(tx, ty, tr, 0, Math.PI * 2);
             ctx.fill();
         }
 
-        // Polar ice caps
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-
-        // North pole
+        // Rim lighting effect (thin bright edge on shadow side)
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.08)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(size * 0.5, size * 0.1, size * 0.15, 0, Math.PI * 2);
-        ctx.fill();
-
-        // South pole
-        ctx.beginPath();
-        ctx.arc(size * 0.5, size * 0.9, size * 0.12, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(center, center, size * 0.48, lightAngle + Math.PI - 0.5, lightAngle + Math.PI + 0.5);
+        ctx.stroke();
     }
 
-    /**
-     * Draw Venus with thick yellowish atmosphere
-     */
-    private static drawVenus(ctx: CanvasRenderingContext2D, size: number) {
-        // Yellowish base
-        const gradient = ctx.createRadialGradient(
-            size * 0.35, size * 0.35, size * 0.1,
-            size * 0.5, size * 0.5, size * 0.5
-        );
-        gradient.addColorStop(0, '#fff4a3');
-        gradient.addColorStop(0.7, '#F1C40F');
-        gradient.addColorStop(1, '#c9a00c');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, size, size);
 
-        // Clouds are now drawn in a separate layer
-    }
 
     /**
      * Create animated cloud texture for Earth and Venus
@@ -567,6 +753,84 @@ export class TextureGenerator {
             ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2, true);
             ctx.fill();
         }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    /**
+     * Create a spherical 3D lighting overlay texture
+     * This creates a transparent overlay that simulates 3D sphere lighting
+     * Apply on top of any planet to make it look 3D
+     */
+    static createSpherical3DOverlay(): THREE.CanvasTexture {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        const center = size / 2;
+        const radius = size / 2;
+
+        // Light direction (from top-left, simulating sun)
+        const lightAngle = -Math.PI / 4;
+        const lightX = Math.cos(lightAngle);
+        const lightY = Math.sin(lightAngle);
+
+        // Clear canvas
+        ctx.clearRect(0, 0, size, size);
+
+        // Layer 1: Shadow on the dark side (terminator effect)
+        // Use linear gradient for realistic half-lit effect
+        const shadowGradient = ctx.createLinearGradient(
+            center + radius * lightX,
+            center + radius * lightY,
+            center - radius * lightX,
+            center - radius * lightY
+        );
+        shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        shadowGradient.addColorStop(0.35, 'rgba(0, 0, 0, 0)');
+        shadowGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.15)');
+        shadowGradient.addColorStop(0.65, 'rgba(0, 0, 0, 0.4)');
+        shadowGradient.addColorStop(0.8, 'rgba(0, 0, 0, 0.6)');
+        shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+        ctx.fillStyle = shadowGradient;
+        ctx.beginPath();
+        ctx.arc(center, center, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Layer 2: Specular highlight where light hits
+        const highlightX = center + radius * 0.35 * lightX;
+        const highlightY = center + radius * 0.35 * lightY;
+        const highlightGradient = ctx.createRadialGradient(
+            highlightX, highlightY, 0,
+            highlightX, highlightY, radius * 0.5
+        );
+        highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+        highlightGradient.addColorStop(0.15, 'rgba(255, 255, 255, 0.3)');
+        highlightGradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.1)');
+        highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = highlightGradient;
+        ctx.beginPath();
+        ctx.arc(center, center, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Layer 3: Limb darkening (edges of sphere are darker)
+        const limbGradient = ctx.createRadialGradient(
+            center, center, radius * 0.5,
+            center, center, radius
+        );
+        limbGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        limbGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.05)');
+        limbGradient.addColorStop(0.75, 'rgba(0, 0, 0, 0.15)');
+        limbGradient.addColorStop(0.9, 'rgba(0, 0, 0, 0.3)');
+        limbGradient.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+        ctx.fillStyle = limbGradient;
+        ctx.beginPath();
+        ctx.arc(center, center, radius, 0, Math.PI * 2);
+        ctx.fill();
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;

@@ -2,6 +2,7 @@ import { ThreeRenderer } from '../../rendering/ThreeRenderer';
 import { Renderer } from '../../Renderer';
 import { GameTimeManager } from '../../managers/GameTimeManager';
 import { createSlidingPanel } from '../components/SlidingPanel';
+import { TextureGenerator } from '../../rendering/TextureGenerator';
 
 export interface DebugPanelOptions {
     renderer: Renderer | ThreeRenderer;
@@ -148,6 +149,42 @@ export class DebugPanel {
         timeContainer.appendChild(yearLabel);
         timeContainer.appendChild(yearSlider);
         debugContent.appendChild(timeContainer);
+
+        // Earth Longitude Control
+        const longitudeContainer = document.createElement('div');
+        longitudeContainer.style.marginTop = '10px';
+        longitudeContainer.style.borderTop = '1px solid #444';
+        longitudeContainer.style.paddingTop = '10px';
+
+        const longitudeLabel = document.createElement('div');
+        longitudeLabel.id = 'debug-longitude-label';
+        longitudeLabel.textContent = 'Earth Longitude: 0°';
+        longitudeLabel.style.color = '#ccc';
+        longitudeLabel.style.fontSize = '12px';
+        longitudeLabel.style.marginBottom = '5px';
+
+        const longitudeSlider = document.createElement('input');
+        longitudeSlider.type = 'range';
+        longitudeSlider.min = '0';
+        longitudeSlider.max = '360';
+        longitudeSlider.value = '0';
+        longitudeSlider.style.width = '100%';
+        longitudeSlider.oninput = (e) => {
+            const longitude = parseInt((e.target as HTMLInputElement).value);
+            longitudeLabel.textContent = `Earth Longitude: ${longitude}°`;
+
+            // Update the debug longitude offset
+            TextureGenerator.debugLongitudeOffset = longitude;
+
+            // Force texture regeneration by invalidating the cache on Earth
+            if (this.renderer instanceof ThreeRenderer) {
+                this.renderer.invalidateEarthTexture();
+            }
+        };
+
+        longitudeContainer.appendChild(longitudeLabel);
+        longitudeContainer.appendChild(longitudeSlider);
+        debugContent.appendChild(longitudeContainer);
 
         // FPS Counter
         const fpsContainer = document.createElement('div');

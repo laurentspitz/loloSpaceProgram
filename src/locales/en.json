@@ -1,4 +1,72 @@
 {
+    "celestial": {
+        "sun": {
+            "description": "The star at the center of our Solar System."
+        },
+        "mercury": {
+            "description": "The smallest planet in the Solar System and the closest to the Sun."
+        },
+        "venus": {
+            "description": "The second planet from the Sun, known for its thick, toxic atmosphere."
+        },
+        "earth": {
+            "description": "Our home. The only known celestial body to harbor life."
+        },
+        "moon": {
+            "description": "Earth's only natural satellite, the fifth largest moon in the Solar System."
+        },
+        "mars": {
+            "description": "The Red Planet. A cold, dusty world with polar ice caps and ancient riverbeds."
+        },
+        "phobos": {
+            "description": "The larger and innermost of the two natural satellites of Mars."
+        },
+        "deimos": {
+            "description": "The smaller and outermost of the two natural satellites of Mars."
+        },
+        "jupiter": {
+            "description": "The largest planet in the Solar System, a gas giant with powerful storms."
+        },
+        "io": {
+            "description": "The most volcanically active object in the Solar System."
+        },
+        "europa": {
+            "description": "Jupiter's icy moon with a subsurface ocean that may harbor life."
+        },
+        "ganymede": {
+            "description": "The largest moon in the Solar System, bigger than Mercury."
+        },
+        "callisto": {
+            "description": "Jupiter's outermost Galilean moon, heavily cratered and ancient."
+        },
+        "saturn": {
+            "description": "The sixth planet, famous for its prominent ring system."
+        },
+        "titan": {
+            "description": "Saturn's largest moon, with a thick atmosphere and methane lakes."
+        },
+        "uranus": {
+            "description": "An ice giant that rotates on its side, with faint rings."
+        },
+        "titania": {
+            "description": "The largest moon of Uranus, covered in canyons and ice."
+        },
+        "oberon": {
+            "description": "The outermost major moon of Uranus."
+        },
+        "neptune": {
+            "description": "The windiest planet, a dark, cold ice giant with supersonic storms."
+        },
+        "triton": {
+            "description": "Neptune's largest moon, likely a captured Kuiper Belt object."
+        },
+        "pluto": {
+            "description": "A dwarf planet in the Kuiper Belt, with a heart-shaped nitrogen glacier."
+        },
+        "charon": {
+            "description": "Pluto's largest moon, so big it and Pluto orbit a common center."
+        }
+    },
     "menu": {
         "newGame": "✨ New Game",
         "loadGame": "📂 Load Game",

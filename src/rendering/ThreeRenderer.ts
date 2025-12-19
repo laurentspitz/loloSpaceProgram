@@ -655,6 +655,20 @@ export class ThreeRenderer {
 
                 mesh = new THREE.Mesh(geometry, material);
 
+                // Add 3D spherical lighting overlay (except for the Sun)
+                if (body.name !== 'Sun') {
+                    const overlayGeometry = new THREE.CircleGeometry(radius, 8192);
+                    const overlayTexture = TextureGenerator.createSpherical3DOverlay();
+                    const overlayMaterial = new THREE.MeshBasicMaterial({
+                        map: overlayTexture,
+                        transparent: true,
+                        depthWrite: false
+                    });
+                    const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
+                    overlayMesh.position.z = 0.2; // In front of planet texture
+                    mesh.add(overlayMesh);
+                }
+
                 // Add atmosphere halo
                 if (body.atmosphereColor) {
                     const atmosScale = body.atmosphereRadiusScale || 1.25;
@@ -1606,6 +1620,25 @@ export class ThreeRenderer {
         });
 
         return closest;
+    }
+
+    /**
+     * Invalidate Earth's texture to force regeneration (for debug longitude adjustment)
+     */
+    invalidateEarthTexture() {
+        // Find Earth in the body meshes and regenerate its texture
+        this.bodyMeshes.forEach((mesh, body) => {
+            if (body.name === 'Earth') {
+                // Regenerate the texture
+                const texture = TextureGenerator.createPlanetTexture(body);
+                const material = mesh.material as THREE.MeshBasicMaterial;
+                if (material.map) {
+                    material.map.dispose();
+                }
+                material.map = texture;
+                material.needsUpdate = true;
+            }
+        });
     }
 
     /**

@@ -1,5 +1,5 @@
 import type { StarSystemConfig } from '../SystemConfig';
-import type { CloudFeature, RingFeature, StormFeature } from '../CelestialBodyFeatures';
+import type { CloudFeature, RingFeature, StormFeature, SurfaceFeature, ContinentFeature, IceCapFeature } from '../CelestialBodyFeatures';
 import { Vector2 } from '../../core/Vector2';
 
 export const SolarSystemData: StarSystemConfig = {
@@ -15,7 +15,7 @@ export const SolarSystemData: StarSystemConfig = {
             distanceFromParent: 0,
             type: 'star',
             atmosphereColor: "rgba(255, 215, 0, 0.4)",
-            description: "The star at the center of our Solar System.",
+            description: "celestial.sun.description",
             satellites: [
                 {
                     name: "Mercury",
@@ -25,7 +25,7 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 57.9e9,
                     initialVelocity: 47400,
                     type: 'terrestrial',
-                    description: " The smallest planet in the Solar System and the closest to the Sun.",
+                    description: "celestial.mercury.description",
                     satellites: []
                 },
                 {
@@ -42,9 +42,16 @@ export const SolarSystemData: StarSystemConfig = {
                     atmosphereDensity: 65.0,
                     atmosphereHeight: 250000,
                     atmosphereFalloff: 15900,
-                    description: "The second planet from the Sun. It has a thick, toxic atmosphere.",
+                    description: "celestial.venus.description",
                     satellites: [],
                     features: [
+                        {
+                            type: 'surface',
+                            style: 'rocky',
+                            primaryColor: '#fff4a3',
+                            secondaryColor: '#F1C40F',
+                            tertiaryColor: '#c9a00c'
+                        } as SurfaceFeature,
                         {
                             type: 'clouds',
                             surfaceClouds: true,
@@ -74,7 +81,7 @@ export const SolarSystemData: StarSystemConfig = {
                     // User expects drag at 1000km visual altitude.
                     atmosphereHeight: 1000000, // 1000 km height (was 160km)
                     atmosphereFalloff: 100000, // 100 km scale height (was 8km) to ensure density at 1000km
-                    description: "Our home. The only known celestial body to harbor life.",
+                    description: "celestial.earth.description",
                     satellites: [
                         {
                             name: "Moon",
@@ -84,10 +91,30 @@ export const SolarSystemData: StarSystemConfig = {
                             distanceFromParent: 384400000,
                             initialVelocity: 1022,
                             type: 'moon',
-                            description: "Earth's only natural satellite.",
+                            description: "celestial.moon.description",
                         }
                     ],
                     features: [
+                        {
+                            type: 'surface',
+                            style: 'ocean',
+                            primaryColor: '#4da6ff',
+                            secondaryColor: '#0066cc',
+                            tertiaryColor: '#004080'
+                        } as SurfaceFeature,
+                        {
+                            type: 'continents',
+                            color: '#228B22',  // Forest green for land
+                            svgUrl: 'earth',   // Identifier for preloaded SVG (loaded in App.ts)
+                            longitudeOffset: 0  // 0 = default view, adjust for different launch sites
+                        } as ContinentFeature,
+                        {
+                            type: 'ice_caps',
+                            northPole: true,
+                            southPole: true,
+                            size: 0.08,
+                            opacity: 1.0
+                        } as IceCapFeature,
                         {
                             type: 'clouds',
                             surfaceClouds: true,
@@ -113,10 +140,26 @@ export const SolarSystemData: StarSystemConfig = {
                     atmosphereDensity: 0.02,
                     atmosphereHeight: 50000,
                     atmosphereFalloff: 11000,
-                    description: "The Red Planet. Dusty, cold, desert world with a very thin atmosphere.",
+                    description: "celestial.mars.description",
                     satellites: [
-                        { name: "Phobos", mass: 1.0659e16, radius: 11266, color: "#8B4513", distanceFromParent: 9376000, initialVelocity: 2138, type: 'moon', description: "The larger and closer of the two natural satellites of Mars." },
-                        { name: "Deimos", mass: 1.4762e15, radius: 6200, color: "#A0522D", distanceFromParent: 23463200, initialVelocity: 1351, type: 'moon', description: "The smaller and outermost of the two natural satellites of Mars." }
+                        { name: "Phobos", mass: 1.0659e16, radius: 11266, color: "#8B4513", distanceFromParent: 9376000, initialVelocity: 2138, type: 'moon', description: "celestial.phobos.description" },
+                        { name: "Deimos", mass: 1.4762e15, radius: 6200, color: "#A0522D", distanceFromParent: 23463200, initialVelocity: 1351, type: 'moon', description: "celestial.deimos.description" }
+                    ],
+                    features: [
+                        {
+                            type: 'surface',
+                            style: 'rocky',
+                            primaryColor: '#ff6b4a',
+                            secondaryColor: '#E74C3C',
+                            tertiaryColor: '#a83226'
+                        } as SurfaceFeature,
+                        {
+                            type: 'ice_caps',
+                            northPole: true,
+                            southPole: true,
+                            size: 0.12,
+                            opacity: 0.8
+                        } as IceCapFeature
                     ]
                 },
                 {
@@ -127,12 +170,12 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 778.5e9,
                     initialVelocity: 13070,
                     type: 'gas_giant',
-                    description: "The largest planet in the Solar System. A gas giant with a Great Red Spot.",
+                    description: "celestial.jupiter.description",
                     satellites: [
-                        { name: "Io", mass: 8.93e22, radius: 1821600, color: "#FFFF00", distanceFromParent: 421700000, initialVelocity: 17334, type: 'moon', description: "The most geologically active object in the Solar System." },
-                        { name: "Europa", mass: 4.8e22, radius: 1560800, color: "#F5F5DC", distanceFromParent: 671034000, initialVelocity: 13740, type: 'moon', description: "The smallest of the four Galilean moons orbiting Jupiter." },
-                        { name: "Ganymede", mass: 1.48e23, radius: 2634100, color: "#D3D3D3", distanceFromParent: 1070412000, initialVelocity: 10880, type: 'moon', description: "The largest and most massive moon of Jupiter and in the Solar System." },
-                        { name: "Callisto", mass: 1.08e23, radius: 2410300, color: "#696969", distanceFromParent: 1882709000, initialVelocity: 8204, type: 'moon', description: "The second-largest moon of Jupiter and the third-largest in the Solar System." }
+                        { name: "Io", mass: 8.93e22, radius: 1821600, color: "#FFFF00", distanceFromParent: 421700000, initialVelocity: 17334, type: 'moon', description: "celestial.io.description" },
+                        { name: "Europa", mass: 4.8e22, radius: 1560800, color: "#F5F5DC", distanceFromParent: 671034000, initialVelocity: 13740, type: 'moon', description: "celestial.europa.description" },
+                        { name: "Ganymede", mass: 1.48e23, radius: 2634100, color: "#D3D3D3", distanceFromParent: 1070412000, initialVelocity: 10880, type: 'moon', description: "celestial.ganymede.description" },
+                        { name: "Callisto", mass: 1.08e23, radius: 2410300, color: "#696969", distanceFromParent: 1882709000, initialVelocity: 8204, type: 'moon', description: "celestial.callisto.description" }
                     ],
                     features: [
                         {
@@ -150,7 +193,7 @@ export const SolarSystemData: StarSystemConfig = {
                     initialVelocity: 9680,
                     type: 'gas_giant',
                     atmosphereColor: "rgba(241, 196, 15, 0.2)",
-                    description: "The sixth planet from the Sun and the second-largest in the Solar System, famous for its ring system.",
+                    description: "celestial.saturn.description",
                     satellites: [
                         {
                             name: "Titan",
@@ -166,7 +209,7 @@ export const SolarSystemData: StarSystemConfig = {
                             atmosphereDensity: 5.0,
                             atmosphereHeight: 600000,
                             atmosphereFalloff: 40000,
-                            description: "The largest moon of Saturn and the second-largest natural satellite in the Solar System."
+                            description: "celestial.titan.description"
                         }
                     ],
                     features: [
@@ -186,10 +229,10 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 2871e9,
                     initialVelocity: 6800,
                     type: 'gas_giant',
-                    description: "The seventh planet from the Sun. Its name is a reference to the Greek god of the sky.",
+                    description: "celestial.uranus.description",
                     satellites: [
-                        { name: "Titania", mass: 3.527e21, radius: 788400, color: "#D3D3D3", distanceFromParent: 435910000, initialVelocity: 3645, type: 'moon', description: "The largest of the moons of Uranus and the eighth largest moon in the Solar System." },
-                        { name: "Oberon", mass: 3.014e21, radius: 761400, color: "#A9A9A9", distanceFromParent: 583520000, initialVelocity: 3152, type: 'moon', description: "The outermost major moon of the planet Uranus." }
+                        { name: "Titania", mass: 3.527e21, radius: 788400, color: "#D3D3D3", distanceFromParent: 435910000, initialVelocity: 3645, type: 'moon', description: "celestial.titania.description" },
+                        { name: "Oberon", mass: 3.014e21, radius: 761400, color: "#A9A9A9", distanceFromParent: 583520000, initialVelocity: 3152, type: 'moon', description: "celestial.oberon.description" }
                     ],
                     features: [
                         {
@@ -209,9 +252,9 @@ export const SolarSystemData: StarSystemConfig = {
                     initialVelocity: 5430,
                     type: 'gas_giant',
                     atmosphereColor: "rgba(41, 128, 185, 0.3)",
-                    description: "The eighth and farthest-known Solar planet from the Sun.",
+                    description: "celestial.neptune.description",
                     satellites: [
-                        { name: "Triton", mass: 2.14e22, radius: 1353400, color: "#FFC0CB", distanceFromParent: 354759000, initialVelocity: -4390, type: 'moon', description: "The largest natural satellite of the planet Neptune." }
+                        { name: "Triton", mass: 2.14e22, radius: 1353400, color: "#FFC0CB", distanceFromParent: 354759000, initialVelocity: -4390, type: 'moon', description: "celestial.triton.description" }
                     ]
                 },
                 {
@@ -222,9 +265,9 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 5906e9,
                     initialVelocity: 4743,
                     type: 'terrestrial',
-                    description: "A dwarf planet in the Kuiper belt, a ring of bodies beyond the orbit of Neptune.",
+                    description: "celestial.pluto.description",
                     satellites: [
-                        { name: "Charon", mass: 1.586e21, radius: 606000, color: "#808080", distanceFromParent: 19591000, initialVelocity: 210, type: 'moon', description: "The largest of the five known natural satellites of the dwarf planet Pluto." }
+                        { name: "Charon", mass: 1.586e21, radius: 606000, color: "#808080", distanceFromParent: 19591000, initialVelocity: 210, type: 'moon', description: "celestial.charon.description" }
                     ]
                 }
             ]

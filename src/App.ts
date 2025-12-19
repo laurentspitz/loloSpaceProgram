@@ -3,6 +3,8 @@ import { MainMenu } from './ui/MainMenu';
 import { Hangar, createHangar } from './Hangar';
 import { GameTimeManager } from './managers/GameTimeManager';
 import { GAME_START_YEAR } from './config';
+import { TextureGenerator } from './rendering/TextureGenerator';
+import earthSvgUrl from './assets/textures/earth.svg';
 
 /**
  * App - Main entry point and state manager
@@ -18,6 +20,13 @@ export class App {
 
     constructor() {
         (window as any).app = this; // Expose for UI access
+
+        // Preload Earth SVG texture for continent rendering
+        // 'earth' is the ID used in SolarSystemData to reference this SVG
+        TextureGenerator.preloadSvg('earth', earthSvgUrl).catch(err => {
+            console.warn('[App] Failed to preload Earth SVG, will use fallback:', err);
+        });
+
         this.showMenu();
 
         // Listen for navigation events from Hangar
