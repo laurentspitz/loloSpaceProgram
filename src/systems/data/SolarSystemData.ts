@@ -166,7 +166,7 @@ export const SolarSystemData: StarSystemConfig = {
                     name: "Jupiter",
                     mass: 1.898e27,
                     radius: 69911000,
-                    color: "#D35400",
+                    color: "#C8B48A", // Beige/Tan (was #D35400)
                     distanceFromParent: 778.5e9,
                     initialVelocity: 13070,
                     type: 'gas_giant',
@@ -188,11 +188,11 @@ export const SolarSystemData: StarSystemConfig = {
                     name: "Saturn",
                     mass: 5.683e26,
                     radius: 58232000,
-                    color: "#F39C12",
+                    color: "#E0C896", // Pale Gold (was #F39C12)
                     distanceFromParent: 1434e9,
                     initialVelocity: 9680,
                     type: 'gas_giant',
-                    atmosphereColor: "rgba(241, 196, 15, 0.2)",
+                    atmosphereColor: "rgba(224, 200, 150, 0.2)",
                     description: "celestial.saturn.description",
                     satellites: [
                         {

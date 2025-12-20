@@ -307,25 +307,6 @@ export class TextureGenerator {
                 ctx.fillRect(x, turbY, width, height);
             }
         }
-
-        // Add Great Red Spot for Jupiter
-        if (body.name === 'Jupiter') {
-            const spotX = size * 0.6;
-            const spotY = size * 0.55;
-            const spotRadiusX = size * 0.15;
-            const spotRadiusY = size * 0.1;
-
-            ctx.fillStyle = 'rgba(178, 34, 34, 0.7)';
-            ctx.beginPath();
-            ctx.ellipse(spotX, spotY, spotRadiusX, spotRadiusY, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Add inner detail
-            ctx.fillStyle = 'rgba(200, 50, 50, 0.5)';
-            ctx.beginPath();
-            ctx.ellipse(spotX, spotY, spotRadiusX * 0.6, spotRadiusY * 0.6, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
     }
 
     /**

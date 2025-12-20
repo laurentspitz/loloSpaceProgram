@@ -17,6 +17,7 @@ import { findFeature, type CloudFeature, type RingFeature } from '../systems/Cel
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { GasGiantMaterial } from './GasGiantMaterial';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -55,6 +56,8 @@ export class ThreeRenderer {
     atmosphereCloudMeshes: Map<Body, THREE.Mesh> = new Map();
     debrisMeshes: Map<Body, THREE.Group> = new Map();
     particleMeshes: Map<Particle, THREE.Mesh> = new Map();
+    // Gas giant spots for animation
+    gasGiantSpots: Map<Body, THREE.Mesh> = new Map();
 
     // Debug
     showColliders: boolean = false;
@@ -88,6 +91,14 @@ export class ThreeRenderer {
     // Zoom Icons
     bodyIcons: Map<Body, THREE.Mesh> = new Map();
     rocketIcon: THREE.Group | null = null;
+
+    // Gas Giant LOD Materials
+    private gasGiantMaterials: Map<Body, GasGiantMaterial> = new Map();
+    private staticMaterials: Map<Body, THREE.MeshBasicMaterial> = new Map();
+
+    // Mesh References for LOD
+    private atmosphereHaloMeshes: Map<Body, THREE.Mesh> = new Map();
+    private overlayMeshes: Map<Body, THREE.Mesh> = new Map();
 
     // Helpers
     private orbitRenderer: OrbitRenderer;
@@ -646,18 +657,75 @@ export class ThreeRenderer {
                 const radius = body.radius * this.scale * this.visualScale;
                 const geometry = new THREE.CircleGeometry(radius, 8192);
 
-                // Create texture using TextureGenerator
-                const texture = TextureGenerator.createPlanetTexture(body);
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true
-                });
+                let material: THREE.Material;
+
+                if (body.type === 'gas_giant') {
+                    // Use custom shader for gas giants
+                    // Generate a seed from the name
+                    let seed = 0;
+                    for (let i = 0; i < body.name.length; i++) {
+                        seed += body.name.charCodeAt(i);
+                    }
+
+                    // Custom color palettes for specific gas giants
+                    let baseColor: THREE.Color;
+                    let secondaryColor: THREE.Color;
+                    let tertiaryColor: THREE.Color;
+
+                    if (body.name === 'Jupiter') {
+                        // Jupiter: Very Light Palette
+                        baseColor = new THREE.Color('#FDEBD0'); // Very Light Peach/Cream
+                        secondaryColor = new THREE.Color('#F5B041'); // Light Orange
+                        tertiaryColor = new THREE.Color('#EC7063'); // Soft Red
+                    } else if (body.name === 'Saturn') {
+                        // Saturn: Pale Gold, Dark Gold, Greyish
+                        baseColor = new THREE.Color('#F4E5C3'); // Pale Gold
+                        secondaryColor = new THREE.Color('#D4AC0D'); // Dark Gold
+                        tertiaryColor = new THREE.Color('#AAB7B8'); // Greyish/Blue-Grey (for poles)
+                    } else {
+                        // Procedural for others (Uranus, Neptune)
+                        baseColor = new THREE.Color(body.color);
+                        // Secondary: Darker, slightly less saturated
+                        secondaryColor = baseColor.clone().offsetHSL(0.02, -0.1, -0.15);
+                        // Tertiary: Lighter, more desaturated
+                        tertiaryColor = baseColor.clone().offsetHSL(-0.01, -0.2, 0.2);
+                    }
+
+                    material = new GasGiantMaterial({
+                        baseColor: baseColor,
+                        secondaryColor: secondaryColor,
+                        tertiaryColor: tertiaryColor,
+                        seed: seed,
+                        time: 0,
+                        hasSpot: (body.name === 'Jupiter') // Enable spot for Jupiter
+                    });
+                    material.transparent = true;
+                    this.gasGiantMaterials.set(body, material as GasGiantMaterial);
+
+                    // Create Static Material (Low Detail)
+                    const staticTexture = TextureGenerator.createPlanetTexture(body);
+                    const staticMaterial = new THREE.MeshBasicMaterial({
+                        map: staticTexture,
+                        transparent: true
+                    });
+                    this.staticMaterials.set(body, staticMaterial);
+
+                    // Default to static initially (will be updated in render loop)
+                    material = staticMaterial;
+                } else {
+                    // Create texture using TextureGenerator for other bodies
+                    const texture = TextureGenerator.createPlanetTexture(body);
+                    material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true
+                    });
+                }
 
                 mesh = new THREE.Mesh(geometry, material);
 
                 // Add 3D spherical lighting overlay (except for the Sun)
                 if (body.name !== 'Sun') {
-                    const overlayGeometry = new THREE.CircleGeometry(radius, 8192);
+                    const overlayGeometry = new THREE.CircleGeometry(radius, 128);
                     const overlayTexture = TextureGenerator.createSpherical3DOverlay();
                     const overlayMaterial = new THREE.MeshBasicMaterial({
                         map: overlayTexture,
@@ -667,6 +735,7 @@ export class ThreeRenderer {
                     const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
                     overlayMesh.position.z = 0.2; // In front of planet texture
                     mesh.add(overlayMesh);
+                    this.overlayMeshes.set(body, overlayMesh);
                 }
 
                 // Add atmosphere halo
@@ -690,9 +759,10 @@ export class ThreeRenderer {
                     const atmosMesh = new THREE.Mesh(atmosGeometry, atmosMaterial);
                     atmosMesh.position.z = -0.5; // Behind the planet (but in front of background)
                     mesh.add(atmosMesh);
+                    this.atmosphereHaloMeshes.set(body, atmosMesh);
                 } else if (body.name === 'Sun') {
                     // Sun glow (legacy simple glow)
-                    const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 4096);
+                    const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 128);
                     const glowMaterial = new THREE.MeshBasicMaterial({
                         color: 0xffaa00,
                         transparent: true,
@@ -747,7 +817,7 @@ export class ThreeRenderer {
                 if (cloudFeature) {
                     // Surface clouds - stay on the planet surface
                     if (cloudFeature.surfaceClouds) {
-                        const cloudGeometry = new THREE.CircleGeometry(radius * 1.0, 6144);
+                        const cloudGeometry = new THREE.CircleGeometry(radius * 1.0, 128);
                         const cloudTexture = TextureGenerator.createCloudTexture(body);
                         const cloudMaterial = new THREE.MeshBasicMaterial({
                             map: cloudTexture,
@@ -763,7 +833,7 @@ export class ThreeRenderer {
                     // Atmospheric clouds - between altitudeMin and altitudeMax
                     if (cloudFeature.atmosphericClouds) {
                         const atmosScale = body.atmosphereRadiusScale || 1.15;
-                        const atmosCloudGeometry = new THREE.CircleGeometry(radius * atmosScale, 6144);
+                        const atmosCloudGeometry = new THREE.CircleGeometry(radius * atmosScale, 128);
                         const atmosCloudTexture = TextureGenerator.createAtmosphericCloudTexture(body, cloudFeature);
                         const atmosCloudMaterial = new THREE.MeshBasicMaterial({
                             map: atmosCloudTexture,
@@ -824,19 +894,87 @@ export class ThreeRenderer {
                 cloudMesh.rotation.z = _time * rotationSpeed;
             }
 
-            // Update atmospheric cloud animation if present (even slower for depth effect)
+            // Update atmospheric cloud animation if present
             const atmosCloudMesh = this.atmosphereCloudMeshes.get(body);
             if (atmosCloudMesh) {
                 const atmosRotationSpeed = body.name === 'Venus' ? 0.000006 : 0.000012;
                 atmosCloudMesh.rotation.z = _time * atmosRotationSpeed;
+
+                // Cloud LOD: Hide if too small
+                const cloudScreenRadius = this.getScreenRadius(atmosCloudMesh);
+                atmosCloudMesh.visible = cloudScreenRadius > 5;
             }
 
-            // Update texture if zoom changed significantly
-            if (Math.abs(scaleFactor - 1) > 0.1) {
+            // Surface Cloud LOD
+            const surfaceCloudMesh = this.cloudMeshes.get(body);
+            if (surfaceCloudMesh) {
+                const cloudScreenRadius = this.getScreenRadius(surfaceCloudMesh);
+                surfaceCloudMesh.visible = cloudScreenRadius > 5;
+            }
+
+            // Atmosphere Halo LOD
+            const atmosHaloMesh = this.atmosphereHaloMeshes.get(body);
+            if (atmosHaloMesh) {
+                // Use the mesh's own radius (it's a plane, but getScreenRadius handles geometry radius)
+                // Actually getScreenRadius expects CircleGeometry, but atmos is PlaneGeometry.
+                // Let's use the body radius * atmosScale for calculation.
+                const atmosScale = body.atmosphereRadiusScale || 1.25;
+                // We can reuse the mesh's position for projection
+                const screenRadius = this.getScreenRadius(mesh) * atmosScale;
+                atmosHaloMesh.visible = screenRadius > 5;
+            }
+
+            // 3D Overlay LOD
+            const overlayMesh = this.overlayMeshes.get(body);
+            if (overlayMesh) {
+                const screenRadius = this.getScreenRadius(mesh);
+                overlayMesh.visible = screenRadius > 5;
+            }
+
+            // Update gas giant LOD and animation
+            if (mesh.material instanceof GasGiantMaterial || this.gasGiantMaterials.has(body)) {
+                // Robust screen size calculation
+                const screenRadiusPixels = this.getScreenRadius(mesh);
+                const LOD_THRESHOLD = 200; // Pixels radius
+
+                // DEBUG: Log values for Jupiter
+                if (body.name === 'Jupiter') {
+                    // 
+                }
+
+                const shaderMat = this.gasGiantMaterials.get(body);
+                const staticMat = this.staticMaterials.get(body);
+
+                if (shaderMat && staticMat) {
+                    if (screenRadiusPixels > LOD_THRESHOLD) {
+                        // High Detail
+                        if (mesh.material !== shaderMat) {
+                            mesh.material = shaderMat;
+                            mesh.material.needsUpdate = true;
+                        }
+                        shaderMat.update(_time);
+                    } else {
+                        // Low Detail
+                        if (mesh.material !== staticMat) {
+                            mesh.material = staticMat;
+                            mesh.material.needsUpdate = true;
+                        }
+                    }
+                } else if (mesh.material instanceof GasGiantMaterial) {
+                    // Fallback if maps not populated yet (shouldn't happen)
+                    mesh.material.update(_time);
+                }
+            }
+
+            // Update texture if zoom changed significantly (only for non-gas giants)
+            // REMOVED: Texture generation is fixed size (512x512), so regenerating on zoom is wasteful.
+            /*
+            if (Math.abs(scaleFactor - 1) > 0.1 && !(mesh.material instanceof GasGiantMaterial)) {
                 const texture = TextureGenerator.createPlanetTexture(body);
                 (mesh.material as THREE.MeshBasicMaterial).map = texture;
                 (mesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
             }
+            */
 
             // Render debug collision zone if enabled
             if (this.showColliders) {
@@ -1853,8 +1991,6 @@ export class ThreeRenderer {
 
         // Dispose WebGL renderer
         this.renderer.dispose();
-
-        console.log('ThreeRenderer disposed');
     }
 
     /**
@@ -1927,5 +2063,35 @@ export class ThreeRenderer {
         positions.needsUpdate = true;
 
         this.debugFloorLine.visible = true;
+    }
+
+    /**
+     * Calculate the screen radius of a mesh in pixels
+     * Uses vector projection for accuracy
+     */
+    private getScreenRadius(mesh: THREE.Mesh): number {
+        // 1. Get center position in world space
+        const center = new THREE.Vector3();
+        mesh.getWorldPosition(center);
+
+        // 2. Get a point on the edge (right side)
+        // Center is (0,0,0) in local space. Edge is (radius, 0, 0) in local space.
+        // We use the geometry radius which is what we want to measure
+        const geometryRadius = (mesh.geometry as THREE.CircleGeometry).parameters.radius;
+
+        const centerPoint = new THREE.Vector3(0, 0, 0);
+        const edgePoint = new THREE.Vector3(geometryRadius, 0, 0);
+
+        centerPoint.applyMatrix4(mesh.matrixWorld);
+        edgePoint.applyMatrix4(mesh.matrixWorld);
+
+        centerPoint.project(this.camera);
+        edgePoint.project(this.camera);
+
+        // Project returns NDC (-1 to +1). Convert to pixels.
+        const dx = (edgePoint.x - centerPoint.x) * (this.renderer.domElement.width / 2);
+        const dy = (edgePoint.y - centerPoint.y) * (this.renderer.domElement.height / 2);
+
+        return Math.sqrt(dx * dx + dy * dy);
     }
 }
