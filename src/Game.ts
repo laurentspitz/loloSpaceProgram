@@ -383,25 +383,20 @@ export class Game {
         const relVel = rocket.body.velocity.sub(planet.velocity);
         const impactSpeed = relVel.mag();
 
-        // IMPORTANT: Correct penetration first to prevent passing through (V1 only)
-        if (this.collisionManager) {
-            this.collisionManager.correctPenetration(rocket, planet, Settings.GAMEPLAY.COLLISION.PENETRATION_CORRECTION_SPEED);
-        }
+        // Note: OBB collision in detectAndRespondCollision handles penetration correction now
+        // (Legacy correctPenetration used circle collision)
 
         // Collision response based on speed
         const SOFT_LANDING_THRESHOLD = Settings.GAMEPLAY.COLLISION.SOFT_LANDING_THRESHOLD;
         const CRASH_THRESHOLD = Settings.GAMEPLAY.COLLISION.CRASH_THRESHOLD;
 
         if (impactSpeed < SOFT_LANDING_THRESHOLD) {
-            // Soft landing - small bounce
+            // Soft landing - handled by CollisionManager
             console.log('   ✅ Soft landing!');
-            // Penetration correction already applied above
         } else if (impactSpeed < CRASH_THRESHOLD) {
-            // Hard landing - bigger bounce, maybe damage
+            // Hard landing - CollisionManager handles physics
             console.log('   ⚠️ Hard landing!');
-            // Apply additional bounce force
-            const direction = rocket.body.position.sub(planet.position).normalize();
-            rocket.body.velocity = rocket.body.velocity.add(direction.scale(impactSpeed * 0.3));
+            // Note: bounce is handled by CollisionManager.detectAndRespondCollision
         } else {
             // Crash - game over or heavy damage
             console.log('   💥 CRASH!');

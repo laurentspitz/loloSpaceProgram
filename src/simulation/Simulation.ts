@@ -79,8 +79,12 @@ export class Simulation implements ISimulation {
         // Calculate total simulation time
         let totalDt = dt * timeScale * timeWarp;
 
+        // DEBUG: Track velocity changes
+        const velBefore = this.rocket.body.velocity.mag();
+
         // Update rocket controls
         this.rocket.update(dt, totalDt, this.bodies);
+        const velAfterRocket = this.rocket.body.velocity.mag();
 
         // Sub-stepping for stability
         while (totalDt > 0) {
@@ -91,6 +95,7 @@ export class Simulation implements ISimulation {
 
             totalDt -= stepDt;
         }
+        const velAfterPhysics = this.rocket.body.velocity.mag();
 
         // Execute deferred fairing ejection
         this.rocket.executePendingEjection();
@@ -103,21 +108,41 @@ export class Simulation implements ISimulation {
                 console.log(`🚀 LIFTOFF! Breaking resting state, throttle=${throttle}`);
                 this._isRocketResting = false;
                 this._restingOn = null;
-            } else {
-                // No thrust - apply contact force to stay on surface
-                this.collisionManager.applyContactForce(this.rocket, this._restingOn, dt * timeScale * timeWarp);
+            }
+            // OBB collision handles keeping rocket on surface
+        }
+
+        // Prevent rocket from penetrating planets using OBB collision
+        // Find the nearest body (planet)
+        let nearestBody: Body | null = null;
+        let minDist = Infinity;
+        for (const body of this.bodies) {
+            if (body.name === 'Rocket') continue;
+            const dist = this.rocket.body.position.distanceTo(body.position);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestBody = body;
             }
         }
 
-        // Prevent rocket from penetrating planets (using local floor approach)
-        const result = this.collisionManager.preventPenetration(this.rocket, this.bodies);
-        this._isRocketResting = result.isResting;
-        this._restingOn = result.restingOn;
-        this._floorInfo = result.floorInfo;
+        // Get floor info for debug visualization
+        this._floorInfo = this.collisionManager.getFloorInfo(this.rocket, nearestBody);
 
-        // Sync positions to Matter.js and check for collisions
-        this.collisionManager.syncPositions(this.bodies, this.rocket);
-        this.collisionManager.step(dt);
+        if (nearestBody) {
+            // Use OBB collision detection and response
+            const collisionResult = this.collisionManager.detectAndRespondCollision(this.rocket, nearestBody);
+            this._isRocketResting = collisionResult.isResting;
+            this._restingOn = collisionResult.restingOn;
+        } else {
+            this._isRocketResting = false;
+            this._restingOn = null;
+        }
+        const velAfterCollision = this.rocket.body.velocity.mag();
+
+        // DEBUG: Log velocity changes (always log when low velocity for debugging)
+        if (velBefore < 50) {
+            console.log(`VEL: ${velBefore.toFixed(1)} → R:${velAfterRocket.toFixed(1)} → P:${velAfterPhysics.toFixed(1)} → C:${velAfterCollision.toFixed(1)}`);
+        }
 
         // Handle debris collisions
         this.handleDebrisCollisions();

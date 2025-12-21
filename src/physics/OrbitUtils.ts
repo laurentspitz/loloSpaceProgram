@@ -133,5 +133,21 @@ export class OrbitUtils {
         // Update position
         body.position.x = body.parent.position.x + rotX;
         body.position.y = body.parent.position.y + rotY;
+
+        // === VELOCITY CALCULATION ===
+        // Velocity in orbital plane:
+        // vx = -a * n * sin(E) / (1 - e * cos(E))
+        // vy = b * n * cos(E) / (1 - e * cos(E))
+        const denom = 1 - e * Math.cos(E);
+        const vxOrb = -a * n * Math.sin(E) / denom;
+        const vyOrb = body.orbit.b * n * Math.cos(E) / denom;
+
+        // Rotate velocity by omega
+        const vx = vxOrb * cosO - vyOrb * sinO;
+        const vy = vxOrb * sinO + vyOrb * cosO;
+
+        // Update velocity (add parent's velocity for absolute velocity)
+        body.velocity.x = body.parent.velocity.x + vx;
+        body.velocity.y = body.parent.velocity.y + vy;
     }
 }
