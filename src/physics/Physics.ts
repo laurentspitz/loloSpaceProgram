@@ -20,13 +20,34 @@ export class Physics {
 
             this._totalForce.set(0, 0);
 
+            // PATCHED CONICS: Find if this body is near any surface
+            // If within threshold distance of a body, only use that body's gravity
+            let dominantBody: Body | null = null;
+            let minAltitude = Infinity;
+            const PATCHED_CONICS_THRESHOLD = 100000; // 100km - use single-body gravity below this altitude
+
+            for (const other of bodies) {
+                if (body === other) continue;
+                const dist = body.position.distanceTo(other.position);
+                const altitude = dist - other.radius;
+
+                if (altitude < minAltitude) {
+                    minAltitude = altitude;
+                    dominantBody = other;
+                }
+            }
+
+            // Decide which bodies to include in gravity calculation
+            const usePatched = minAltitude < PATCHED_CONICS_THRESHOLD && dominantBody;
+
             for (const other of bodies) {
                 if (body === other) continue;
 
-                // dist = body.distanceTo(other)
-                // We'll calculte manually to avoid creating temporary objects if necessary,
-                // but distanceToSquared returns a number which is fine.
-                // distanceTo also returns a number.
+                // PATCHED CONICS: If near surface, only use dominant body
+                if (usePatched && other !== dominantBody) {
+                    continue; // Skip non-dominant bodies
+                }
+
                 const distSq = body.position.distanceToSquared(other.position);
                 const dist = Math.sqrt(distSq);
 
@@ -45,10 +66,9 @@ export class Physics {
             }
 
             // a = F / m
-            return this._totalForce.scale(1 / body.mass);
-            // Note: Returning a new Vector2 here is okay (N allocs vs N^2 allocs), 
-            // but for max perf we could pool these too. 
-            // For now, eliminating the inner loop allocs is the big win.
+            const accel = this._totalForce.scale(1 / body.mass);
+
+            return accel;
         });
 
         // Update bodies
