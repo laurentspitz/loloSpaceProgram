@@ -121,7 +121,7 @@ export class SaveSlotManager {
 
     private static listLocalSlots(): SaveSlot[] {
         try {
-            const slotsData = localStorage.getItem('lolosp_save_slots');
+            const slotsData = localStorage.getItem('aerospace_save_slots');
             if (!slotsData) return [];
 
             const slots = JSON.parse(slotsData);
@@ -143,7 +143,7 @@ export class SaveSlotManager {
 
     private static saveLocalSlot(slotName: string, gameState: any): void {
         try {
-            const slotsData = localStorage.getItem('lolosp_save_slots');
+            const slotsData = localStorage.getItem('aerospace_save_slots');
             const slots = slotsData ? JSON.parse(slotsData) : {};
 
             slots[slotName] = {
@@ -152,7 +152,7 @@ export class SaveSlotManager {
                 timestamp: Date.now()
             };
 
-            localStorage.setItem('lolosp_save_slots', JSON.stringify(slots));
+            localStorage.setItem('aerospace_save_slots', JSON.stringify(slots));
             console.log(`✓ Game saved locally to slot "${slotName}"`);
         } catch (error) {
             console.error('Failed to save local slot:', error);
@@ -162,7 +162,7 @@ export class SaveSlotManager {
 
     private static loadLocalSlot(slotId: string): any {
         try {
-            const slotsData = localStorage.getItem('lolosp_save_slots');
+            const slotsData = localStorage.getItem('aerospace_save_slots');
             if (!slotsData) {
                 throw new Error('No local saves found');
             }
@@ -181,13 +181,13 @@ export class SaveSlotManager {
 
     private static deleteLocalSlot(slotId: string): void {
         try {
-            const slotsData = localStorage.getItem('lolosp_save_slots');
+            const slotsData = localStorage.getItem('aerospace_save_slots');
             if (!slotsData) return;
 
             const slots = JSON.parse(slotsData);
             delete slots[slotId];
 
-            localStorage.setItem('lolosp_save_slots', JSON.stringify(slots));
+            localStorage.setItem('aerospace_save_slots', JSON.stringify(slots));
             console.log(`✓ Local slot "${slotId}" deleted`);
         } catch (error) {
             console.error('Failed to delete local slot:', error);

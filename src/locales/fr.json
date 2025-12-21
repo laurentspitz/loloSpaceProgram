@@ -1,4 +1,72 @@
 {
+    "celestial": {
+        "sun": {
+            "description": "L'étoile au centre de notre Système Solaire."
+        },
+        "mercury": {
+            "description": "La plus petite planète du Système Solaire et la plus proche du Soleil."
+        },
+        "venus": {
+            "description": "Deuxième planète du Soleil, connue pour son atmosphère épaisse et toxique."
+        },
+        "earth": {
+            "description": "Notre foyer. Le seul corps céleste connu abritant la vie."
+        },
+        "moon": {
+            "description": "L'unique satellite naturel de la Terre, cinquième plus grande lune du Système Solaire."
+        },
+        "mars": {
+            "description": "La Planète Rouge. Un monde froid et poussiéreux avec des calottes polaires."
+        },
+        "phobos": {
+            "description": "La plus grande et la plus proche des deux lunes de Mars."
+        },
+        "deimos": {
+            "description": "La plus petite et la plus éloignée des deux lunes de Mars."
+        },
+        "jupiter": {
+            "description": "La plus grande planète du Système Solaire, une géante gazeuse aux tempêtes puissantes."
+        },
+        "io": {
+            "description": "L'objet le plus volcaniquement actif du Système Solaire."
+        },
+        "europa": {
+            "description": "Lune glacée de Jupiter avec un océan souterrain qui pourrait abriter la vie."
+        },
+        "ganymede": {
+            "description": "La plus grande lune du Système Solaire, plus grande que Mercure."
+        },
+        "callisto": {
+            "description": "La lune galiléenne la plus éloignée de Jupiter, très cratérisée et ancienne."
+        },
+        "saturn": {
+            "description": "La sixième planète, célèbre pour son système d'anneaux proéminent."
+        },
+        "titan": {
+            "description": "La plus grande lune de Saturne, avec une atmosphère épaisse et des lacs de méthane."
+        },
+        "uranus": {
+            "description": "Une géante de glace qui tourne sur le côté, avec de faibles anneaux."
+        },
+        "titania": {
+            "description": "La plus grande lune d'Uranus, couverte de canyons et de glace."
+        },
+        "oberon": {
+            "description": "La lune majeure la plus éloignée d'Uranus."
+        },
+        "neptune": {
+            "description": "La planète la plus venteuse, une géante de glace sombre et froide."
+        },
+        "triton": {
+            "description": "La plus grande lune de Neptune, probablement un objet de la ceinture de Kuiper capturé."
+        },
+        "pluto": {
+            "description": "Une planète naine dans la ceinture de Kuiper, avec un glacier d'azote en forme de cœur."
+        },
+        "charon": {
+            "description": "La plus grande lune de Pluton, si grande qu'elles orbitent un centre commun."
+        }
+    },
     "menu": {
         "newGame": "✨ Nouvelle Partie",
         "loadGame": "📂 Charger Partie",
@@ -141,5 +209,10 @@
         "condition": "Condition de réussite",
         "reward": "Récompense",
         "completed": "Terminée"
+    },
+    "auth": {
+        "notLoggedIn": "Non connecté",
+        "loginWithGoogle": "Se connecter avec Google",
+        "logout": "Se déconnecter"
     }
 }

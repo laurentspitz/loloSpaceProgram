@@ -73,17 +73,6 @@ export class OrbitRenderer {
             // Note: semiMajorAxis and parentBody.mu are not directly available here.
             // This part of the instruction seems to be based on a different context or intended for a different section.
             // For now, we'll use the existing 'segments' calculation.
-            // If the intent was to replace 'segments' with 'numPoints', further changes would be needed.
-            // const period = 2 * Math.PI * Math.sqrt(semiMajorAxis ** 3 / parentBody.mu);
-            // const numPoints = Math.max(64, Math.min(512, Math.floor(period / 100)));
-
-            // // Safety check: ensure numPoints is positive
-            // if (numPoints <= 0 || !isFinite(numPoints)) {
-            //     console.warn('Invalid orbit points calculation:', { numPoints, period, semiMajorAxis });
-            //     return;
-            // }
-
-            // const positions = new Float32Array(numPoints * 3); // This line conflicts with existing 'positions' definition later.
 
             // Calculate adaptive opacity based on zoom
             const baseOpacity = 0.3;
@@ -104,7 +93,6 @@ export class OrbitRenderer {
 
             // Safety check: ensure segments is valid
             if (!isFinite(segments) || segments <= 0) {
-                // console.warn('Invalid orbit segments calculation for', body.name, ':', { segments, circumference, a: body.orbit.a });
                 return;
             }
 

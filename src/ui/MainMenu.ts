@@ -51,7 +51,7 @@ export class MainMenu {
 
         // Title
         const title = document.createElement('h1');
-        title.innerHTML = '<span style="color: #00aaff">A</span>rtificial <span style="color: #00aaff">I</span>ntelligence <span style="color: #00aaff">E</span>xpedition';
+        title.innerHTML = '<span style="color: #00aaff">Æ</span>rospace <span style="color: #00aaff">I</span>ndustries';
         title.style.color = '#ffffff';
         title.style.fontSize = '48px';
         title.style.margin = '0';
@@ -96,12 +96,11 @@ export class MainMenu {
         );
 
         // Initial render
-        // Initial render
         this.setScreen(this.currentScreen);
 
         // Copyright Footer
         const copyright = document.createElement('div');
-        copyright.innerHTML = '© 2025 Artificial Intelligence Expedition. All Rights Reserved.';
+        copyright.innerHTML = '© 2025 Ærospace Industries. All Rights Reserved.';
         copyright.style.position = 'absolute';
         copyright.style.bottom = '20px';
         copyright.style.color = '#666';

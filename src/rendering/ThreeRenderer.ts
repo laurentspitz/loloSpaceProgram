@@ -13,9 +13,11 @@ import { Debris } from '../entities/Debris';
 import { Particle } from '../entities/Particle';
 import { ThrustParticleSystem } from './ThrustParticleSystem';
 import { ManeuverNode } from '../systems/ManeuverNode';
+import { findFeature, type CloudFeature, type RingFeature } from '../systems/CelestialBodyFeatures';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { GasGiantMaterial } from './GasGiantMaterial';
 
 /**
  * ThreeRenderer - Main rendering engine using Three.js
@@ -49,10 +51,13 @@ export class ThreeRenderer {
 
     // Body meshes map
     bodyMeshes: Map<Body, THREE.Mesh> = new Map();
-    ringMeshes: Map<Body, THREE.Mesh> = new Map();
+    ringMeshes: Map<Body, THREE.Group> = new Map();
     cloudMeshes: Map<Body, THREE.Mesh> = new Map();
+    atmosphereCloudMeshes: Map<Body, THREE.Mesh> = new Map();
     debrisMeshes: Map<Body, THREE.Group> = new Map();
     particleMeshes: Map<Particle, THREE.Mesh> = new Map();
+    // Gas giant spots for animation
+    gasGiantSpots: Map<Body, THREE.Mesh> = new Map();
 
     // Debug
     showColliders: boolean = false;
@@ -86,6 +91,14 @@ export class ThreeRenderer {
     // Zoom Icons
     bodyIcons: Map<Body, THREE.Mesh> = new Map();
     rocketIcon: THREE.Group | null = null;
+
+    // Gas Giant LOD Materials
+    private gasGiantMaterials: Map<Body, GasGiantMaterial> = new Map();
+    private staticMaterials: Map<Body, THREE.MeshBasicMaterial> = new Map();
+
+    // Mesh References for LOD
+    private atmosphereHaloMeshes: Map<Body, THREE.Mesh> = new Map();
+    private overlayMeshes: Map<Body, THREE.Mesh> = new Map();
 
     // Helpers
     private orbitRenderer: OrbitRenderer;
@@ -644,14 +657,86 @@ export class ThreeRenderer {
                 const radius = body.radius * this.scale * this.visualScale;
                 const geometry = new THREE.CircleGeometry(radius, 8192);
 
-                // Create texture using TextureGenerator
-                const texture = TextureGenerator.createPlanetTexture(body);
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    transparent: true
-                });
+                let material: THREE.Material;
+
+                if (body.type === 'gas_giant') {
+                    // Use custom shader for gas giants
+                    // Generate a seed from the name
+                    let seed = 0;
+                    for (let i = 0; i < body.name.length; i++) {
+                        seed += body.name.charCodeAt(i);
+                    }
+
+                    // Custom color palettes for specific gas giants
+                    let baseColor: THREE.Color;
+                    let secondaryColor: THREE.Color;
+                    let tertiaryColor: THREE.Color;
+
+                    if (body.name === 'Jupiter') {
+                        // Jupiter: Very light pastel palette
+                        baseColor = new THREE.Color('#FFF8F0'); // Almost white cream
+                        secondaryColor = new THREE.Color('#FFE4C4'); // Very light peach/bisque
+                        tertiaryColor = new THREE.Color('#FFCDB2'); // Light salmon/peach
+                    } else if (body.name === 'Saturn') {
+                        // Saturn: Warm beige/cream tones (no blue!)
+                        baseColor = new THREE.Color('#F5E6C8'); // Pale cream/beige
+                        secondaryColor = new THREE.Color('#E8D4A8'); // Warm tan
+                        tertiaryColor = new THREE.Color('#D4C4A0'); // Slightly darker cream (for poles)
+                    } else {
+                        // Procedural for others (Uranus, Neptune)
+                        baseColor = new THREE.Color(body.color);
+                        // Secondary: Darker, slightly less saturated
+                        secondaryColor = baseColor.clone().offsetHSL(0.02, -0.1, -0.15);
+                        // Tertiary: Lighter, more desaturated
+                        tertiaryColor = baseColor.clone().offsetHSL(-0.01, -0.2, 0.2);
+                    }
+
+                    material = new GasGiantMaterial({
+                        baseColor: baseColor,
+                        secondaryColor: secondaryColor,
+                        tertiaryColor: tertiaryColor,
+                        seed: seed,
+                        time: 0,
+                        hasSpot: (body.name === 'Jupiter') // Enable spot for Jupiter
+                    });
+                    material.transparent = true;
+                    this.gasGiantMaterials.set(body, material as GasGiantMaterial);
+
+                    // Create Static Material (Low Detail)
+                    const staticTexture = TextureGenerator.createPlanetTexture(body);
+                    const staticMaterial = new THREE.MeshBasicMaterial({
+                        map: staticTexture,
+                        transparent: true
+                    });
+                    this.staticMaterials.set(body, staticMaterial);
+
+                    // Default to static initially (will be updated in render loop)
+                    material = staticMaterial;
+                } else {
+                    // Create texture using TextureGenerator for other bodies
+                    const texture = TextureGenerator.createPlanetTexture(body);
+                    material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true
+                    });
+                }
 
                 mesh = new THREE.Mesh(geometry, material);
+
+                // Add 3D spherical lighting overlay (except for the Sun)
+                if (body.name !== 'Sun') {
+                    const overlayGeometry = new THREE.CircleGeometry(radius, 128);
+                    const overlayTexture = TextureGenerator.createSpherical3DOverlay();
+                    const overlayMaterial = new THREE.MeshBasicMaterial({
+                        map: overlayTexture,
+                        transparent: true,
+                        depthWrite: false
+                    });
+                    const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
+                    overlayMesh.position.z = 0.2; // In front of planet texture
+                    mesh.add(overlayMesh);
+                    this.overlayMeshes.set(body, overlayMesh);
+                }
 
                 // Add atmosphere halo
                 if (body.atmosphereColor) {
@@ -674,9 +759,10 @@ export class ThreeRenderer {
                     const atmosMesh = new THREE.Mesh(atmosGeometry, atmosMaterial);
                     atmosMesh.position.z = -0.5; // Behind the planet (but in front of background)
                     mesh.add(atmosMesh);
+                    this.atmosphereHaloMeshes.set(body, atmosMesh);
                 } else if (body.name === 'Sun') {
                     // Sun glow (legacy simple glow)
-                    const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 4096);
+                    const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 128);
                     const glowMaterial = new THREE.MeshBasicMaterial({
                         color: 0xffaa00,
                         transparent: true,
@@ -690,51 +776,129 @@ export class ThreeRenderer {
                 this.scene.add(mesh);
                 this.bodyMeshes.set(body, mesh);
 
-                // Add rings for Saturn and Uranus
-                if (body.ringColor && body.ringInnerRadius && body.ringOuterRadius) {
-                    const ringGeometry = new THREE.RingGeometry(
-                        body.ringInnerRadius * this.scale * this.visualScale,
-                        body.ringOuterRadius * this.scale * this.visualScale,
-                        512
-                    );
+                // Add rings based on RingFeature - data-driven ring rendering
+                const ringFeature = findFeature<RingFeature>(body.features, 'rings');
+                if (ringFeature) {
+                    // Create a group to hold ring(s)
+                    const ringGroup = new THREE.Group();
 
-                    const ringTexture = TextureGenerator.createRingTexture(body);
-                    const ringMaterial = new THREE.MeshBasicMaterial({
-                        map: ringTexture,
-                        transparent: true,
-                        opacity: 0.8,
-                        side: THREE.DoubleSide
-                    });
+                    // Get tilt parameters from feature data (with sensible defaults)
+                    const scaleY = ringFeature.scaleY ?? 1;
+                    const rotationZ = ringFeature.rotation ?? 0;
+                    const use3DEffect = ringFeature.use3DEffect ?? false;
 
-                    const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                    if (!use3DEffect) {
+                        // Simple single ring (no 3D split)
+                        const ringGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const ringTexture = TextureGenerator.createRingTexture(body, ringFeature);
+                        const ringMaterial = new THREE.MeshBasicMaterial({
+                            map: ringTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.6,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                        ringMesh.scale.y = scaleY;
+                        ringMesh.rotation.z = rotationZ;
+                        ringMesh.position.z = 0;
+                        ringMesh.name = 'ring';
+                        ringGroup.add(ringMesh);
+                    } else {
+                        // 3D effect - create two half rings (front and back)
+                        // The texture is masked with top/bottom halves
+                        // For horizontal rings (Saturn): top appears above, bottom appears below
+                        // For vertical rings (Uranus, rotation 90°): top appears left, bottom appears right
+                        const backMask: 'top' | 'bottom' = 'top';    // Shows behind the planet
+                        const frontMask: 'top' | 'bottom' = 'bottom'; // Shows in front of the planet
 
-                    // Tilt the rings using scaling to simulate perspective in 2D
-                    if (body.name === 'Saturn') {
-                        ringMesh.scale.y = 0.4; // Tilt effect
-                        ringMesh.rotation.z = 0.1; // Slight angle
-                    } else if (body.name === 'Uranus') {
-                        ringMesh.scale.y = 0.8; // Less tilt
-                        ringMesh.rotation.z = 1.5; // Vertical rings
+                        const backRingGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const backRingTexture = TextureGenerator.createRingTexture(body, ringFeature, backMask);
+                        const backRingMaterial = new THREE.MeshBasicMaterial({
+                            map: backRingTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.8,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const backRingMesh = new THREE.Mesh(backRingGeometry, backRingMaterial);
+                        backRingMesh.scale.y = scaleY;
+                        backRingMesh.rotation.z = rotationZ;
+                        backRingMesh.position.z = -1; // Behind the planet
+                        backRingMesh.name = 'ringBack';
+                        ringGroup.add(backRingMesh);
+
+                        // Create FRONT ring (in front of the planet)
+                        const frontRingGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const frontRingTexture = TextureGenerator.createRingTexture(body, ringFeature, frontMask);
+                        const frontRingMaterial = new THREE.MeshBasicMaterial({
+                            map: frontRingTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.8,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const frontRingMesh = new THREE.Mesh(frontRingGeometry, frontRingMaterial);
+                        frontRingMesh.scale.y = scaleY;
+                        frontRingMesh.rotation.z = rotationZ;
+                        frontRingMesh.position.z = 1; // In front of the planet
+                        frontRingMesh.name = 'ringFront';
+                        ringGroup.add(frontRingMesh);
                     }
 
-                    ringMesh.position.z = -0.5; // Slightly behind planet
-                    mesh.add(ringMesh);
-                    this.ringMeshes.set(body, ringMesh);
+                    // Add directly to scene
+                    this.scene.add(ringGroup);
+                    this.ringMeshes.set(body, ringGroup);
                 }
 
-                // Add clouds for Earth and Venus
-                if (body.name === 'Earth' || body.name === 'Venus') {
-                    const cloudGeometry = new THREE.CircleGeometry(radius * 1.15, 6144); // Match atmosphere size
-                    const cloudTexture = TextureGenerator.createCloudTexture(body);
-                    const cloudMaterial = new THREE.MeshBasicMaterial({
-                        map: cloudTexture,
-                        transparent: true,
-                        opacity: 0.8
-                    });
-                    const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-                    cloudMesh.position.z = 0.1; // Slightly in front
-                    mesh.add(cloudMesh);
-                    this.cloudMeshes.set(body, cloudMesh);
+                // Add clouds based on CloudFeature
+                const cloudFeature = findFeature<CloudFeature>(body.features, 'clouds');
+                if (cloudFeature) {
+                    // Surface clouds - stay on the planet surface
+                    if (cloudFeature.surfaceClouds) {
+                        const cloudGeometry = new THREE.CircleGeometry(radius * 1.0, 128);
+                        const cloudTexture = TextureGenerator.createCloudTexture(body);
+                        const cloudMaterial = new THREE.MeshBasicMaterial({
+                            map: cloudTexture,
+                            transparent: true,
+                            opacity: cloudFeature.opacity || 0.8
+                        });
+                        const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                        cloudMesh.position.z = 0.1; // Slightly in front
+                        mesh.add(cloudMesh);
+                        this.cloudMeshes.set(body, cloudMesh);
+                    }
+
+                    // Atmospheric clouds - between altitudeMin and altitudeMax
+                    if (cloudFeature.atmosphericClouds) {
+                        const atmosScale = body.atmosphereRadiusScale || 1.15;
+                        const atmosCloudGeometry = new THREE.CircleGeometry(radius * atmosScale, 128);
+                        const atmosCloudTexture = TextureGenerator.createAtmosphericCloudTexture(body, cloudFeature);
+                        const atmosCloudMaterial = new THREE.MeshBasicMaterial({
+                            map: atmosCloudTexture,
+                            transparent: true,
+                            opacity: (cloudFeature.opacity || 0.5) * 0.8
+                        });
+                        const atmosCloudMesh = new THREE.Mesh(atmosCloudGeometry, atmosCloudMaterial);
+                        atmosCloudMesh.position.z = 0.05; // Between planet and surface clouds
+                        mesh.add(atmosCloudMesh);
+                        this.atmosphereCloudMeshes.set(body, atmosCloudMesh);
+                    }
                 }
             }
 
@@ -760,36 +924,124 @@ export class ThreeRenderer {
             const scaleFactor = radius / baseRadius;
             mesh.scale.set(scaleFactor, scaleFactor, 1);
 
-            // Update ring size if present
-            const ringMesh = this.ringMeshes.get(body);
-            if (ringMesh && body.ringInnerRadius && body.ringOuterRadius) {
-                const innerRadius = body.ringInnerRadius * this.scale * this.visualScale;
-                const baseInnerRadius = (ringMesh.geometry as THREE.RingGeometry).parameters.innerRadius;
-                const ringScaleFactor = innerRadius / baseInnerRadius;
+            // Update ring position and size (rings are now direct children of scene)
+            const ringGroup = this.ringMeshes.get(body);
+            if (ringGroup && ringGroup.children.length > 0) {
+                // Position the ring at the planet's position
+                ringGroup.position.set(worldX, worldY, 0);
 
-                // Maintain the tilt aspect ratio while scaling
-                ringMesh.scale.set(
-                    ringScaleFactor,
-                    ringScaleFactor * (body.name === 'Saturn' ? 0.4 : (body.name === 'Uranus' ? 0.8 : 1)),
-                    1
-                );
+                // Scale the ring based on planet radius
+                const ringFeature = findFeature<RingFeature>(body.features, 'rings');
+                if (ringFeature) {
+                    // Get the base inner radius from geometry
+                    const firstChild = ringGroup.children[0] as THREE.Mesh;
+                    const geom = firstChild.geometry as THREE.RingGeometry;
+                    const baseInnerRadius = geom.parameters.innerRadius;
+
+                    // Calculate target inner radius in screen space
+                    const targetInnerRadius = body.radius * ringFeature.innerRadius * this.scale * this.visualScale;
+                    const ringScaleFactor = targetInnerRadius / baseInnerRadius;
+
+                    // Get tilt factor from feature data
+                    const tiltY = ringFeature.scaleY ?? 1;
+
+                    // Scale all ring children
+                    ringGroup.children.forEach(child => {
+                        child.scale.set(ringScaleFactor, ringScaleFactor * tiltY, 1);
+                    });
+                }
             }
 
             // Update cloud animation if present
             const cloudMesh = this.cloudMeshes.get(body);
             if (cloudMesh) {
                 // Cloud mesh is a child of the planet mesh, so it inherits scale automatically.
-                // We only need to handle animation.
-                const rotationSpeed = body.name === 'Venus' ? 0.00005 : 0.0001;
+                // We only need to handle animation - slower for realistic look
+                const rotationSpeed = body.name === 'Venus' ? 0.00001 : 0.00002;
                 cloudMesh.rotation.z = _time * rotationSpeed;
             }
 
-            // Update texture if zoom changed significantly
-            if (Math.abs(scaleFactor - 1) > 0.1) {
+            // Update atmospheric cloud animation if present
+            const atmosCloudMesh = this.atmosphereCloudMeshes.get(body);
+            if (atmosCloudMesh) {
+                const atmosRotationSpeed = body.name === 'Venus' ? 0.000006 : 0.000012;
+                atmosCloudMesh.rotation.z = _time * atmosRotationSpeed;
+
+                // Cloud LOD: Hide if too small
+                const cloudScreenRadius = this.getScreenRadius(atmosCloudMesh);
+                atmosCloudMesh.visible = cloudScreenRadius > 5;
+            }
+
+            // Surface Cloud LOD
+            const surfaceCloudMesh = this.cloudMeshes.get(body);
+            if (surfaceCloudMesh) {
+                const cloudScreenRadius = this.getScreenRadius(surfaceCloudMesh);
+                surfaceCloudMesh.visible = cloudScreenRadius > 5;
+            }
+
+            // Atmosphere Halo LOD
+            const atmosHaloMesh = this.atmosphereHaloMeshes.get(body);
+            if (atmosHaloMesh) {
+                // Use the mesh's own radius (it's a plane, but getScreenRadius handles geometry radius)
+                // Actually getScreenRadius expects CircleGeometry, but atmos is PlaneGeometry.
+                // Let's use the body radius * atmosScale for calculation.
+                const atmosScale = body.atmosphereRadiusScale || 1.25;
+                // We can reuse the mesh's position for projection
+                const screenRadius = this.getScreenRadius(mesh) * atmosScale;
+                atmosHaloMesh.visible = screenRadius > 5;
+            }
+
+            // 3D Overlay LOD
+            const overlayMesh = this.overlayMeshes.get(body);
+            if (overlayMesh) {
+                const screenRadius = this.getScreenRadius(mesh);
+                overlayMesh.visible = screenRadius > 5;
+            }
+
+            // Update gas giant LOD and animation
+            if (mesh.material instanceof GasGiantMaterial || this.gasGiantMaterials.has(body)) {
+                // Robust screen size calculation
+                const screenRadiusPixels = this.getScreenRadius(mesh);
+                const LOD_THRESHOLD = 200; // Pixels radius
+
+                // DEBUG: Log values for Jupiter
+                if (body.name === 'Jupiter') {
+                    // 
+                }
+
+                const shaderMat = this.gasGiantMaterials.get(body);
+                const staticMat = this.staticMaterials.get(body);
+
+                if (shaderMat && staticMat) {
+                    if (screenRadiusPixels > LOD_THRESHOLD) {
+                        // High Detail
+                        if (mesh.material !== shaderMat) {
+                            mesh.material = shaderMat;
+                            mesh.material.needsUpdate = true;
+                        }
+                        shaderMat.update(_time);
+                    } else {
+                        // Low Detail
+                        if (mesh.material !== staticMat) {
+                            mesh.material = staticMat;
+                            mesh.material.needsUpdate = true;
+                        }
+                    }
+                } else if (mesh.material instanceof GasGiantMaterial) {
+                    // Fallback if maps not populated yet (shouldn't happen)
+                    mesh.material.update(_time);
+                }
+            }
+
+            // Update texture if zoom changed significantly (only for non-gas giants)
+            // REMOVED: Texture generation is fixed size (512x512), so regenerating on zoom is wasteful.
+            /*
+            if (Math.abs(scaleFactor - 1) > 0.1 && !(mesh.material instanceof GasGiantMaterial)) {
                 const texture = TextureGenerator.createPlanetTexture(body);
                 (mesh.material as THREE.MeshBasicMaterial).map = texture;
                 (mesh.material as THREE.MeshBasicMaterial).needsUpdate = true;
             }
+            */
 
             // Render debug collision zone if enabled
             if (this.showColliders) {
@@ -1576,6 +1828,25 @@ export class ThreeRenderer {
     }
 
     /**
+     * Invalidate Earth's texture to force regeneration (for debug longitude adjustment)
+     */
+    invalidateEarthTexture() {
+        // Find Earth in the body meshes and regenerate its texture
+        this.bodyMeshes.forEach((mesh, body) => {
+            if (body.name === 'Earth') {
+                // Regenerate the texture
+                const texture = TextureGenerator.createPlanetTexture(body);
+                const material = mesh.material as THREE.MeshBasicMaterial;
+                if (material.map) {
+                    material.map.dispose();
+                }
+                material.map = texture;
+                material.needsUpdate = true;
+            }
+        });
+    }
+
+    /**
      * Clean up Three.js resources
      */
     dispose() {
@@ -1607,17 +1878,21 @@ export class ThreeRenderer {
         });
         this.bodyMeshes.clear();
 
-        // Dispose ring meshes
-        this.ringMeshes.forEach(mesh => {
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach(m => m.dispose());
-                } else {
-                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
-                    mesh.material.dispose();
+        // Dispose ring meshes (ring is now a Group with children)
+        this.ringMeshes.forEach(group => {
+            group.children.forEach(child => {
+                const ringMesh = child as THREE.Mesh;
+                if (ringMesh.geometry) ringMesh.geometry.dispose();
+                if (ringMesh.material) {
+                    if (Array.isArray(ringMesh.material)) {
+                        ringMesh.material.forEach((m: THREE.Material) => m.dispose());
+                    } else {
+                        const mat = ringMesh.material as THREE.MeshBasicMaterial;
+                        mat.map?.dispose();
+                        mat.dispose();
+                    }
                 }
-            }
+            });
         });
         this.ringMeshes.clear();
 
@@ -1634,6 +1909,20 @@ export class ThreeRenderer {
             }
         });
         this.cloudMeshes.clear();
+
+        // Dispose atmospheric cloud meshes
+        this.atmosphereCloudMeshes.forEach(mesh => {
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(m => m.dispose());
+                } else {
+                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
+                    mesh.material.dispose();
+                }
+            }
+        });
+        this.atmosphereCloudMeshes.clear();
 
         // Dispose debris meshes
         this.debrisMeshes.forEach(mesh => {
@@ -1773,8 +2062,6 @@ export class ThreeRenderer {
 
         // Dispose WebGL renderer
         this.renderer.dispose();
-
-        console.log('ThreeRenderer disposed');
     }
 
     /**
@@ -1847,5 +2134,35 @@ export class ThreeRenderer {
         positions.needsUpdate = true;
 
         this.debugFloorLine.visible = true;
+    }
+
+    /**
+     * Calculate the screen radius of a mesh in pixels
+     * Uses vector projection for accuracy
+     */
+    private getScreenRadius(mesh: THREE.Mesh): number {
+        // 1. Get center position in world space
+        const center = new THREE.Vector3();
+        mesh.getWorldPosition(center);
+
+        // 2. Get a point on the edge (right side)
+        // Center is (0,0,0) in local space. Edge is (radius, 0, 0) in local space.
+        // We use the geometry radius which is what we want to measure
+        const geometryRadius = (mesh.geometry as THREE.CircleGeometry).parameters.radius;
+
+        const centerPoint = new THREE.Vector3(0, 0, 0);
+        const edgePoint = new THREE.Vector3(geometryRadius, 0, 0);
+
+        centerPoint.applyMatrix4(mesh.matrixWorld);
+        edgePoint.applyMatrix4(mesh.matrixWorld);
+
+        centerPoint.project(this.camera);
+        edgePoint.project(this.camera);
+
+        // Project returns NDC (-1 to +1). Convert to pixels.
+        const dx = (edgePoint.x - centerPoint.x) * (this.renderer.domElement.width / 2);
+        const dy = (edgePoint.y - centerPoint.y) * (this.renderer.domElement.height / 2);
+
+        return Math.sqrt(dx * dx + dy * dy);
     }
 }

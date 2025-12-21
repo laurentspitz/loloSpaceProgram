@@ -20,6 +20,7 @@ export interface TabbedSlidingPanelOptions {
     width?: string;
     startOpen?: boolean;
     defaultTab?: string;
+    headerContent?: HTMLElement;
 }
 
 export interface TabbedSlidingPanelResult {
@@ -38,7 +39,8 @@ export function createTabbedSlidingPanel(options: TabbedSlidingPanelOptions): Ta
         direction,
         width = '240px',
         startOpen = true,
-        defaultTab
+        defaultTab,
+        headerContent
     } = options;
 
     let isOpen = startOpen;
@@ -222,6 +224,14 @@ export function createTabbedSlidingPanel(options: TabbedSlidingPanelOptions): Ta
     toggleBtn.onclick = toggle;
 
     // Assemble panel
+    if (headerContent) {
+        const headerWrapper = document.createElement('div');
+        headerWrapper.style.padding = '10px';
+        headerWrapper.style.borderBottom = '1px solid #444';
+        headerWrapper.style.background = '#252525';
+        headerWrapper.appendChild(headerContent);
+        panel.appendChild(headerWrapper);
+    }
     panel.appendChild(tabBar);
     panel.appendChild(contentArea);
 

@@ -1,6 +1,7 @@
 import { Vector2 } from './Vector2';
 import type { OrbitalElements } from '../physics/OrbitUtils';
 import type { Crater, Cloud } from '../systems/ProceduralUtils';
+import type { CelestialBodyFeature } from '../systems/CelestialBodyFeatures';
 
 export class Body {
     position: Vector2;
@@ -32,10 +33,13 @@ export class Body {
     atmosphereFalloff?: number; // Scale height for exponential falloff
 
 
-    // Procedural Features
+    // Procedural Features (legacy)
     craters: Crater[] = [];
     clouds: Cloud[] = [];
     hasStorms: boolean = false; // For Jupiter
+
+    // Modular Features
+    features: CelestialBodyFeature[] = [];
 
     // Matter.js integration
     matterBody: any = null; // Matter.Body reference
