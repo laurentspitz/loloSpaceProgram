@@ -80,7 +80,11 @@ export interface RingFeature extends CelestialBodyFeature {
     outerRadius: number;  // Ratio of body radius (e.g., 2.3)
     color: string;
     opacity?: number;
-    tilt?: number;        // Visual tilt angle
+    tilt?: number;        // Visual tilt angle (deprecated, use scaleY)
+    scaleY?: number;      // Vertical scale for tilt effect (0.3 = very tilted, 1.0 = no tilt)
+    rotation?: number;    // Z-axis rotation in radians (0 = horizontal, PI/2 = vertical)
+    use3DEffect?: boolean; // If true, render front/back halves for 3D wrap effect
+    maskOrientation?: 'horizontal' | 'vertical'; // Mask direction for 3D effect: 'horizontal' (top/bottom) or 'vertical' (left/right)
 }
 
 /**

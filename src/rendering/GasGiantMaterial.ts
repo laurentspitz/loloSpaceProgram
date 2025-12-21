@@ -114,9 +114,9 @@ export class GasGiantMaterial extends THREE.ShaderMaterial {
                     
                     // GREAT RED SPOT (Vortex)
                     if (uHasSpot > 0.5) {
-                        float spotLat = 0.35;
-                        float spotRadius = 0.12;
-                        float spotX = 0.5; // Centered
+                        float spotLat = 0.38;   // Position (slightly south of equator)
+                        float spotRadius = 0.25; // Large spot
+                        float spotX = 0.5;      // Centered
                         
                         float dx = abs(vUv.x - spotX);
                         if (dx > 0.5) dx = 1.0 - dx;
@@ -126,13 +126,15 @@ export class GasGiantMaterial extends THREE.ShaderMaterial {
                         if (dist < spotRadius) {
                             float angle = atan(dy, dx);
                             float radius = dist / spotRadius;
-                            float swirl = (1.0 - radius) * 10.0;
+                            float swirl = (1.0 - radius) * 6.0;
                             
-                            // Slower animation: uTime * 0.2
-                            float vortexNoise = snoise(vec2(vUv.x * 20.0 + cos(angle + swirl + uTime * 0.2) * 0.5, vUv.y * 20.0 + sin(angle + swirl + uTime * 0.2) * 0.5));
+                            // Very slow animation for subtle texture variation
+                            float vortexNoise = snoise(vec2(vUv.x * 12.0 + cos(angle + swirl + uTime * 0.001) * 0.3, vUv.y * 12.0 + sin(angle + swirl + uTime * 0.001) * 0.3));
                             
-                            float spotIntensity = smoothstep(spotRadius, spotRadius * 0.5, dist);
-                            vec3 spotColor = mix(uSecondaryColor, uTertiaryColor, 0.9 + vortexNoise * 0.1);
+                            float spotIntensity = smoothstep(spotRadius, spotRadius * 0.2, dist);
+                            // Very saturated red color
+                            vec3 redSpotColor = vec3(0.95, 0.2, 0.15); // Deep saturated red
+                            vec3 spotColor = redSpotColor + vortexNoise * 0.05;
                             finalColor = mix(finalColor, spotColor, spotIntensity);
                         }
                     }

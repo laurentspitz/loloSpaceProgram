@@ -170,6 +170,9 @@ export const SolarSystemData: StarSystemConfig = {
                     distanceFromParent: 778.5e9,
                     initialVelocity: 13070,
                     type: 'gas_giant',
+                    atmosphereColor: "rgba(255, 220, 180, 0.15)", // Subtle warm peach glow
+                    atmosphereOpacity: 0.15,
+                    atmosphereRadiusScale: 1.08,
                     description: "celestial.jupiter.description",
                     satellites: [
                         { name: "Io", mass: 8.93e22, radius: 1821600, color: "#FFFF00", distanceFromParent: 421700000, initialVelocity: 17334, type: 'moon', description: "celestial.io.description" },
@@ -217,7 +220,12 @@ export const SolarSystemData: StarSystemConfig = {
                             type: 'rings',
                             innerRadius: 1.2,
                             outerRadius: 2.3,
-                            color: 'rgba(241, 196, 15, 0.6)'
+                            color: 'rgba(210, 180, 140, 0.85)',  // Beige/tan color for Saturn's rings
+                            opacity: 0.8,
+                            scaleY: 0.4,          // Tilted rings appear elliptical
+                            rotation: 0.1,        // Slight rotation angle
+                            use3DEffect: true,    // Use front/back halves for 3D wrap
+                            maskOrientation: 'horizontal'  // Use top/bottom masking for tilted rings
                         } as RingFeature
                     ]
                 },
@@ -239,7 +247,12 @@ export const SolarSystemData: StarSystemConfig = {
                             type: 'rings',
                             innerRadius: 1.5,
                             outerRadius: 2.0,
-                            color: 'rgba(26, 188, 156, 0.3)'
+                            color: 'rgba(180, 200, 220, 0.5)',  // Subtle grey-blue for Uranus's faint rings
+                            opacity: 0.5,
+                            scaleY: 0.3,          // More compressed - almost edge-on
+                            rotation: Math.PI / 2, // 90 degrees - vertical rings
+                            use3DEffect: true,    // Enable 3D wrap effect
+                            maskOrientation: 'vertical'  // Use left/right masking for vertical rings
                         } as RingFeature
                     ]
                 },

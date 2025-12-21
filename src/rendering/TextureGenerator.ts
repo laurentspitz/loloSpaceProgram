@@ -692,8 +692,9 @@ export class TextureGenerator {
      * Create ring texture for Saturn and Uranus
      * @param body The celestial body
      * @param ringFeature Optional RingFeature with color configuration
+     * @param half Optional: 'top'/'bottom' for horizontal rings, 'left'/'right' for vertical rings
      */
-    static createRingTexture(body: Body, ringFeature?: { color?: string }): THREE.CanvasTexture {
+    static createRingTexture(body: Body, ringFeature?: { color?: string }, half?: 'top' | 'bottom' | 'left' | 'right'): THREE.CanvasTexture {
         const rng = this.getSeededRandom(body.name);
         const size = 512;
         const canvas = document.createElement('canvas');
@@ -706,8 +707,19 @@ export class TextureGenerator {
         const centerY = size / 2;
         const maxRadius = size / 2;
 
-        // Draw concentric rings with varying opacity
-        const numBands = 30;
+        // Draw concentric rings with varying opacity and color variations
+        const numBands = 40;
+
+        // Parse the base ring color once outside the loop
+        const ringColor = ringFeature?.color || body.color;
+        const colorMatch = ringColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        let baseR = 210, baseG = 180, baseB = 140; // Default beige
+        if (colorMatch) {
+            baseR = parseInt(colorMatch[1]);
+            baseG = parseInt(colorMatch[2]);
+            baseB = parseInt(colorMatch[3]);
+        }
+
         for (let i = 0; i < numBands; i++) {
             const innerRatio = i / numBands;
             const outerRatio = (i + 1) / numBands;
@@ -715,8 +727,94 @@ export class TextureGenerator {
             const innerRadius = innerRatio * maxRadius;
             const outerRadius = outerRatio * maxRadius;
 
-            // Alternate opacity for band effect
-            const opacity = 0.3 + (i % 3) * 0.2 + rng() * 0.1;
+            // Create subtle color variations (cream, tan, brown tones)
+            const variation = rng() * 0.2 - 0.1; // -10% to +10% variation
+            const r = Math.min(255, Math.max(0, Math.round(baseR * (1 + variation))));
+            const g = Math.min(255, Math.max(0, Math.round(baseG * (1 + variation * 0.8))));
+            const b = Math.min(255, Math.max(0, Math.round(baseB * (1 + variation * 0.6))));
+
+            // Simulate gaps in rings (Cassini division effect)
+            const gapChance = rng();
+            let opacity: number;
+            if (gapChance < 0.08) {
+                opacity = 0.1; // Dark gap
+            } else if (gapChance < 0.2) {
+                opacity = 0.3 + rng() * 0.1; // Lighter band
+            } else {
+                opacity = 0.5 + rng() * 0.35; // Normal band
+            }
+
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2, true);
+            ctx.fill();
+        }
+
+        // Apply half mask if requested
+        // 'top'/'bottom' for horizontal rings (like Saturn)
+        // 'left'/'right' for vertical rings (like Uranus)
+        if (half) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+            ctx.beginPath();
+            if (half === 'top') {
+                // Mask out bottom half (keep top half visible)
+                ctx.rect(0, centerY, size, centerY);
+            } else if (half === 'bottom') {
+                // Mask out top half (keep bottom half visible)
+                ctx.rect(0, 0, size, centerY);
+            } else if (half === 'left') {
+                // Mask out right half (keep left half visible)
+                ctx.rect(centerX, 0, centerX, size);
+            } else if (half === 'right') {
+                // Mask out left half (keep right half visible)
+                ctx.rect(0, 0, centerX, size);
+            }
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    /**
+     * Create half-ring texture for 3D ring effect (front or back portion)
+     * This creates a semi-circular ring texture with gradient bands
+     * @param body The celestial body
+     * @param ringFeature Optional RingFeature with color configuration
+     * @param isBack If true, creates the back (top) half; if false, creates front (bottom) half
+     */
+    static createHalfRingTexture(body: Body, ringFeature?: { color?: string }, isBack: boolean = false): THREE.CanvasTexture {
+        const rng = this.getSeededRandom(body.name + (isBack ? '_back' : '_front'));
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size / 2; // Half height for half ring
+        const ctx = canvas.getContext('2d')!;
+
+        // Clear with transparency
+        ctx.clearRect(0, 0, size, size / 2);
+
+        const centerX = size / 2;
+        const centerY = isBack ? size / 2 : 0; // Center at bottom for back, top for front
+        const maxRadius = size / 2;
+
+        // Draw concentric ring bands (half circles)
+        const numBands = 40;
+        for (let i = 0; i < numBands; i++) {
+            const innerRatio = i / numBands;
+            const outerRatio = (i + 1) / numBands;
+
+            const innerRadius = innerRatio * maxRadius;
+            const outerRadius = outerRatio * maxRadius;
+
+            // Create varied opacity for realistic band effect
+            const baseOpacity = 0.35 + (i % 4) * 0.15;
+            const variation = rng() * 0.15 - 0.075;
+            const opacity = Math.max(0.15, Math.min(0.85, baseOpacity + variation));
 
             // Use RingFeature color if provided, otherwise fall back to body color
             const ringColor = ringFeature?.color || body.color;
@@ -728,10 +826,41 @@ export class TextureGenerator {
                 b = parseInt(colorMatch[3]);
             }
 
+            // Add subtle color variation between bands
+            const colorVar = Math.floor((rng() - 0.5) * 20);
+            r = Math.max(0, Math.min(255, r + colorVar));
+            g = Math.max(0, Math.min(255, g + colorVar));
+            b = Math.max(0, Math.min(255, b + colorVar * 0.5));
+
             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${opacity})`;
             ctx.beginPath();
-            ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
-            ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2, true);
+
+            // Draw half arc (PI radians)
+            // For back half: draw from 0 to PI (bottom half arc, appears on top when scaled)
+            // For front half: draw from PI to 2*PI (top half arc, appears on bottom when scaled)
+            const startAngle = isBack ? 0 : Math.PI;
+            const endAngle = isBack ? Math.PI : Math.PI * 2;
+
+            ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
+            ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Add Cassini Division for Saturn (dark gap in rings)
+        if (body.name === 'Saturn') {
+            const cassiniPosition = 0.55; // Position within ring (0-1)
+            const cassiniWidth = 0.03;
+            const cassiniInner = cassiniPosition * maxRadius;
+            const cassiniOuter = (cassiniPosition + cassiniWidth) * maxRadius;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.beginPath();
+            const startAngle = isBack ? 0 : Math.PI;
+            const endAngle = isBack ? Math.PI : Math.PI * 2;
+            ctx.arc(centerX, centerY, cassiniOuter, startAngle, endAngle);
+            ctx.arc(centerX, centerY, cassiniInner, endAngle, startAngle, true);
+            ctx.closePath();
             ctx.fill();
         }
 

@@ -51,7 +51,7 @@ export class ThreeRenderer {
 
     // Body meshes map
     bodyMeshes: Map<Body, THREE.Mesh> = new Map();
-    ringMeshes: Map<Body, THREE.Mesh> = new Map();
+    ringMeshes: Map<Body, THREE.Group> = new Map();
     cloudMeshes: Map<Body, THREE.Mesh> = new Map();
     atmosphereCloudMeshes: Map<Body, THREE.Mesh> = new Map();
     debrisMeshes: Map<Body, THREE.Group> = new Map();
@@ -673,15 +673,15 @@ export class ThreeRenderer {
                     let tertiaryColor: THREE.Color;
 
                     if (body.name === 'Jupiter') {
-                        // Jupiter: Very Light Palette
-                        baseColor = new THREE.Color('#FDEBD0'); // Very Light Peach/Cream
-                        secondaryColor = new THREE.Color('#F5B041'); // Light Orange
-                        tertiaryColor = new THREE.Color('#EC7063'); // Soft Red
+                        // Jupiter: Very light pastel palette
+                        baseColor = new THREE.Color('#FFF8F0'); // Almost white cream
+                        secondaryColor = new THREE.Color('#FFE4C4'); // Very light peach/bisque
+                        tertiaryColor = new THREE.Color('#FFCDB2'); // Light salmon/peach
                     } else if (body.name === 'Saturn') {
-                        // Saturn: Pale Gold, Dark Gold, Greyish
-                        baseColor = new THREE.Color('#F4E5C3'); // Pale Gold
-                        secondaryColor = new THREE.Color('#D4AC0D'); // Dark Gold
-                        tertiaryColor = new THREE.Color('#AAB7B8'); // Greyish/Blue-Grey (for poles)
+                        // Saturn: Warm beige/cream tones (no blue!)
+                        baseColor = new THREE.Color('#F5E6C8'); // Pale cream/beige
+                        secondaryColor = new THREE.Color('#E8D4A8'); // Warm tan
+                        tertiaryColor = new THREE.Color('#D4C4A0'); // Slightly darker cream (for poles)
                     } else {
                         // Procedural for others (Uranus, Neptune)
                         baseColor = new THREE.Color(body.color);
@@ -776,40 +776,94 @@ export class ThreeRenderer {
                 this.scene.add(mesh);
                 this.bodyMeshes.set(body, mesh);
 
-                // Add rings based on RingFeature
+                // Add rings based on RingFeature - data-driven ring rendering
                 const ringFeature = findFeature<RingFeature>(body.features, 'rings');
                 if (ringFeature) {
-                    const ringInnerRadius = body.radius * ringFeature.innerRadius;
-                    const ringOuterRadius = body.radius * ringFeature.outerRadius;
+                    // Create a group to hold ring(s)
+                    const ringGroup = new THREE.Group();
 
-                    const ringGeometry = new THREE.RingGeometry(
-                        ringInnerRadius * this.scale * this.visualScale,
-                        ringOuterRadius * this.scale * this.visualScale,
-                        512
-                    );
+                    // Get tilt parameters from feature data (with sensible defaults)
+                    const scaleY = ringFeature.scaleY ?? 1;
+                    const rotationZ = ringFeature.rotation ?? 0;
+                    const use3DEffect = ringFeature.use3DEffect ?? false;
 
-                    const ringTexture = TextureGenerator.createRingTexture(body, ringFeature);
-                    const ringMaterial = new THREE.MeshBasicMaterial({
-                        map: ringTexture,
-                        transparent: true,
-                        opacity: ringFeature.opacity || 0.8,
-                        side: THREE.DoubleSide
-                    });
+                    if (!use3DEffect) {
+                        // Simple single ring (no 3D split)
+                        const ringGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const ringTexture = TextureGenerator.createRingTexture(body, ringFeature);
+                        const ringMaterial = new THREE.MeshBasicMaterial({
+                            map: ringTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.6,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                        ringMesh.scale.y = scaleY;
+                        ringMesh.rotation.z = rotationZ;
+                        ringMesh.position.z = 0;
+                        ringMesh.name = 'ring';
+                        ringGroup.add(ringMesh);
+                    } else {
+                        // 3D effect - create two half rings (front and back)
+                        // The texture is masked with top/bottom halves
+                        // For horizontal rings (Saturn): top appears above, bottom appears below
+                        // For vertical rings (Uranus, rotation 90°): top appears left, bottom appears right
+                        const backMask: 'top' | 'bottom' = 'top';    // Shows behind the planet
+                        const frontMask: 'top' | 'bottom' = 'bottom'; // Shows in front of the planet
 
-                    const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                        const backRingGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const backRingTexture = TextureGenerator.createRingTexture(body, ringFeature, backMask);
+                        const backRingMaterial = new THREE.MeshBasicMaterial({
+                            map: backRingTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.8,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const backRingMesh = new THREE.Mesh(backRingGeometry, backRingMaterial);
+                        backRingMesh.scale.y = scaleY;
+                        backRingMesh.rotation.z = rotationZ;
+                        backRingMesh.position.z = -1; // Behind the planet
+                        backRingMesh.name = 'ringBack';
+                        ringGroup.add(backRingMesh);
 
-                    // Tilt the rings using scaling to simulate perspective in 2D
-                    if (body.name === 'Saturn') {
-                        ringMesh.scale.y = 0.4; // Tilt effect
-                        ringMesh.rotation.z = 0.1; // Slight angle
-                    } else if (body.name === 'Uranus') {
-                        ringMesh.scale.y = 0.8; // Less tilt
-                        ringMesh.rotation.z = 1.5; // Vertical rings
+                        // Create FRONT ring (in front of the planet)
+                        const frontRingGeometry = new THREE.RingGeometry(
+                            1.0 * ringFeature.innerRadius,
+                            1.0 * ringFeature.outerRadius,
+                            64,
+                            8
+                        );
+                        const frontRingTexture = TextureGenerator.createRingTexture(body, ringFeature, frontMask);
+                        const frontRingMaterial = new THREE.MeshBasicMaterial({
+                            map: frontRingTexture,
+                            transparent: true,
+                            opacity: ringFeature.opacity || 0.8,
+                            side: THREE.DoubleSide,
+                            depthWrite: false
+                        });
+                        const frontRingMesh = new THREE.Mesh(frontRingGeometry, frontRingMaterial);
+                        frontRingMesh.scale.y = scaleY;
+                        frontRingMesh.rotation.z = rotationZ;
+                        frontRingMesh.position.z = 1; // In front of the planet
+                        frontRingMesh.name = 'ringFront';
+                        ringGroup.add(frontRingMesh);
                     }
 
-                    ringMesh.position.z = -0.5; // Slightly behind planet
-                    mesh.add(ringMesh);
-                    this.ringMeshes.set(body, ringMesh);
+                    // Add directly to scene
+                    this.scene.add(ringGroup);
+                    this.ringMeshes.set(body, ringGroup);
                 }
 
                 // Add clouds based on CloudFeature
@@ -870,19 +924,32 @@ export class ThreeRenderer {
             const scaleFactor = radius / baseRadius;
             mesh.scale.set(scaleFactor, scaleFactor, 1);
 
-            // Update ring size if present
-            const ringMesh = this.ringMeshes.get(body);
-            if (ringMesh && body.ringInnerRadius && body.ringOuterRadius) {
-                const innerRadius = body.ringInnerRadius * this.scale * this.visualScale;
-                const baseInnerRadius = (ringMesh.geometry as THREE.RingGeometry).parameters.innerRadius;
-                const ringScaleFactor = innerRadius / baseInnerRadius;
+            // Update ring position and size (rings are now direct children of scene)
+            const ringGroup = this.ringMeshes.get(body);
+            if (ringGroup && ringGroup.children.length > 0) {
+                // Position the ring at the planet's position
+                ringGroup.position.set(worldX, worldY, 0);
 
-                // Maintain the tilt aspect ratio while scaling
-                ringMesh.scale.set(
-                    ringScaleFactor,
-                    ringScaleFactor * (body.name === 'Saturn' ? 0.4 : (body.name === 'Uranus' ? 0.8 : 1)),
-                    1
-                );
+                // Scale the ring based on planet radius
+                const ringFeature = findFeature<RingFeature>(body.features, 'rings');
+                if (ringFeature) {
+                    // Get the base inner radius from geometry
+                    const firstChild = ringGroup.children[0] as THREE.Mesh;
+                    const geom = firstChild.geometry as THREE.RingGeometry;
+                    const baseInnerRadius = geom.parameters.innerRadius;
+
+                    // Calculate target inner radius in screen space
+                    const targetInnerRadius = body.radius * ringFeature.innerRadius * this.scale * this.visualScale;
+                    const ringScaleFactor = targetInnerRadius / baseInnerRadius;
+
+                    // Get tilt factor from feature data
+                    const tiltY = ringFeature.scaleY ?? 1;
+
+                    // Scale all ring children
+                    ringGroup.children.forEach(child => {
+                        child.scale.set(ringScaleFactor, ringScaleFactor * tiltY, 1);
+                    });
+                }
             }
 
             // Update cloud animation if present
@@ -1811,17 +1878,21 @@ export class ThreeRenderer {
         });
         this.bodyMeshes.clear();
 
-        // Dispose ring meshes
-        this.ringMeshes.forEach(mesh => {
-            if (mesh.geometry) mesh.geometry.dispose();
-            if (mesh.material) {
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach(m => m.dispose());
-                } else {
-                    (mesh.material as THREE.MeshBasicMaterial).map?.dispose();
-                    mesh.material.dispose();
+        // Dispose ring meshes (ring is now a Group with children)
+        this.ringMeshes.forEach(group => {
+            group.children.forEach(child => {
+                const ringMesh = child as THREE.Mesh;
+                if (ringMesh.geometry) ringMesh.geometry.dispose();
+                if (ringMesh.material) {
+                    if (Array.isArray(ringMesh.material)) {
+                        ringMesh.material.forEach((m: THREE.Material) => m.dispose());
+                    } else {
+                        const mat = ringMesh.material as THREE.MeshBasicMaterial;
+                        mat.map?.dispose();
+                        mat.dispose();
+                    }
                 }
-            }
+            });
         });
         this.ringMeshes.clear();
 
