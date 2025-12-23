@@ -13,8 +13,8 @@ export class ThrustParticleSystem {
     private sizes: Float32Array;
     private colors: Float32Array;
     private types: Int8Array; // 0=Standard, 1=Blue, 2=RCS
-    private maxLifetime: number = 3.5; // Increased for longer visible trail
-    private emissionRate: number = 10000; // Balanced for performance - adaptive scaling handles zoom
+    private maxLifetime: number = 0.8; // Short flame for realistic proportions
+    private emissionRate: number = 5000; // Reduced for focused emission
     private activeParticles: number = 0;
     private nextParticleIndex: number = 0; // Ring buffer index
 
@@ -159,57 +159,51 @@ export class ThrustParticleSystem {
 
                 // RCS Logic: Simple white puff fading out
                 if (type === 2) {
-                    const t = 1 - (this.lifetimes[i] / (this.maxLifetime * 0.2)); // Short life normalized
-                    // White Fade
-                    const alpha = Math.max(0, 1 - t * 2); // Fade fast
+                    const rcsLife = 0.15; // RCS specific short life
+                    const t = 1 - (this.lifetimes[i] / rcsLife);
+                    const alpha = Math.max(0, 1 - t * 1.5); // Fade
                     this.colors[i3] = alpha;
                     this.colors[i3 + 1] = alpha;
                     this.colors[i3 + 2] = alpha;
-                    this.sizes[i] = 30 + t * 20; // Slight expansion
+                    this.sizes[i] = 0.3 + t * 0.3; // 0.3m → 0.6m expansion
                 }
                 // Blue Flame Logic
-                else if (type === 1) { // Blue
-                    const flameDuration = 0.4;
+                else if (type === 1) {
+                    const flameDuration = 0.3; // Shorter for 0.8s lifetime
                     if (age < flameDuration) {
                         const t = age / flameDuration;
-                        this.colors[i3] = 0.2 + t * 0.1; // R
-                        this.colors[i3 + 1] = 0.8 - t * 0.4; // G
-                        this.colors[i3 + 2] = 1.0; // B
-                        this.sizes[i] = 100 + t * 60;
+                        this.colors[i3] = 0.2 + t * 0.1;
+                        this.colors[i3 + 1] = 0.8 - t * 0.4;
+                        this.colors[i3 + 2] = 1.0;
+                        this.sizes[i] = 0.8 + t * 0.5; // 0.8m → 1.3m
                     } else {
-                        // Smoke Phase
+                        // Fading phase (no smoke for short lifetime)
                         const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
-                        const intensity = 0.5 * (1 - t);
-                        this.colors[i3] = 0.3 * intensity;
-                        this.colors[i3 + 1] = 0.4 * intensity;
-                        this.colors[i3 + 2] = 0.8 * intensity;
-                        this.sizes[i] = 150 + t * 250;
+                        const intensity = 1.0 - t;
+                        this.colors[i3] = 0.2 * intensity;
+                        this.colors[i3 + 1] = 0.5 * intensity;
+                        this.colors[i3 + 2] = 1.0 * intensity;
+                        this.sizes[i] = 1.3 + t * 0.7; // 1.3m → 2.0m
                     }
                 }
-                // Standard Logic - Clear visible gradient with LIGHT GRAY smoke
+                // Standard Flame Logic - bright core to fading
                 else {
-                    const flameDuration = 1.0; // Flame phase
+                    const flameDuration = 0.4; // Flame is most of lifetime
                     if (age < flameDuration) {
                         const t = age / flameDuration;
-                        // Bright white/yellow core → orange → red progression
-                        this.colors[i3] = 1.0; // Always full red
-                        this.colors[i3 + 1] = 1.0 - t * 0.8; // Yellow fades to dark
-                        this.colors[i3 + 2] = (1.0 - t) * 0.5; // Blue component fades quickly
-                        // Grow during flame phase
-                        this.sizes[i] = 150 * (1 + t * 0.8);
+                        // Bright white/yellow core → orange → red
+                        this.colors[i3] = 1.0;
+                        this.colors[i3 + 1] = 1.0 - t * 0.7;
+                        this.colors[i3 + 2] = (1.0 - t) * 0.5;
+                        this.sizes[i] = 0.5 + t * 0.8; // 0.5m → 1.3m
                     } else {
-                        // Smoke Phase - LIGHT GRAY diffuse smoke cloud
-                        const smokeAge = age - flameDuration;
-                        const smokeDuration = this.maxLifetime - flameDuration;
-                        const t = smokeAge / smokeDuration;
-                        // Light gray smoke that fades to transparent
-                        const fade = Math.pow(1 - t, 1.5); // Gentler fade for longer visibility
-                        const grayness = 0.5 + (1 - t) * 0.3; // Light gray (0.5-0.8)
-                        this.colors[i3] = grayness * fade; // Light gray
-                        this.colors[i3 + 1] = grayness * fade;
-                        this.colors[i3 + 2] = grayness * fade;
-                        // Smoke expands VERY significantly to form diffuse cloud
-                        this.sizes[i] = 300 + t * 500; // MUCH larger: 300 → 800 pixels
+                        // Fading red/orange tail
+                        const t = (age - flameDuration) / (this.maxLifetime - flameDuration);
+                        const fade = 1.0 - t;
+                        this.colors[i3] = fade * 0.8; // Dim red
+                        this.colors[i3 + 1] = fade * 0.3;
+                        this.colors[i3 + 2] = 0;
+                        this.sizes[i] = 1.3 + t * 1.0; // 1.3m → 2.3m
                     }
                 }
             }
@@ -218,26 +212,41 @@ export class ThrustParticleSystem {
 
     /**
      * Update geometry buffers with transformed positions for rendering
+     * @param center Camera center in world coordinates
+     * @param scale World-to-scene scale factor
      */
     updateGeometry(center: { x: number, y: number }, scale: number) {
         const geometry = this.particles.geometry as THREE.BufferGeometry;
         const renderPositions = geometry.attributes.position.array as Float32Array;
         const sizes = geometry.attributes.size.array as Float32Array;
 
+        // Calculate a visibility factor: how many pixels does 1 meter become?
+        // At scale 1e-9 (viewing solar system), 1m = 1e-9 scene units = basically invisible
+        // At scale 1e-3 (zoomed in on rocket), 1m = 1e-3 scene units = visible
+        // The "screen density" tells us pixels per meter at current zoom
+        // We use a base reference: screen height is about 800 pixels for reasonable viewing
+        const screenHeight = 800; // Reference screen size
+        const metersVisibleAtZoom = 1 / scale; // At scale 1e-3, we see 1000m on screen
+        const pixelsPerMeter = screenHeight / metersVisibleAtZoom; // pixels per meter
+
         for (let i = 0; i < this.particleCount; i++) {
             if (this.lifetimes[i] > 0) {
                 const i3 = i * 3;
-                // Transform physics position to screen position
+                // Transform physics position to scene position
                 const x = (this.physicsPositions[i3] - center.x) * scale;
                 const y = (this.physicsPositions[i3 + 1] - center.y) * scale;
 
                 renderPositions[i3] = x;
                 renderPositions[i3 + 1] = y;
-                renderPositions[i3 + 2] = 2; // Z=2
+                renderPositions[i3 + 2] = 2; // Z=2 in front
 
-                const physicalSize = this.sizes[i];
-                // Increased multiplier from 2 to 3 for larger visible particles
-                const pixelSize = Math.max(12, physicalSize * scale * 3); // Increased minimum from 8 to 12
+                // Size in meters → size in pixels
+                const sizeInMeters = this.sizes[i];
+                let pixelSize = sizeInMeters * pixelsPerMeter;
+
+                // Clamp to reasonable bounds
+                // Min 4px so we can see something, max 100px so it doesn't get crazy
+                pixelSize = Math.max(4, Math.min(pixelSize, 100));
                 sizes[i] = pixelSize;
             } else {
                 const i3 = i * 3;
@@ -254,7 +263,7 @@ export class ThrustParticleSystem {
     }
 
     /**
-     * Emit a new particle using Ring Buffer
+     * Emit a new particle using Ring Buffer with proper cone emission
      */
     private emitParticle(config: { pos: THREE.Vector3; dir: THREE.Vector3; throttle: number; type?: string }) {
         const i = this.nextParticleIndex;
@@ -271,47 +280,80 @@ export class ThrustParticleSystem {
         if (isRCS) typeVal = 2;
         this.types[i] = typeVal;
 
-        // Position with randomness - increased radius for better coverage
-        const nozzleRadius = isRCS ? 0.5 : (isBlue ? 3.5 : 2.5); // Increased from 1.5/2.5
+        // Cone emission parameters (angles in radians)
+        const coneAngle = isRCS ? 0.5 : (isBlue ? 0.14 : 0.26); // ~30°, ~8°, ~15°
+        const nozzleRadius = isRCS ? 0.2 : (isBlue ? 0.8 : 0.5); // meters
+
+        // Position: slight random offset within nozzle radius
         this.physicsPositions[i3] = config.pos.x + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 1] = config.pos.y + (Math.random() - 0.5) * nozzleRadius;
         this.physicsPositions[i3 + 2] = config.pos.z;
 
-        // Velocity - reduced spread for tighter flame
-        const spread = isRCS ? 0.05 : (isBlue ? 0.1 : 0.15); // Reduced from 0.2/0.3 for tighter flame
-        const speedMult = isRCS ? 3.0 : (isBlue ? 1.5 : 1.0); // RCS is fast puff
+        // Cone emission: generate random direction within cone
+        // Use uniform distribution in cone (angle proportional to sqrt of random)
+        const theta = coneAngle * Math.sqrt(Math.random()); // angle from center
+        const phi = Math.random() * 2 * Math.PI; // rotation around axis
 
-        const minSpeed = 50 * speedMult;
-        const maxSpeed = (50 + config.throttle * 250) * speedMult;
-        const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
-
-        this.velocities[i3] = config.dir.x * speed + (Math.random() - 0.5) * spread * speed;
-        this.velocities[i3 + 1] = config.dir.y * speed + (Math.random() - 0.5) * spread * speed;
-        this.velocities[i3 + 2] = config.dir.z * speed + (Math.random() - 0.5) * spread * speed;
-
-        // Lifetime
-        if (isRCS) {
-            this.lifetimes[i] = 0.3 + Math.random() * 0.2; // Short life
+        // Create perpendicular vectors to dir for cone rotation
+        const dir = config.dir;
+        let perpX, perpY;
+        if (Math.abs(dir.x) < 0.9) {
+            // Use cross product with X axis
+            perpX = 0; perpY = -dir.z;
+            const perpZ = dir.y;
+            const perpLen = Math.sqrt(perpY * perpY + perpZ * perpZ);
+            perpY /= perpLen;
         } else {
-            this.lifetimes[i] = this.maxLifetime * (0.8 + Math.random() * 0.4);
+            // Use cross product with Y axis
+            perpX = dir.z; perpY = 0;
+            const perpLen = Math.abs(perpX);
+            perpX /= perpLen;
         }
 
-        // Initial Color and Size - MUCH larger particles for dense flame effect
+        // Apply cone deviation
+        const cosTheta = Math.cos(theta);
+        const sinTheta = Math.sin(theta);
+        const cosPhi = Math.cos(phi);
+        const sinPhi = Math.sin(phi);
+
+        // Simplified cone direction (approximation)
+        const coneX = dir.x * cosTheta + sinTheta * (cosPhi * perpX - sinPhi * dir.y);
+        const coneY = dir.y * cosTheta + sinTheta * (cosPhi * perpY + sinPhi * dir.x);
+
+        // Speed in m/s - much more realistic for rocket exhaust visible at close range
+        const speedMult = isRCS ? 2.0 : (isBlue ? 1.2 : 1.0);
+        const minSpeed = 15 * speedMult;
+        const maxSpeed = (25 + config.throttle * 40) * speedMult; // 15-65 m/s
+        const speed = minSpeed + Math.random() * (maxSpeed - minSpeed);
+
+        this.velocities[i3] = coneX * speed;
+        this.velocities[i3 + 1] = coneY * speed;
+        this.velocities[i3 + 2] = 0; // Keep in XY plane for now
+
+        // Lifetime - shorter for tight flames
+        if (isRCS) {
+            this.lifetimes[i] = 0.15 + Math.random() * 0.1; // Very short puff
+        } else {
+            this.lifetimes[i] = this.maxLifetime * (0.7 + Math.random() * 0.3);
+        }
+
+        // Initial Size in METERS (real world scale)
+        // A rocket flame particle is about 0.3-1.5m across
         if (isRCS) {
             this.colors[i3] = 1.0;
             this.colors[i3 + 1] = 1.0;
             this.colors[i3 + 2] = 1.0;
-            this.sizes[i] = 40 + Math.random() * 20; // Was 20-30, now 40-60
+            this.sizes[i] = 0.3 + Math.random() * 0.2; // 0.3-0.5m
         } else if (isBlue) {
-            this.colors[i3] = 0.2; // R
-            this.colors[i3 + 1] = 0.8; // G
-            this.colors[i3 + 2] = 1.0; // B
-            this.sizes[i] = 200 + Math.random() * 100; // Was 100-150, now 200-300
+            this.colors[i3] = 0.2;
+            this.colors[i3 + 1] = 0.8;
+            this.colors[i3 + 2] = 1.0;
+            this.sizes[i] = 0.8 + Math.random() * 0.5; // 0.8-1.3m
         } else {
             this.colors[i3] = 1.0;
             this.colors[i3 + 1] = 1.0;
             this.colors[i3 + 2] = 0.9;
-            this.sizes[i] = 150 + Math.random() * 100; // Was 80-120, now 150-250 for MUCH denser flames
+            this.sizes[i] = 0.5 + Math.random() * 0.5; // 0.5-1.0m
         }
     }
 

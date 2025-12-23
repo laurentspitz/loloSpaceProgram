@@ -5,6 +5,92 @@ import { TextureGenerator } from './TextureGenerator';
  * Background - Manages the scene background (starfield and nebulas)
  */
 export class Background {
+    /**
+     * Create a static background texture (for scene.background)
+     * This is not affected by camera zoom or rotation
+     */
+    static createBackgroundTexture(): THREE.CanvasTexture {
+        const size = 2048; // High resolution for quality
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d')!;
+
+        // Dark space background
+        ctx.fillStyle = '#000508';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw nebula effects first (behind stars)
+        this.drawNebulas(ctx, size);
+
+        // Draw stars
+        this.drawStars(ctx, size);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    private static drawStars(ctx: CanvasRenderingContext2D, size: number) {
+        const starCount = 3000;
+        for (let i = 0; i < starCount; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const radius = 0.5 + Math.random() * 1.5;
+            const brightness = 0.5 + Math.random() * 0.5;
+
+            // Color variation
+            const type = Math.random();
+            let r, g, b;
+            if (type > 0.9) {
+                // Blue giant
+                r = brightness * 0.8; g = brightness * 0.9; b = brightness;
+            } else if (type > 0.7) {
+                // Red dwarf
+                r = brightness; g = brightness * 0.6; b = brightness * 0.6;
+            } else {
+                // White/yellow
+                r = brightness; g = brightness; b = brightness * 0.9;
+            }
+
+            // Glow effect
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+            gradient.addColorStop(0, `rgba(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)}, 1)`);
+            gradient.addColorStop(0.5, `rgba(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)}, 0.3)`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    private static drawNebulas(ctx: CanvasRenderingContext2D, size: number) {
+        // Subtle nebula clouds
+        const colors = ['#220044', '#001133', '#330011'];
+        colors.forEach(color => {
+            const nebulaCount = 2 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < nebulaCount; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = 100 + Math.random() * 300;
+
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, color);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.globalAlpha = 0.2;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    // Legacy method for 3D background (kept for compatibility)
     static createBackground(): THREE.Group {
         const group = new THREE.Group();
 

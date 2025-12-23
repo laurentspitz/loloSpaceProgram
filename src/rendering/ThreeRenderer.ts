@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Body } from '../core/Body';
 import { Vector2 } from '../core/Vector2';
 import { TextureGenerator } from './TextureGenerator';
@@ -25,8 +26,15 @@ import { GasGiantMaterial } from './GasGiantMaterial';
  */
 export class ThreeRenderer {
     scene: THREE.Scene;
-    camera: THREE.OrthographicCamera;
+    camera: THREE.PerspectiveCamera;
     renderer: THREE.WebGLRenderer;
+
+    // 3D Camera controls
+    orbitControls: OrbitControls | null = null;
+
+    // Lighting
+    sunLight: THREE.PointLight | null = null;
+    ambientLight: THREE.AmbientLight | null = null;
 
     // Properties for compatibility with UI
     canvas: HTMLCanvasElement;
@@ -97,7 +105,7 @@ export class ThreeRenderer {
     private staticMaterials: Map<Body, THREE.MeshBasicMaterial> = new Map();
 
     // Mesh References for LOD
-    private atmosphereHaloMeshes: Map<Body, THREE.Mesh> = new Map();
+    private atmosphereHaloMeshes: Map<Body, THREE.Object3D> = new Map();
     private overlayMeshes: Map<Body, THREE.Mesh> = new Map();
 
     // Helpers
@@ -123,11 +131,12 @@ export class ThreeRenderer {
         // Scene setup
         this.scene = new THREE.Scene();
 
-        // Renderer setup
+        // Renderer setup with logarithmic depth buffer for extreme scale ranges
         this.renderer = new THREE.WebGLRenderer({
             canvas,
             antialias: true,
-            alpha: false
+            alpha: false,
+            logarithmicDepthBuffer: true
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         // Cap pixel ratio at 1.5 for performance (prevents 2x or 3x rendering on retina displays)
@@ -137,18 +146,29 @@ export class ThreeRenderer {
         // Disable tone mapping to keep original texture colors
         this.renderer.toneMapping = THREE.NoToneMapping;
 
-        // Camera setup (orthographic for 2D view)
+        // Camera setup (perspective for 3D view)
+        // With logarithmic depth buffer, we can use very small near clip
         const aspect = window.innerWidth / window.innerHeight;
-        const frustumSize = 1000;
-        this.camera = new THREE.OrthographicCamera(
-            frustumSize * aspect / -2,
-            frustumSize * aspect / 2,
-            frustumSize / 2,
-            frustumSize / -2,
-            0.1,
-            10000
-        );
-        this.camera.position.z = 1000;
+        this.camera = new THREE.PerspectiveCamera(60, aspect, 1, 1e15);
+        // Start camera far from origin looking at center
+        this.camera.position.set(0, 0, 1e9); // 1 billion meters out
+
+        // Initialize OrbitControls for 3D camera rotation
+        this.orbitControls = new OrbitControls(this.camera, canvas);
+        this.orbitControls.enableDamping = true;
+        this.orbitControls.dampingFactor = 0.1;
+        this.orbitControls.minDistance = 100; // Very close allowed
+        this.orbitControls.maxDistance = 1e13; // 10 trillion meters maximum (beyond Pluto)
+        this.orbitControls.enablePan = true;
+        this.orbitControls.screenSpacePanning = true; // Pan parallel to screen
+
+        // Add lighting for 3D
+        this.sunLight = new THREE.PointLight(0xffffff, 2, 0, 0); // intensity 2, no decay
+        this.sunLight.position.set(0, 0, 0); // Will be updated to Sun's position
+        this.scene.add(this.sunLight);
+
+        this.ambientLight = new THREE.AmbientLight(0x404040, 0.3); // Dim ambient for shadow areas
+        this.scene.add(this.ambientLight);
 
         // Initialize orbit renderer
         this.orbitRenderer = new OrbitRenderer(this.scene, this.scale, this.moonScale);
@@ -200,9 +220,8 @@ export class ThreeRenderer {
     }
 
     createBackground() {
-        this.stars = Background.createBackground();
-        this.scene.add(this.stars);
-        this.scene.background = new THREE.Color(0x000508); // Slightly darker, more nebulous deep space
+        // Use static background texture (unaffected by camera zoom/rotation)
+        this.scene.background = Background.createBackgroundTexture();
     }
 
     resize(width: number, height: number) {
@@ -210,12 +229,8 @@ export class ThreeRenderer {
         this.height = height;
         this.renderer.setSize(width, height);
 
-        const aspect = width / height;
-        const frustumSize = 1000;
-        this.camera.left = frustumSize * aspect / -2;
-        this.camera.right = frustumSize * aspect / 2;
-        this.camera.top = frustumSize / 2;
-        this.camera.bottom = frustumSize / -2;
+        // Update perspective camera aspect ratio
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
     }
 
@@ -321,7 +336,10 @@ export class ThreeRenderer {
             // Check distance to SOI boundary
             const soiCenter = this.worldToScreen(soi.bodyPosition);
             // Convert world radius to screen radius
-            const frustumHeight = this.camera.top - this.camera.bottom;
+            // For perspective camera, calculate visible height at Z=0 (orbital plane)
+            const distToPlane = Math.abs(this.camera.position.z);
+            const vFov = this.camera.fov * Math.PI / 180;
+            const frustumHeight = 2 * distToPlane * Math.tan(vFov / 2);
             const pixelsPerUnit = this.height / frustumHeight;
             const soiRadiusScreen = soi.radius * this.scale * pixelsPerUnit;
 
@@ -379,18 +397,26 @@ export class ThreeRenderer {
         const ndcX = (screenPos.x / width) * 2 - 1;
         const ndcY = -(screenPos.y / height) * 2 + 1;
 
-        // 2. Map NDC to Scene coordinates (orthographic)
-        // For orthographic camera: NDC [-1,1] maps linearly to [camera.left, camera.right]
-        const frustumWidth = this.camera.right - this.camera.left;
-        const frustumHeight = this.camera.top - this.camera.bottom;
-        const sceneX = ndcX * frustumWidth / 2;
-        const sceneY = ndcY * frustumHeight / 2;
+        // 2. For perspective camera, raycast to Z=0 plane
+        // Create a ray from camera through the NDC point
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
 
-        // 3. Convert Scene(Units) to World(Meters)
-        return new Vector2(
-            sceneX / this.scale + center.x,
-            sceneY / this.scale + center.y
-        );
+        // Find intersection with Z=0 plane (the orbital plane)
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const intersection = new THREE.Vector3();
+        raycaster.ray.intersectPlane(plane, intersection);
+
+        if (intersection) {
+            // 3. Convert Scene(Units) to World(Meters)
+            return new Vector2(
+                intersection.x / this.scale + center.x,
+                intersection.y / this.scale + center.y
+            );
+        }
+
+        // Fallback if ray doesn't intersect plane (shouldn't happen)
+        return center.clone();
     }
 
     render(bodies: Body[], particles: Particle[] = [], _time: number = 0, deltaTime: number = 0.016) {
@@ -532,18 +558,28 @@ export class ThreeRenderer {
         }
 
         const center = this.getCenter();
-        // Use floating origin: camera is always at (0,0) relative to the scene content
-        // This avoids floating point precision issues when zooming in on far-away objects
-        this.camera.position.x = 0;
-        this.camera.position.y = 0;
 
-        // Update camera zoom
-        const frustumSize = 1000 / this.scale * 1e-9;
-        const aspect = window.innerWidth / window.innerHeight;
-        this.camera.left = frustumSize * aspect / -2;
-        this.camera.right = frustumSize * aspect / 2;
-        this.camera.top = frustumSize / 2;
-        this.camera.bottom = frustumSize / -2;
+        // For 3D: Update OrbitControls target to follow body
+        if (this.orbitControls) {
+            // Set the orbit target to the followed body's position (in scene coordinates)
+            this.orbitControls.target.set(
+                (center.x - this.offset.x) * this.scale,
+                (center.y - this.offset.y) * this.scale,
+                0
+            );
+            this.orbitControls.update();
+        }
+
+        // Update sun light position (light follows the Sun's position in scene coordinates)
+        if (this.sunLight) {
+            const sun = bodies.find(b => b.name === 'Sun');
+            if (sun) {
+                const sunX = (sun.position.x - center.x) * this.scale;
+                const sunY = (sun.position.y - center.y) * this.scale;
+                this.sunLight.position.set(sunX, sunY, 0);
+            }
+        }
+
         this.camera.updateProjectionMatrix();
 
         // Update orbit renderer scale
@@ -653,9 +689,9 @@ export class ThreeRenderer {
             let mesh = this.bodyMeshes.get(body);
 
             if (!mesh) {
-                // Create new mesh for this body
+                // Create new mesh for this body (3D sphere for proper lighting)
                 const radius = body.radius * this.scale * this.visualScale;
-                const geometry = new THREE.CircleGeometry(radius, 8192);
+                const geometry = new THREE.SphereGeometry(radius, 64, 32);
 
                 let material: THREE.Material;
 
@@ -715,51 +751,47 @@ export class ThreeRenderer {
                 } else {
                     // Create texture using TextureGenerator for other bodies
                     const texture = TextureGenerator.createPlanetTexture(body);
-                    material = new THREE.MeshBasicMaterial({
-                        map: texture,
-                        transparent: true
-                    });
+                    // Use MeshStandardMaterial for proper 3D lighting (except Sun)
+                    if (body.name === 'Sun') {
+                        // Sun emits light, doesn't receive it
+                        material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            transparent: true
+                        });
+                    } else {
+                        material = new THREE.MeshStandardMaterial({
+                            map: texture,
+                            transparent: true,
+                            roughness: 1.0,
+                            metalness: 0.0
+                        });
+                    }
                 }
 
                 mesh = new THREE.Mesh(geometry, material);
 
-                // Add 3D spherical lighting overlay (except for the Sun)
-                if (body.name !== 'Sun') {
-                    const overlayGeometry = new THREE.CircleGeometry(radius, 128);
-                    const overlayTexture = TextureGenerator.createSpherical3DOverlay();
-                    const overlayMaterial = new THREE.MeshBasicMaterial({
-                        map: overlayTexture,
-                        transparent: true,
-                        depthWrite: false
-                    });
-                    const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
-                    overlayMesh.position.z = 0.2; // In front of planet texture
-                    mesh.add(overlayMesh);
-                    this.overlayMeshes.set(body, overlayMesh);
-                }
+                // Note: 3D spherical lighting overlay removed - real 3D lighting handles this now
 
-                // Add atmosphere halo
+                // Add atmosphere halo (using Sprite for automatic billboarding in 3D)
                 if (body.atmosphereColor) {
                     const atmosScale = body.atmosphereRadiusScale || 1.25;
-                    const atmosRadius = radius * atmosScale;
-                    const atmosGeometry = new THREE.PlaneGeometry(atmosRadius * 2, atmosRadius * 2);
-
                     const atmosTexture = TextureGenerator.createAtmosphereHalo(
                         body.atmosphereColor,
                         body.atmosphereOpacity !== undefined ? body.atmosphereOpacity : 0.4
                     );
 
-                    const atmosMaterial = new THREE.MeshBasicMaterial({
+                    const atmosMaterial = new THREE.SpriteMaterial({
                         map: atmosTexture,
                         transparent: true,
-                        side: THREE.DoubleSide,
-                        depthWrite: false // Don't occlude other objects
+                        depthWrite: false
                     });
 
-                    const atmosMesh = new THREE.Mesh(atmosGeometry, atmosMaterial);
-                    atmosMesh.position.z = -0.5; // Behind the planet (but in front of background)
-                    mesh.add(atmosMesh);
-                    this.atmosphereHaloMeshes.set(body, atmosMesh);
+                    const atmosSprite = new THREE.Sprite(atmosMaterial);
+                    // Sprite scale is in world units, set to diameter * atmosScale
+                    const atmosDiameter = radius * atmosScale * 2;
+                    atmosSprite.scale.set(atmosDiameter, atmosDiameter, 1);
+                    mesh.add(atmosSprite);
+                    this.atmosphereHaloMeshes.set(body, atmosSprite);
                 } else if (body.name === 'Sun') {
                     // Sun glow (legacy simple glow)
                     const glowGeometry = new THREE.CircleGeometry(radius * 1.3, 128);
@@ -869,33 +901,33 @@ export class ThreeRenderer {
                 // Add clouds based on CloudFeature
                 const cloudFeature = findFeature<CloudFeature>(body.features, 'clouds');
                 if (cloudFeature) {
-                    // Surface clouds - stay on the planet surface
+                    // Surface clouds - 3D sphere slightly larger than planet
                     if (cloudFeature.surfaceClouds) {
-                        const cloudGeometry = new THREE.CircleGeometry(radius * 1.0, 128);
+                        const cloudGeometry = new THREE.SphereGeometry(radius * 1.002, 64, 32);
                         const cloudTexture = TextureGenerator.createCloudTexture(body);
                         const cloudMaterial = new THREE.MeshBasicMaterial({
                             map: cloudTexture,
                             transparent: true,
-                            opacity: cloudFeature.opacity || 0.8
+                            opacity: cloudFeature.opacity || 0.8,
+                            depthWrite: false
                         });
                         const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-                        cloudMesh.position.z = 0.1; // Slightly in front
                         mesh.add(cloudMesh);
                         this.cloudMeshes.set(body, cloudMesh);
                     }
 
-                    // Atmospheric clouds - between altitudeMin and altitudeMax
+                    // Atmospheric clouds - 3D sphere at atmosphere scale
                     if (cloudFeature.atmosphericClouds) {
                         const atmosScale = body.atmosphereRadiusScale || 1.15;
-                        const atmosCloudGeometry = new THREE.CircleGeometry(radius * atmosScale, 128);
+                        const atmosCloudGeometry = new THREE.SphereGeometry(radius * atmosScale, 64, 32);
                         const atmosCloudTexture = TextureGenerator.createAtmosphericCloudTexture(body, cloudFeature);
                         const atmosCloudMaterial = new THREE.MeshBasicMaterial({
                             map: atmosCloudTexture,
                             transparent: true,
-                            opacity: (cloudFeature.opacity || 0.5) * 0.8
+                            opacity: (cloudFeature.opacity || 0.5) * 0.8,
+                            depthWrite: false
                         });
                         const atmosCloudMesh = new THREE.Mesh(atmosCloudGeometry, atmosCloudMaterial);
-                        atmosCloudMesh.position.z = 0.05; // Between planet and surface clouds
                         mesh.add(atmosCloudMesh);
                         this.atmosphereCloudMeshes.set(body, atmosCloudMesh);
                     }
@@ -918,11 +950,18 @@ export class ThreeRenderer {
 
             mesh.position.set(worldX, worldY, 0);
 
-            // Update size based on zoom
+            // Update size based on zoom (3D sphere needs uniform scaling)
             const radius = body.radius * this.scale * this.visualScale;
-            const baseRadius = (mesh.geometry as THREE.CircleGeometry).parameters.radius;
+            const baseRadius = (mesh.geometry as THREE.SphereGeometry).parameters.radius;
             const scaleFactor = radius / baseRadius;
-            mesh.scale.set(scaleFactor, scaleFactor, 1);
+            mesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            // Planet axial rotation (rotate around Y axis for 3D effect)
+            // Different speeds for different planets (simplified, could use real rotation periods)
+            if (body.type !== 'star') {
+                const rotationSpeed = body.name === 'Venus' ? -0.00002 : 0.00005; // Venus rotates backwards
+                mesh.rotation.y = _time * rotationSpeed;
+            }
 
             // Update ring position and size (rings are now direct children of scene)
             const ringGroup = this.ringMeshes.get(body);
@@ -1633,8 +1672,10 @@ export class ThreeRenderer {
         }
 
         // Calculate pixel-to-unit ratio using actual camera frustum
-        // camera.top is half the frustum height
-        const frustumHeight = (this.camera.top - this.camera.bottom);
+        // For perspective camera, calculate visible height at Z=0 (orbital plane)
+        const distToPlane = Math.abs(this.camera.position.z);
+        const vFov = this.camera.fov * Math.PI / 180;
+        const frustumHeight = 2 * distToPlane * Math.tan(vFov / 2);
         const pixelToUnit = frustumHeight / (this.height || 1);
 
         // 1. Handle Ghost Node (Hover)
@@ -2071,28 +2112,54 @@ export class ThreeRenderer {
     autoZoomToBody(body: Body | null) {
         if (!body) return;
 
-        // Determine the size of the object
-        let objectSize: number;
+        // Follow the body
+        this.followedBody = body;
+
+        // Determine the size of the object in meters
+        let objectSizeMeters: number;
 
         // Check if it's the rocket
         if (this.currentRocket && body === this.currentRocket.body) {
-            // Rocket height is about 8 meters, but we want to show more context
-            // Use 10x the rocket size so it appears smaller with surrounding space
-            objectSize = 80;
+            // Rocket: show ~30m context for close-up
+            objectSizeMeters = 30;
         } else {
             // For celestial bodies, use visual radius * 2 (diameter) * visualScale
-            objectSize = body.radius * 2 * this.visualScale;
+            objectSizeMeters = body.radius * 2 * this.visualScale;
         }
 
         // We want the object to take up targetFraction of screen height
         const targetFraction = 0.8; // 80% of screen
 
-        // Calculate required scale
-        const newScale = Math.sqrt(targetFraction * 1e-6 / objectSize);
+        // Calculate proper camera distance using perspective math
+        // Visible height at distance d = 2 * d * tan(FOV/2)
+        // We want: objectSizeMeters * scale = targetFraction * 2 * d * tan(FOV/2)
+        // Rearranging: d = (objectSizeMeters * scale) / (targetFraction * 2 * tan(FOV/2))
+        // But we need d > near clip (1e3), so we solve for scale instead:
+        // scale = (targetFraction * 2 * d * tan(FOV/2)) / objectSizeMeters
 
-        // Apply new scale
+        const fovRad = this.camera.fov * Math.PI / 180;
+        const tanHalfFov = Math.tan(fovRad / 2);
+
+        // Camera distance must be > near clip (now 1 with logarithmic depth buffer)
+        // Use a distance that gives a good view
+        const cameraDistance = 200; // Comfortable viewing distance
+
+        // Calculate scale so object fills target fraction at this distance
+        // visible height = 2 * d * tan(FOV/2)
+        // object scene size should be targetFraction of visible height
+        // objectSizeMeters * scale = targetFraction * 2 * d * tan(FOV/2)
+        // scale = (targetFraction * 2 * d * tan(FOV/2)) / objectSizeMeters
+        const newScale = (targetFraction * 2 * cameraDistance * tanHalfFov) / objectSizeMeters;
+
         if (newScale !== this.scale) {
             this.scale = newScale;
+        }
+
+        // Set camera at the calculated distance
+        if (this.orbitControls) {
+            this.camera.position.set(0, 0, cameraDistance);
+            this.orbitControls.target.set(0, 0, 0);
+            this.orbitControls.update();
         }
     }
 
