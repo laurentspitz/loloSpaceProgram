@@ -45,6 +45,9 @@ export interface MissionConfig {
     // Rewards
     rewardMoney?: number;      // Money earned on completion
     unlockedParts?: string[];  // Parts unlocked on completion
+
+    // Launch configuration
+    launchPad?: string;        // Launch pad ID (e.g., 'baikonur', 'cape_canaveral')
 }
 
 /**

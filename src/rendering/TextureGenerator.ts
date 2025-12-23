@@ -137,8 +137,11 @@ export class TextureGenerator {
             const hemisphereWidth = svgWidth / 2;
 
             // Calculate offset in SVG coordinates
-            // longitudeOffset 0-360 maps to 0-svgWidth
-            const srcOffsetX = (longitudeOffset / 360) * svgWidth;
+            // longitudeOffset -180 to 180 maps to 0-svgWidth
+            const normalizedLongitude = ((longitudeOffset + 180) % 360 + 360) % 360;
+            const srcOffsetX = (normalizedLongitude / 360) * svgWidth;
+
+
 
             // Create a temporary canvas to colorize the SVG
             const tempCanvas = document.createElement('canvas');
@@ -148,7 +151,9 @@ export class TextureGenerator {
 
             // Draw the hemisphere portion with correct aspect ratio
             // We need to draw from srcOffsetX, taking hemisphereWidth of pixels
-            // But we might wrap around the edge, so we draw in two parts if needed
+            // But we might wrap around the edge horizontally, so we draw in two parts if needed
+
+
 
             const srcX1 = srcOffsetX;
             const srcWidth1 = Math.min(hemisphereWidth, svgWidth - srcOffsetX);
@@ -158,7 +163,7 @@ export class TextureGenerator {
             tempCtx.drawImage(
                 svgImage,
                 srcX1, 0, srcWidth1, svgHeight,  // source rectangle
-                0, 0, dstWidth1, size            // destination rectangle
+                0, 0, dstWidth1, size             // destination rectangle
             );
 
             // Second part: wrap around from start of SVG (if needed)
@@ -169,8 +174,8 @@ export class TextureGenerator {
 
                 tempCtx.drawImage(
                     svgImage,
-                    0, 0, srcWidth2, svgHeight,           // source rectangle
-                    dstX2, 0, dstWidth2, size              // destination rectangle
+                    0, 0, srcWidth2, svgHeight,              // source rectangle
+                    dstX2, 0, dstWidth2, size                 // destination rectangle
                 );
             }
 
@@ -202,6 +207,9 @@ export class TextureGenerator {
 
     // Debug: allows runtime adjustment of longitude offset
     public static debugLongitudeOffset: number | null = null;
+
+    // Stores the launch latitude for debug display (read-only, set at launch)
+    public static launchLatitude: number | null = null;
 
     // Cache for loaded SVG images
     private static svgCache: Map<string, HTMLImageElement> = new Map();

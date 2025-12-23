@@ -1002,7 +1002,7 @@ export class ThreeRenderer {
             if (mesh.material instanceof GasGiantMaterial || this.gasGiantMaterials.has(body)) {
                 // Robust screen size calculation
                 const screenRadiusPixels = this.getScreenRadius(mesh);
-                const LOD_THRESHOLD = 200; // Pixels radius
+                const LOD_THRESHOLD = 5; // Pixels radius
 
                 // DEBUG: Log values for Jupiter
                 if (body.name === 'Jupiter') {

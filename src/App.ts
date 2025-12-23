@@ -4,6 +4,7 @@ import { Hangar, createHangar } from './Hangar';
 import { GameTimeManager } from './managers/GameTimeManager';
 import { GAME_START_YEAR } from './config';
 import { TextureGenerator } from './rendering/TextureGenerator';
+import { MissionManager } from './missions/MissionManager';
 import earthSvgUrl from './assets/textures/earth.svg';
 
 /**
@@ -36,8 +37,10 @@ export class App {
 
         window.addEventListener('launch-game', (e: any) => {
             console.log('Launching with assembly:', e.detail.assembly);
+            console.log('Launch config from Hangar:', e.detail.launchConfig);
             this.assembly = e.detail.assembly; // Store assembly
-            this.startGame();
+            // Pass launch config from Hangar event
+            this.startGame({ launchConfig: e.detail.launchConfig });
         });
     }
 
@@ -52,7 +55,7 @@ export class App {
 
 
 
-    startGame(state?: any) {
+    async startGame(state?: any) {
         this.cleanup();
 
         // Reset time if New Game requested
@@ -63,8 +66,25 @@ export class App {
             console.log(`[App] Starting new game in year ${startYear}, elapsed time: ${this.currentGameTime}s`);
         }
 
-        console.log('Starting game...');
-        this.game = new Game(this.assembly);
+        // Get launch config: from state, or from mission manager, or default
+        let launchConfig: { latitude: number; longitude: number } | undefined = state?.launchConfig;
+        console.log('[App] startGame - state:', JSON.stringify(state));
+
+        // For mission mode new games, get launch config from mission's launch pad
+        if (state?.newGame && state?.gameMode === 'mission') {
+            console.log('[App] CONDITION MET - Getting launch config from MissionManager');
+            const missionMgr = new MissionManager();
+            await missionMgr.ensureInitialized();
+            const currentYear = GameTimeManager.getYear(this.currentGameTime);
+            launchConfig = missionMgr.getLaunchConfig(currentYear);
+            console.log('[App] Got launch config from missions:', launchConfig);
+        } else if (!launchConfig) {
+            console.log('[App] Using default launch config (equator)');
+            launchConfig = { latitude: 0, longitude: 0 };
+        }
+
+        console.log('Starting game with launch config:', launchConfig);
+        this.game = new Game(this.assembly, launchConfig);
 
         // Initialize with persistent time
         this.game.elapsedGameTime = this.currentGameTime;

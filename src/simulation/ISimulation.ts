@@ -16,8 +16,10 @@ export interface ISimulation {
 
     /**
      * Initialize the simulation with optional rocket configuration
+     * @param rocketConfig Optional rocket assembly configuration
+     * @param launchConfig Optional launch configuration (latitude, longitude)
      */
-    init(rocketConfig?: RocketConfig): void;
+    init(rocketConfig?: RocketConfig, launchConfig?: { latitude: number; longitude: number }): void;
 
     /**
      * Step the simulation forward

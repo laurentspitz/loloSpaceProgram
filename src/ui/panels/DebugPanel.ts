@@ -156,18 +156,21 @@ export class DebugPanel {
         longitudeContainer.style.borderTop = '1px solid #444';
         longitudeContainer.style.paddingTop = '10px';
 
+        // Get current value from TextureGenerator (set by launch pad)
+        const currentLongitude = TextureGenerator.debugLongitudeOffset ?? 0;
+
         const longitudeLabel = document.createElement('div');
         longitudeLabel.id = 'debug-longitude-label';
-        longitudeLabel.textContent = 'Earth Longitude: 0°';
+        longitudeLabel.textContent = `Earth Longitude: ${currentLongitude}°`;
         longitudeLabel.style.color = '#ccc';
         longitudeLabel.style.fontSize = '12px';
         longitudeLabel.style.marginBottom = '5px';
 
         const longitudeSlider = document.createElement('input');
         longitudeSlider.type = 'range';
-        longitudeSlider.min = '0';
-        longitudeSlider.max = '360';
-        longitudeSlider.value = '0';
+        longitudeSlider.min = '-180';
+        longitudeSlider.max = '180';
+        longitudeSlider.value = String(currentLongitude);
         longitudeSlider.style.width = '100%';
         longitudeSlider.oninput = (e) => {
             const longitude = parseInt((e.target as HTMLInputElement).value);
@@ -185,6 +188,21 @@ export class DebugPanel {
         longitudeContainer.appendChild(longitudeLabel);
         longitudeContainer.appendChild(longitudeSlider);
         debugContent.appendChild(longitudeContainer);
+
+        // Launch Latitude Display (read-only - latitude controls rocket position, not texture)
+        const latitudeDisplay = document.createElement('div');
+        latitudeDisplay.style.marginTop = '5px';
+        latitudeDisplay.style.color = '#888';
+        latitudeDisplay.style.fontSize = '11px';
+        latitudeDisplay.style.fontStyle = 'italic';
+        // Get stored launch latitude
+        const launchLat = TextureGenerator.launchLatitude;
+        if (launchLat !== null) {
+            latitudeDisplay.textContent = `🚀 Launch Latitude: ${launchLat}°`;
+        } else {
+            latitudeDisplay.textContent = `🚀 Launch Latitude: --`;
+        }
+        debugContent.appendChild(latitudeDisplay);
 
         // FPS Counter
         const fpsContainer = document.createElement('div');

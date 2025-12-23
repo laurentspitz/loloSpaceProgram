@@ -2,6 +2,7 @@ import { HangarScene } from './hangar/HangarScene';
 import { HangarUI } from './hangar/HangarUI';
 import { RocketAssembly } from './hangar/RocketAssembly';
 import { DragDropManager } from './hangar/DragDropManager';
+import { getLaunchPad } from './config/LaunchPads';
 
 /**
  * Hangar - Main class for the rocket building scene
@@ -14,6 +15,9 @@ export class Hangar {
     dragDropManager: DragDropManager;
 
     private isDirty: boolean = false;
+
+    // Selected launch pad for sandbox mode
+    selectedLaunchPad: string = 'baikonur';
 
     private getTime: () => number;
 
@@ -69,8 +73,17 @@ export class Hangar {
                     const config = this.assembly.getRocketConfig();
                     (config as any).name = this.assembly.name;
 
+                    // Get launch config from selected launch pad (from UI)
+                    const launchPad = getLaunchPad(this.ui.selectedLaunchPad);
+                    const launchConfig = launchPad
+                        ? { latitude: launchPad.latitude, longitude: launchPad.longitude }
+                        : { latitude: 0, longitude: 0 };
+
                     const event = new CustomEvent('launch-game', {
-                        detail: { assembly: config }
+                        detail: {
+                            assembly: config,
+                            launchConfig: launchConfig
+                        }
                     });
                     window.dispatchEvent(event);
 

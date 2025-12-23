@@ -2,6 +2,7 @@ import type { Rocket } from '../entities/Rocket';
 import type { Body } from '../core/Body';
 import type { Mission, MissionConfig } from './types';
 import { MissionLoader } from './MissionLoader';
+import { getLaunchPad } from '../config/LaunchPads';
 
 /**
  * MissionManager - Handles mission state, unlocking, and completion checking
@@ -162,4 +163,33 @@ export class MissionManager {
             });
         }
     }
+    /**
+     * Get the launch configuration based on the first available mission with a launch pad
+     * Returns default coords (lat 0, long 0) if no launch pad is specified
+     */
+    getLaunchConfig(year: number): { latitude: number; longitude: number } {
+        // Find first mission with a launchPad that matches the current year context
+        const missionsWithLaunchPad = this.missions.filter(m =>
+            m.year <= year && m.launchPad
+        );
+
+        // Sort by year descending to get the most recent mission
+        missionsWithLaunchPad.sort((a, b) => b.year - a.year);
+
+        if (missionsWithLaunchPad.length > 0) {
+            const launchPadId = missionsWithLaunchPad[0].launchPad!;
+            const launchPad = getLaunchPad(launchPadId);
+            if (launchPad) {
+                console.log(`[MissionManager] Using launch pad: ${launchPad.name} (lat: ${launchPad.latitude}°, long: ${launchPad.longitude}°)`);
+                return {
+                    latitude: launchPad.latitude,
+                    longitude: launchPad.longitude
+                };
+            }
+        }
+
+        // Default: equator, prime meridian
+        return { latitude: 0, longitude: 0 };
+    }
 }
+

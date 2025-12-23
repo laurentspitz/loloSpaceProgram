@@ -6,6 +6,7 @@ import { GameTimeManager } from '../managers/GameTimeManager';
 import i18next from 'i18next';
 import { Agencies } from '../config/Agencies';
 import { HangarStagingPanel } from './HangarStagingPanel';
+import { getAllLaunchPads } from '../config/LaunchPads';
 
 
 export class HangarUI {
@@ -35,6 +36,10 @@ export class HangarUI {
 
     onToggleMirror: (active: boolean) => void;
     onToggleCoG: (active: boolean) => void;
+
+    // Selected launch pad for sandbox mode
+    selectedLaunchPad: string = 'baikonur';
+    onLaunchPadChange?: (launchPadId: string) => void;
 
     // Sidebar State
     private isPaletteOpen: boolean = true;
@@ -861,11 +866,50 @@ export class HangarUI {
         saveButton.onclick = () => this.showSaveDialog();
         panel.appendChild(saveButton);
 
+        // Launch Pad Selector
+        const launchPadLabel = document.createElement('div');
+        launchPadLabel.style.fontSize = '11px';
+        launchPadLabel.style.color = '#999';
+        launchPadLabel.style.marginBottom = '2px';
+        launchPadLabel.textContent = '📍 Launch Site';
+        panel.appendChild(launchPadLabel);
+
+        const launchPadSelect = document.createElement('select');
+        launchPadSelect.style.width = '100%';
+        launchPadSelect.style.padding = '6px';
+        launchPadSelect.style.backgroundColor = '#2a2a2a';
+        launchPadSelect.style.color = '#fff';
+        launchPadSelect.style.border = '1px solid #444';
+        launchPadSelect.style.borderRadius = '4px';
+        launchPadSelect.style.cursor = 'pointer';
+        launchPadSelect.style.fontSize = '12px';
+
+        // Populate with launch pads grouped by country
+        const launchPads = getAllLaunchPads().sort((a, b) => a.country.localeCompare(b.country));
+        for (const pad of launchPads) {
+            const option = document.createElement('option');
+            option.value = pad.id;
+            option.textContent = `${pad.name} (${pad.latitude}°N)`;
+            if (pad.id === this.selectedLaunchPad) {
+                option.selected = true;
+            }
+            launchPadSelect.appendChild(option);
+        }
+
+        launchPadSelect.onchange = () => {
+            this.selectedLaunchPad = launchPadSelect.value;
+            if (this.onLaunchPadChange) {
+                this.onLaunchPadChange(this.selectedLaunchPad);
+            }
+        };
+        panel.appendChild(launchPadSelect);
+
         // Launch Button
         const launchButton = document.createElement('button');
         launchButton.id = 'launch-btn';
         launchButton.style.width = '100%';
         launchButton.style.padding = '10px';
+        launchButton.style.marginTop = '5px';
         launchButton.style.backgroundColor = '#00aaff';
         launchButton.style.color = 'white';
         launchButton.style.border = 'none';

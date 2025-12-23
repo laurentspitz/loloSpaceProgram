@@ -28,7 +28,10 @@ const config: MissionConfig = {
         'tank_block_e',
         'control_r7_sas',
         'fairing-generic'
-    ]
+    ],
+
+    // Launch from Baikonur Cosmodrome
+    launchPad: 'baikonur'
 };
 
 export const locales = { en, fr };

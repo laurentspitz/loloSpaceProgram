@@ -45,14 +45,14 @@ export class Simulation implements ISimulation {
     /**
      * Initialize the simulation
      */
-    init(rocketConfig?: RocketConfig): void {
+    init(rocketConfig?: RocketConfig, launchConfig?: { latitude: number; longitude: number }): void {
         console.log('🔧 Simulation initializing');
 
         // Initialize celestial bodies
         this.bodies = SceneSetup.initBodies(this.collisionManager);
 
-        // Create rocket
-        this.rocket = SceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig);
+        // Create rocket with launch configuration
+        this.rocket = SceneSetup.createRocket(this.bodies, this.collisionManager, rocketConfig, launchConfig);
 
         // Setup stage separation handler
         if (this.rocket) {

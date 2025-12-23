@@ -16,6 +16,7 @@ import i18next from './services/i18n';
 import { createSimulation } from './simulation';
 import type { ISimulation } from './simulation';
 import { Physics } from './physics/Physics'; // For deserializeState fast-forward
+import { TextureGenerator } from './rendering/TextureGenerator';
 
 import { MissionManager } from './missions';
 
@@ -57,7 +58,7 @@ export class Game {
     // Game mode: 'mission' (historical progression) or 'sandbox' (all unlocked)
     gameMode: 'mission' | 'sandbox' = 'mission';
 
-    constructor(assembly?: RocketConfig) {
+    constructor(assembly?: RocketConfig, launchConfig?: { latitude: number; longitude: number }) {
         this.missionManager = new MissionManager();
 
         // Initialize canvas
@@ -78,6 +79,18 @@ export class Game {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
+        // Set Earth longitude rotation based on launch pad
+        // This ensures the launch site is visible at the right side of the planet
+        if (launchConfig?.longitude !== undefined) {
+            TextureGenerator.debugLongitudeOffset = launchConfig.longitude;
+            console.log(`[Game] Set Earth longitude offset to ${launchConfig.longitude}° for launch pad`);
+        }
+        // Store launch latitude for debug display (rocket position is set in SceneSetup)
+        if (launchConfig?.latitude !== undefined) {
+            TextureGenerator.launchLatitude = launchConfig.latitude;
+            console.log(`[Game] Stored launch latitude ${launchConfig.latitude}° for debug panel`);
+        }
+
         this.renderer = new ThreeRenderer(canvas);
         this.ui = new UI(this.renderer);
         this.maneuverNodeManager = new ManeuverNodeManager();
@@ -93,7 +106,7 @@ export class Game {
             : assembly;
 
         this.simulation = createSimulation();
-        this.simulation.init(rocketConfig);
+        this.simulation.init(rocketConfig, launchConfig);
 
         // Setup collision handler
         this.simulation.setCollisionHandler((bodyA, bodyB) => {
